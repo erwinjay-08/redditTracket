@@ -1,75 +1,283 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mode="sfw">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Ranking – SubTracker</title>
-  <link rel="stylesheet" href="header.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Ranking — SubTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
+      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+      --radius: 12px; --header-bg: rgba(14,14,16,0.92);
+      --knob-x: 2px; --knob-color: #555566;
+    }
+    [data-mode="nsfw"] {
+      --bg: #f5f0eb; --surface: #ffffff; --surface2: #ede8e0;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.16);
+      --text: #1a1209; --muted: #7a6a55; --accent: #c0392b;
+      --green: #27ae60; --blue: #2980b9; --amber: #e67e22;
+      --header-bg: rgba(245,240,235,0.94);
+      --knob-x: 22px; --knob-color: #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 32px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--header-bg);
+      backdrop-filter: blur(12px); z-index: 10;
+      transition: background 0.4s, border-color 0.3s;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transition: background 0.4s; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .nav-tabs { display: flex; gap: 6px; }
+    .nav-tab {
+      padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); font-size: 11px; font-family: var(--mono);
+      color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+
+    /* ── Toggle ── */
+    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
+    .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; transition: background 0.3s; }
+    [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
+    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
+
+    /* ── Main ── */
+    main { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+    .page-header { margin-bottom: 32px; }
+    .page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .page-sub { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+
+    /* ── Search form ── */
+    .search-form {
+      display: flex; gap: 10px; margin-bottom: 32px;
+    }
+    .search-form input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 16px; color: var(--text);
+      font-family: var(--font); font-size: 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-form input:focus { border-color: var(--accent); }
+    .search-form input::placeholder { color: var(--muted); }
+    .btn {
+      padding: 10px 20px; border-radius: 8px; border: 1px solid var(--accent);
+      background: var(--accent); color: #fff; font-family: var(--font);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Results ── */
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .results-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .rank-list { display: flex; flex-direction: column; gap: 4px; }
+    .rank-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+      transition: border-color 0.15s;
+    }
+    .rank-card:hover { border-color: var(--border2); }
+    .rank-num { font-family: var(--mono); font-size: 12px; color: var(--muted); width: 24px; flex-shrink: 0; text-align: right; }
+    .rank-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,69,0,0.12); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .rank-body { flex: 1; min-width: 0; }
+    .rank-name { font-size: 14px; font-weight: 600; }
+    .rank-stars { font-size: 13px; margin-top: 2px; }
+    .rank-right { text-align: right; flex-shrink: 0; }
+    .rank-score { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+    .rank-score-label { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+    /* bar chart */
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+    .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
+    .chart-wrap { position: relative; width: 100%; height: 220px; }
+
+    .empty { padding: 48px; text-align: center; color: var(--muted); font-size: 13px; }
+    .error-msg { padding: 16px; background: rgba(255,69,0,0.08); border: 1px solid rgba(255,69,0,0.2); border-radius: 8px; color: var(--accent); font-size: 13px; font-family: var(--mono); }
+    .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); height: 64px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
+
+    @media (max-width: 768px) {
+      header { padding: 16px; flex-wrap: wrap; gap: 10px; }
+      .nav-tabs { flex-wrap: wrap; }
+    }
+  </style>
 </head>
-  <header>
-    <div class="logo">
-      <div class="logo-dot"></div>
-      <a href="index.html">SubTracker</a>
-    </div>
+<body>
 
-    <!-- NAV TABS -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <a href="index.html">SubTracker</a>
+  </div>
+  <div class="header-right">
     <div class="nav-tabs">
-      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
-      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
-      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
-      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+      <button class="nav-tab" id="tab-index" onclick="location.href='index.html'">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="location.href='user_Ranking.html'">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="location.href='user_monthly_subs_performance.html'">Monthly Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="location.href='sub_post_timing.html'">Post Timing</button>
     </div>
-  </header>
+    <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
+      <span class="theme-label">safe</span>
+      <div class="toggle-track"><div class="toggle-knob"></div></div>
+      <span class="theme-label">dark</span>
+    </div>
+  </div>
+</header>
 
- <body>
-  <h1>User Ranking Test</h1>
-  <input type="text" id="usernameInput" placeholder="Enter Reddit username" />
-  <button onclick="loadUser()">Fetch Ranking</button>
+<main>
+  <div class="page-header">
+    <div class="page-title">User Ranking</div>
+    <div class="page-sub">See which subreddits a Reddit user performs best in, ranked by total engagement.</div>
+  </div>
 
-  <div id="feed"></div>
+  <div class="search-form">
+    <input type="text" id="usernameInput" placeholder="Enter Reddit username (e.g. kaiaacocoacrustsun)" />
+    <button class="btn" id="fetchBtn" onclick="loadUser()">Analyze</button>
+  </div>
 
-  <script>
-    async function fetchUserRanking(username) {
-      try {
-        const res = await fetch(`/api/user-ranking?user=${username}`);
-        const json = await res.json();
-        if (json.data.error) return { error: json.data.error };
-        return json.data;
-      } catch (err) {
-        return { error: err.message };
+  <div id="chartArea" style="display:none;">
+    <div class="chart-card">
+      <div class="chart-label">Top subreddit scores</div>
+      <div class="chart-wrap"><canvas id="rankChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="results-header" id="resultsHeader" style="display:none;">
+    <span class="results-label" id="resultsLabel">—</span>
+  </div>
+
+  <div id="feed"><div class="empty">Enter a Reddit username above to get started.</div></div>
+</main>
+
+<footer>SubTracker · User Ranking · data from Reddit API</footer>
+
+<script>
+  // ── Active nav tab ──
+  const p = window.location.pathname.split('/').pop() || 'index.html';
+  const tabMap = { 'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming' };
+  const el = document.getElementById(tabMap[p] || 'tab-userRanking');
+  if (el) el.classList.add('active');
+
+  // ── Theme toggle ──
+  let nsfwMode = localStorage.getItem('subtracker-mode') === 'nsfw';
+  if (nsfwMode) document.documentElement.setAttribute('data-mode', 'nsfw');
+  function toggleMode() {
+    nsfwMode = !nsfwMode;
+    document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
+    localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  }
+
+  const API = 'http://localhost:3001/api';
+  let rankChart;
+
+  function fmt(n) {
+    if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+    return String(n||0);
+  }
+
+  async function loadUser() {
+    const username = document.getElementById('usernameInput').value.trim();
+    if (!username) return;
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    document.getElementById('chartArea').style.display = 'none';
+    document.getElementById('resultsHeader').style.display = 'none';
+    document.getElementById('feed').innerHTML = `
+      <div class="rank-list">
+        ${[...Array(5)].map(() => `<div class="skeleton" style="margin-bottom:4px"></div>`).join('')}
+      </div>`;
+
+    try {
+      const res = await fetch(`${API}/user-ranking?user=${encodeURIComponent(username)}&limit=100`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      renderRanking(json.data, username);
+    } catch (e) {
+      document.getElementById('feed').innerHTML = `<div class="error-msg">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Analyze';
+    }
+  }
+
+  function renderRanking(data, username) {
+    if (!data || data.error) {
+      document.getElementById('feed').innerHTML = `<div class="error-msg">${data?.error || 'No data returned'}</div>`;
+      return;
+    }
+    if (data.length === 0) {
+      document.getElementById('feed').innerHTML = `<div class="empty">No posts found for u/${username}.</div>`;
+      return;
+    }
+
+    // Show chart
+    const top8 = data.slice(0, 8);
+    document.getElementById('chartArea').style.display = 'block';
+    if (rankChart) rankChart.destroy();
+    rankChart = new Chart(document.getElementById('rankChart'), {
+      type: 'bar',
+      data: {
+        labels: top8.map(d => 'r/'+d.subreddit),
+        datasets: [{ data: top8.map(d => d.score), backgroundColor: 'rgba(255,69,0,0.7)', hoverBackgroundColor: 'rgba(255,107,53,0.9)', borderWidth: 0, borderRadius: 4 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' Score: '+fmt(ctx.raw) } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#888899', font: { size: 10 }, maxRotation: 35 } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false }, ticks: { color: '#888899', font: { size: 10 }, callback: v => fmt(v) } }
+        }
       }
-    }
-
-    function renderUserRanking(data) {
-      const feed = document.getElementById('feed');
-      if (data.error) {
-        feed.innerHTML = `<div style="color:red;">${data.error}</div>`;
-        return;
-      }
-
-      feed.innerHTML = data.map((sub, i) => `
-        <div class="sub-card">
-          <div>
-            <div class="sub-name">${i + 1}. r/${sub.subreddit}</div>
-            <div class="sub-desc">${sub.stars} (${sub.score} pts)</div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function loadUser() {
-      const username = document.getElementById('usernameInput').value.trim();
-      if (!username) return alert('Enter a Reddit username');
-      document.getElementById('feed').innerHTML = '<div>Loading...</div>';
-      fetchUserRanking(username).then(renderUserRanking);
-    }
-
-    // Optional: load a default user
-    document.addEventListener('DOMContentLoaded', () => {
-      renderUserRanking([]);
     });
-  </script>
+
+    // Results label
+    document.getElementById('resultsHeader').style.display = 'flex';
+    document.getElementById('resultsLabel').textContent = `u/${username} · ${data.length} subreddits`;
+
+    // List
+    document.getElementById('feed').innerHTML = `<div class="rank-list">${data.map((sub, i) => `
+      <div class="rank-card">
+        <span class="rank-num">${i+1}</span>
+        <div class="rank-icon">📌</div>
+        <div class="rank-body">
+          <div class="rank-name">r/${sub.subreddit}</div>
+          <div class="rank-stars">${sub.stars}</div>
+        </div>
+        <div class="rank-right">
+          <div class="rank-score">${fmt(sub.score)}</div>
+          <div class="rank-score-label">engagement</div>
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  // Enter key support
+  document.getElementById('usernameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadUser();
+  });
+</script>
 </body>
 </html>

@@ -403,22 +403,20 @@
 </footer>
 
 <script>
-  // Get current filename
-  const path = window.location.pathname.split("/").pop();
+const rawPath = window.location.pathname.split("/").pop();
+const path = rawPath === '' ? 'index.html' : rawPath;
 
-  // Map page filenames to tab IDs
-  const pageTabMap = {
-    'index.html': 'tab-index',
-    'user_Ranking.html': 'tab-userRanking',
-    'user_monthly_subs_performance.html': 'tab-userMonthly',
-    'sub_post_timing.html': 'tab-subPostTiming'
-  };
+const pageTabMap = {
+  'index.html': 'tab-index',
+  'user_Ranking.html': 'tab-userRanking',
+  'user_monthly_subs_performance.html': 'tab-userMonthly',
+  'sub_post_timing.html': 'tab-subPostTiming'
+};
 
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-
-  const activeTabId = pageTabMap[path] || 'tab-index';
-  const activeTab = document.getElementById(activeTabId);
-  if(activeTab) activeTab.classList.add('active');
+document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+const activeTabId = pageTabMap[path] || 'tab-index';
+const activeTab = document.getElementById(activeTabId);
+if (activeTab) activeTab.classList.add('active');
 </script>
 
 <script>
@@ -472,20 +470,6 @@ function toggleMode() {
   load(currentTab);
 }
 
-// ── Load data ─────────────────────────────────────────────────────────────────
-// async function load(tab) {
-//   const feedEl = document.getElementById('feed');
-//   feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
-
-//   const params = new URLSearchParams({ limit: 20, nsfw: nsfwMode ? '1' : '0' });
-//   try {
-//     const res = await fetch(`${API}/${tab}?${params}`);
-//     const json = await res.json();
-//     render(json.data || [], tab);
-//   } catch {
-//     feedEl.innerHTML = `<div class="empty">Could not reach the backend.<br>Make sure the server is running on port 3001.</div>`;
-//   }
-// }
 async function load(tab) {
   const feedEl = document.getElementById("feed");
   feedEl.innerHTML = `<div class="skeleton"></div>`;

@@ -79,62 +79,24 @@ async function fetchRising(limit = 25) {
 async function fetchNsfwTrending(limit = 25) {
   const data = await redditGet('/subreddits/search', {
     q: 'nsfw',
-    sort: 'relevance',
+    sort: 'relevance',       // ← relevance = biggest/most known
     limit,
     include_over_18: 'on',
   });
   return data.data.children.map(c => c.data);
 }
 
-// async function fetchNsfwRising(limit = 25) {
-//   const data = await redditGet('/subreddits/search', {
-//     q: 'nsfw',
-//     sort: 'activity',
-//     limit,
-//     include_over_18: 'on',
-//   });
-//   return data.data.children.map(c => c.data);
-// }
-
 async function fetchNsfwRising(limit = 25) {
-  let after = null;
-  const seen = new Set();
-  const subs = [];
+  const data = await redditGet('/subreddits/search', {
+    q: 'nsfw',
+    sort: 'activity',      
+    limit,
+    include_over_18: 'on',
+  });
 
-  while (subs.length < limit) {
-    const data = await redditGet('/r/all/rising', {
-      limit: 100,
-      after,
-    });
-
-    const children = data.data.children;
-    if (!children.length) break;
-
-    for (const c of children) {
-      const post = c.data;
-
-      if (!seen.has(post.subreddit) && post.over_18) {
-        seen.add(post.subreddit);
-
-        subs.push({
-          display_name: post.subreddit,
-          subscribers: post.subreddit_subscribers,
-          public_description: '',
-          active_user_count: 0,
-          over18: true,
-          created_utc: 0,
-          title: post.subreddit,
-        });
-
-        if (subs.length >= limit) break;
-      }
-    }
-
-    after = data.data.after;
-    if (!after) break; // no more pages
-  }
-
-  return subs;
+  return data.data.children
+    .map(c => c.data)
+    .filter(d => d.subscribers < 500000);
 }
 
 async function fetchNsfwNew(limit = 25) {
@@ -168,4 +130,5 @@ module.exports = {
   fetchRising,
   searchSubreddits,
   getSubreddit,
+  redditGet,
 };
