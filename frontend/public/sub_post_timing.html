@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Ranking – SubTracker</title>
+  <link rel="stylesheet" href="header.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <a href="index.html">SubTracker</a>
+    </div>
+
+    <!-- NAV TABS -->
+    <div class="nav-tabs">
+      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+    </div>
+
+    <!-- Only shown on index/home -->
+    <div class="header-right" id="headerExtras">
+      <div class="search-bar">
+        <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search subreddits..." />
+      </div>
+
+      <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
+        <span class="theme-label">safe</span>
+        <div class="toggle-track">
+          <div class="toggle-knob"></div>
+        </div>
+        <span class="theme-label right">dark</span>
+      </div>
+
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        Live
+      </div>
+    </div>
+  </header>
+
+  <!-- Your page content here -->
+  <main>
+    <h1>SubReddit Post Timing</h1>
+  </main>
+
+  <!-- Include shared header JS -->
+  <script src="header.js"></script>
+</body>
+</html>

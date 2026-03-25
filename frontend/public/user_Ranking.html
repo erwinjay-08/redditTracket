@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Ranking – SubTracker</title>
+  <link rel="stylesheet" href="header.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <a href="index.html">SubTracker</a>
+    </div>
+
+    <!-- NAV TABS -->
+    <div class="nav-tabs">
+      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+    </div>
+  </header>
+
+ <body>
+  <h1>User Ranking Test</h1>
+  <input type="text" id="usernameInput" placeholder="Enter Reddit username" />
+  <button onclick="loadUser()">Fetch Ranking</button>
+
+  <div id="feed"></div>
+
+  <script>
+    async function fetchUserRanking(username) {
+      try {
+        const res = await fetch(`/api/user-ranking?user=${username}`);
+        const json = await res.json();
+        if (json.data.error) return { error: json.data.error };
+        return json.data;
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    function renderUserRanking(data) {
+      const feed = document.getElementById('feed');
+      if (data.error) {
+        feed.innerHTML = `<div style="color:red;">${data.error}</div>`;
+        return;
+      }
+
+      feed.innerHTML = data.map((sub, i) => `
+        <div class="sub-card">
+          <div>
+            <div class="sub-name">${i + 1}. r/${sub.subreddit}</div>
+            <div class="sub-desc">${sub.stars} (${sub.score} pts)</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function loadUser() {
+      const username = document.getElementById('usernameInput').value.trim();
+      if (!username) return alert('Enter a Reddit username');
+      document.getElementById('feed').innerHTML = '<div>Loading...</div>';
+      fetchUserRanking(username).then(renderUserRanking);
+    }
+
+    // Optional: load a default user
+    document.addEventListener('DOMContentLoaded', () => {
+      renderUserRanking([]);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="sfw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubTracker — Reddit Trend Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    /* ── SFW theme (default) ── */
+    :root {
+      --bg: #0e0e10;
+      --surface: #18181b;
+      --surface2: #222228;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0;
+      --muted: #888899;
+      --accent: #ff4500;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --font: 'Syne', sans-serif;
+      --mono: 'DM Mono', monospace;
+      --radius: 12px;
+      --header-bg: rgba(14,14,16,0.92);
+      --knob-x: 2px;
+      --knob-color: #555566;
+    }
+
+    /* ── NSFW theme ("dark mode") — warm light palette ── */
+    [data-mode="nsfw"] {
+      --bg: #f5f0eb;
+      --surface: #ffffff;
+      --surface2: #ede8e0;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.16);
+      --text: #1a1209;
+      --muted: #7a6a55;
+      --accent: #c0392b;
+      --green: #27ae60;
+      --blue: #2980b9;
+      --amber: #e67e22;
+      --header-bg: rgba(245,240,235,0.94);
+      --knob-x: 22px;
+      --knob-color: #c0392b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      transition: background 0.4s, color 0.3s;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--header-bg);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      transition: background 0.4s, border-color 0.3s;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .logo-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      transition: background 0.4s;
+    }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .nav-tabs {
+  display: flex;
+  gap: 6px;
+  margin-right: 10px;
+}
+
+.nav-tab {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+    /* ── Theme/NSFW toggle ── */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      transition: color 0.3s;
+      min-width: 28px;
+    }
+    .theme-label.right { text-align: left; }
+    .toggle-track {
+      width: 44px; height: 24px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    [data-mode="nsfw"] .toggle-track {
+      background: rgba(192,57,43,0.1);
+      border-color: rgba(192,57,43,0.25);
+    }
+    .toggle-knob {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--knob-color);
+      position: absolute;
+      top: 2px;
+      left: var(--knob-x);
+      transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s;
+    }
+
+    /* ── Live badge ── */
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── Search ── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 8px 14px;
+      width: 220px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .search-bar input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      width: 100%;
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── Metrics ── */
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px; }
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: background 0.3s, border-color 0.2s;
+    }
+    .metric:hover { border-color: var(--border2); }
+    .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+    .metric-value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+    .tabs { display: flex; gap: 4px; }
+    .tab {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: none;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--text); background: var(--surface2); }
+    .tab.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+
+    /* ── Feed cards ── */
+    .feed { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+    .sub-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .sub-card:hover { background: var(--surface2); }
+    .rank { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
+    .sub-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .sub-body { flex: 1; min-width: 0; }
+    .sub-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .sub-desc { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .sub-right { text-align: right; flex-shrink: 0; }
+    .sub-members { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+    .sub-growth { font-family: var(--mono); font-size: 10px; margin-top: 2px; }
+    .up { color: var(--green); }
+    .neutral { color: var(--muted); }
+
+    .badge { display: inline-block; font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
+    .badge-hot { background: rgba(255,69,0,0.15); color: #ff4500; }
+    .badge-new { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .badge-rising { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .badge-nsfw { background: rgba(192,57,43,0.12); color: #c0392b; border: 1px solid rgba(192,57,43,0.2); }
+
+    /* ── Charts ── */
+    .chart-panel { display: flex; flex-direction: column; gap: 12px; }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
+    .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+      height: 48px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .empty { padding: 32px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
+
+    @media (max-width: 768px) {
+      header { padding: 16px; flex-wrap: wrap; gap: 10px; }
+      .search-bar { display: none; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+      <a href="index.html">SubTracker</a>
+  </div>
+
+  <div class="search-bar">
+    <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Search subreddits..." />
+  </div>
+
+  <div class="header-right">
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+   <button class="nav-tab" id="tab-index" onclick="goPage('index.html') ">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+  </div>
+
+  <!-- Existing Toggle -->
+  <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
+    <span class="theme-label">safe</span>
+    <div class="toggle-track">
+      <div class="toggle-knob"></div>
+    </div>
+    <span class="theme-label right">dark</span>
+  </div>
+
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    Live
+  </div>
+</div>
+</header>
+
+<main>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Tracked</div>
+      <div class="metric-value" id="m-tracked">—</div>
+      <div class="metric-sub">subreddits</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Members</div>
+      <div class="metric-value" id="m-members">—</div>
+      <div class="metric-sub">across top results</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Mode</div>
+      <div class="metric-value" id="m-mode" style="font-size:16px;padding-top:6px">Safe</div>
+      <div class="metric-sub">content filter</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Subreddits</span>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('trending', this)">Trending</button>
+          <button class="tab" onclick="switchTab('rising', this)">Rising</button>
+          <button class="tab" onclick="switchTab('new', this)">New</button>
+        </div>
+      </div>
+      <div class="feed" id="feed">
+        <div class="skeleton"></div>
+        <div class="skeleton" style="opacity:0.7;margin-top:4px"></div>
+        <div class="skeleton" style="opacity:0.4;margin-top:4px"></div>
+      </div>
+    </div>
+
+    <div class="chart-panel">
+      <div class="chart-card">
+        <div class="chart-label">Member distribution</div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">Activity ratio</div>
+        <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  SubTracker · data from Reddit API · refreshes every 30 minutes
+</footer>
+
+<script>
+  // Get current filename
+  const path = window.location.pathname.split("/").pop();
+
+  // Map page filenames to tab IDs
+  const pageTabMap = {
+    'index.html': 'tab-index',
+    'user_Ranking.html': 'tab-userRanking',
+    'user_monthly_subs_performance.html': 'tab-userMonthly',
+    'sub_post_timing.html': 'tab-subPostTiming'
+  };
+
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+  const activeTabId = pageTabMap[path] || 'tab-index';
+  const activeTab = document.getElementById(activeTabId);
+  if(activeTab) activeTab.classList.add('active');
+</script>
+
+<script>
+const API = 'http://localhost:3001/api';
+let barChart, donutChart;
+let currentTab = 'trending';
+let nsfwMode = false;
+
+const ICONS = {
+  gaming:'🎮', programming:'💻', science:'🔬', movies:'🎬',
+  fitness:'💪', music:'🎵', art:'🎨', books:'📚', food:'🍔',
+  travel:'✈️', sports:'⚽', technology:'📱', crypto:'₿', default:'📌'
+};
+const ICON_BG_SFW  = ['rgba(255,69,0,0.12)','rgba(59,130,246,0.12)','rgba(34,197,94,0.12)','rgba(245,158,11,0.12)','rgba(168,85,247,0.12)'];
+const ICON_BG_NSFW = ['rgba(192,57,43,0.10)','rgba(120,40,31,0.10)','rgba(169,50,38,0.10)','rgba(146,43,33,0.10)','rgba(100,30,22,0.10)'];
+
+function getIcon(name) {
+  const n = name.toLowerCase();
+  for (const k of Object.keys(ICONS)) { if (n.includes(k)) return ICONS[k]; }
+  return ICONS.default;
+}
+function fmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n || 0);
+}
+function getBadge(tab, i, isOver18) {
+  const parts = [];
+  if (isOver18) parts.push('<span class="badge badge-nsfw">nsfw</span>');
+  if (tab === 'trending' && i < 3) parts.push('<span class="badge badge-hot">hot</span>');
+  else if (tab === 'rising') parts.push('<span class="badge badge-rising">rising</span>');
+  else if (tab === 'new') parts.push('<span class="badge badge-new">new</span>');
+  return parts.join('');
+}
+function growthEl(sub, tab) {
+  if (tab === 'rising' && sub.growth_pct) return `<div class="sub-growth up">+${sub.growth_pct.toFixed(1)}%</div>`;
+  if (sub.active_users) return `<div class="sub-growth neutral">${fmt(sub.active_users)} online</div>`;
+  return '';
+}
+
+// ── Toggle (theme switch = NSFW filter) ──────────────────────────────────────
+function toggleMode() {
+  nsfwMode = !nsfwMode;
+  document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
+
+  const modeEl = document.getElementById('m-mode');
+  modeEl.textContent = nsfwMode ? '18+' : 'Safe';
+  modeEl.style.color = nsfwMode ? '#c0392b' : '';
+
+  localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  load(currentTab);
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+// async function load(tab) {
+//   const feedEl = document.getElementById('feed');
+//   feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
+
+//   const params = new URLSearchParams({ limit: 20, nsfw: nsfwMode ? '1' : '0' });
+//   try {
+//     const res = await fetch(`${API}/${tab}?${params}`);
+//     const json = await res.json();
+//     render(json.data || [], tab);
+//   } catch {
+//     feedEl.innerHTML = `<div class="empty">Could not reach the backend.<br>Make sure the server is running on port 3001.</div>`;
+//   }
+// }
+async function load(tab) {
+  const feedEl = document.getElementById("feed");
+  feedEl.innerHTML = `<div class="skeleton"></div>`;
+
+  try {
+    let res;
+    if(tab === "userRanking") {
+      res = await fetch(`${API}/user-ranking?user=johndoe&limit=50`);
+    } else if(tab === "userMonthly") {
+      res = await fetch(`${API}/user-monthly?user=johndoe&months=1&limit=50`);
+    } else if(tab === "subPostTiming") {
+      res = await fetch(`${API}/sub-post-timing?sub=someSub&limit=100`);
+    } else {
+      res = await fetch(`${API}/${tab}?limit=20&nsfw=${nsfwMode?1:0}`);
+    }
+    const json = await res.json();
+    render(json.data || [], tab);
+  } catch(e) {
+    feedEl.innerHTML = `<div class="empty">Failed to fetch data</div>`;
+  }
+}
+
+function render(data, tab) {
+  const feedEl = document.getElementById('feed');
+  const iconBg = nsfwMode ? ICON_BG_NSFW : ICON_BG_SFW;
+
+  const total = data.reduce((s,d) => s + (d.subscribers||0), 0);
+  const avgActive = data.length ? Math.round(data.reduce((s,d) => s + (d.active_users||0), 0) / data.length) : 0;
+
+  document.getElementById('m-tracked').textContent = data.length;
+  document.getElementById('m-members').textContent = fmt(total);
+
+  feedEl.innerHTML = data.map((sub, i) => `
+    <a class="sub-card" href="${sub.url||'#'}" target="_blank" rel="noopener">
+      <span class="rank">${i+1}</span>
+      <div class="sub-icon" style="background:${iconBg[i%5]}">${getIcon(sub.name)}</div>
+      <div class="sub-body">
+        <div class="sub-name">r/${sub.name} ${getBadge(tab, i, sub.over18)}</div>
+        <div class="sub-desc">${sub.description || sub.title || 'No description'}</div>
+      </div>
+      <div class="sub-right">
+        <div class="sub-members">${fmt(sub.subscribers)}</div>
+        ${growthEl(sub, tab)}
+      </div>
+    </a>
+  `).join('');
+
+  renderBarChart(data.slice(0,8));
+  renderDonutChart(data.slice(0,5));
+}
+
+function renderBarChart(data) {
+  if (barChart) barChart.destroy();
+  const fill  = nsfwMode ? 'rgba(192,57,43,0.7)'  : 'rgba(255,69,0,0.7)';
+  const hover = nsfwMode ? 'rgba(169,50,38,0.9)'  : 'rgba(255,107,53,0.9)';
+  const tick  = nsfwMode ? '#7a6a55' : '#888899';
+  const grid  = nsfwMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => 'r/'+d.name),
+      datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: fill, hoverBackgroundColor: hover, borderWidth: 0, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: tick, font: { size: 10 }, maxRotation: 35 } },
+        y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 10 }, callback: v => fmt(v) } }
+      }
+    }
+  });
+}
+
+function renderDonutChart(data) {
+  if (donutChart) donutChart.destroy();
+  const colors = nsfwMode
+    ? ['#c0392b','#922b21','#e74c3c','#7b241c','#a93226']
+    : ['#ff4500','#3b82f6','#22c55e','#f59e0b','#a855f7'];
+  const legendColor = nsfwMode ? '#7a6a55' : '#888899';
+
+  donutChart = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels: data.map(d => 'r/'+d.name), datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { color: legendColor, font: { size: 10 }, boxWidth: 10, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } }
+      }
+    }
+  });
+}
+
+function goPage(page) {
+  window.location.href = page;
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) {
+    // re-run the search on the new tab instead of clearing it
+    document.getElementById('searchInput').dispatchEvent(new Event('input'));
+  } else {
+    load(tab);
+  }
+}
+
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (!q) { load(currentTab); return; }
+  searchTimeout = setTimeout(async () => {
+    document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
+    try {
+      const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0' });
+      const res = await fetch(`${API}/search?${params}`);
+      const json = await res.json();
+      render(json.data || [], currentTab);
+    } catch { document.getElementById('feed').innerHTML = `<div class="empty">Search failed.</div>`; }
+  }, 400);
+});
+
+// Restore saved preference
+const saved = localStorage.getItem('subtracker-mode');
+if (saved === 'nsfw') {
+  nsfwMode = true;
+  document.documentElement.setAttribute('data-mode', 'nsfw');
+  document.getElementById('m-mode').textContent = '18+';
+  document.getElementById('m-mode').style.color = '#c0392b';
+}
+
+load('trending');
+</script>
+</body>
+</html>
