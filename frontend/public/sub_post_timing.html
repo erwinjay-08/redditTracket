@@ -1,59 +1,312 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mode="sfw">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Ranking – SubTracker</title>
-  <link rel="stylesheet" href="header.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post Timing — SubTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
+      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+      --radius: 12px; --header-bg: rgba(14,14,16,0.92);
+      --knob-x: 2px; --knob-color: #555566;
+    }
+    [data-mode="nsfw"] {
+      --bg: #f5f0eb; --surface: #ffffff; --surface2: #ede8e0;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.16);
+      --text: #1a1209; --muted: #7a6a55; --accent: #c0392b;
+      --green: #27ae60; --blue: #2980b9; --amber: #e67e22;
+      --header-bg: rgba(245,240,235,0.94);
+      --knob-x: 22px; --knob-color: #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
+    a { color: inherit; text-decoration: none; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 32px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--header-bg);
+      backdrop-filter: blur(12px); z-index: 10; transition: background 0.4s;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .nav-tabs { display: flex; gap: 6px; }
+    .nav-tab { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; min-width: 28px; }
+    .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; }
+    [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
+    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 40px 24px; }
+    .page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .page-sub { font-size: 13px; color: var(--muted); font-family: var(--mono); margin-bottom: 32px; }
+
+    .search-form { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .search-form input, .search-form select {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 16px; color: var(--text);
+      font-family: var(--font); font-size: 14px; outline: none; transition: border-color 0.2s;
+    }
+    .search-form input { flex: 1; min-width: 180px; }
+    .search-form input::placeholder { color: var(--muted); }
+    .search-form input:focus, .search-form select:focus { border-color: var(--accent); }
+    .search-form select option { background: var(--surface); }
+    .btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* toggle between week/month view */
+    .view-tabs { display: flex; gap: 6px; margin-bottom: 24px; }
+    .view-tab { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .view-tab:hover { background: var(--surface2); color: var(--text); }
+    .view-tab.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+    /* heatmap grid */
+    .heatmap-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; overflow-x: auto; }
+    .heatmap-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
+    .heatmap-grid { display: grid; grid-template-columns: 80px repeat(24, 1fr); gap: 3px; min-width: 700px; }
+    .heatmap-header { font-family: var(--mono); font-size: 9px; color: var(--muted); text-align: center; padding: 2px 0; }
+    .heatmap-day { font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; padding-right: 8px; }
+    .heatmap-cell {
+      height: 28px; border-radius: 4px; background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-family: var(--mono);
+      transition: opacity 0.2s; cursor: default;
+    }
+    .heatmap-cell:hover { opacity: 0.8; }
+
+    .legend { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 10px; font-family: var(--mono); color: var(--muted); }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* best windows list */
+    .windows-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .window-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: border-color 0.15s; }
+    .window-card:hover { border-color: var(--border2); }
+    .window-day { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+    .window-slot { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .window-slot:last-child { border-bottom: none; }
+    .window-time { font-family: var(--mono); font-size: 12px; }
+    .window-stars { font-size: 12px; }
+
+    .empty { padding: 48px; text-align: center; color: var(--muted); font-size: 13px; }
+    .error-msg { padding: 16px; background: rgba(255,69,0,0.08); border: 1px solid rgba(255,69,0,0.2); border-radius: 8px; color: var(--accent); font-size: 13px; font-family: var(--mono); }
+    .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); height: 200px; margin-bottom: 12px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
+    @media (max-width: 768px) {
+      header { padding: 16px; flex-wrap: wrap; gap: 10px; }
+      .nav-tabs { flex-wrap: wrap; }
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <div class="logo-dot"></div>
-      <a href="index.html">SubTracker</a>
-    </div>
 
-    <!-- NAV TABS -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <a href="index.html">SubTracker</a>
+  </div>
+  <div class="header-right">
     <div class="nav-tabs">
-      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
-      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
-      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
-      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+      <button class="nav-tab" id="tab-index" onclick="location.href='index.html'">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="location.href='user_Ranking.html'">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="location.href='user_monthly_subs_performance.html'">Monthly Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="location.href='sub_post_timing.html'">Post Timing</button>
     </div>
-
-    <!-- Only shown on index/home -->
-    <div class="header-right" id="headerExtras">
-      <div class="search-bar">
-        <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input type="text" id="searchInput" placeholder="Search subreddits..." />
-      </div>
-
-      <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-        <span class="theme-label">safe</span>
-        <div class="toggle-track">
-          <div class="toggle-knob"></div>
-        </div>
-        <span class="theme-label right">dark</span>
-      </div>
-
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        Live
-      </div>
+    <div class="theme-toggle" onclick="toggleMode()">
+      <span class="theme-label">safe</span>
+      <div class="toggle-track"><div class="toggle-knob"></div></div>
+      <span class="theme-label">dark</span>
     </div>
-  </header>
+  </div>
+</header>
 
-  <!-- Your page content here -->
-  <main>
-    <h1>SubReddit Post Timing</h1>
-  </main>
+<main>
+  <div class="page-title">Subreddit Post Timing</div>
+  <div class="page-sub">Find the best days and hours to post in any subreddit based on recent engagement data.</div>
 
-  <!-- Include shared header JS -->
-  <script src="header.js"></script>
+  <div class="search-form">
+    <input type="text" id="subInput" placeholder="Subreddit name (e.g. cats)" />
+    <select id="tzSelect">
+      <option value="Asia/Manila">Asia/Manila (PHT)</option>
+      <option value="America/New_York">America/New_York (ET)</option>
+      <option value="America/Los_Angeles">America/Los_Angeles (PT)</option>
+      <option value="America/Chicago">America/Chicago (CT)</option>
+      <option value="Europe/London">Europe/London (GMT)</option>
+      <option value="Europe/Paris">Europe/Paris (CET)</option>
+      <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+      <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+      <option value="UTC">UTC</option>
+    </select>
+    <button class="btn" id="fetchBtn" onclick="loadSub()">Analyze</button>
+  </div>
+
+  <div id="viewTabsArea" style="display:none;">
+    <div class="view-tabs">
+      <button class="view-tab active" id="vt-week" onclick="switchView('week', this)">Last 7 days</button>
+      <button class="view-tab" id="vt-month" onclick="switchView('month', this)">Last 30 days</button>
+    </div>
+  </div>
+
+  <div id="feed"><div class="empty">Enter a subreddit name above to find the best posting times.</div></div>
+</main>
+
+<footer>SubTracker · Post Timing · data from Reddit API</footer>
+
+<script>
+  const p = window.location.pathname.split('/').pop() || 'index.html';
+  const tabMap = {'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming'};
+  const el = document.getElementById(tabMap[p] || 'tab-subPostTiming');
+  if (el) el.classList.add('active');
+
+  let nsfwMode = localStorage.getItem('subtracker-mode') === 'nsfw';
+  if (nsfwMode) document.documentElement.setAttribute('data-mode', 'nsfw');
+  function toggleMode() {
+    nsfwMode = !nsfwMode;
+    document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
+    localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  }
+
+  const API = 'http://localhost:3001/api';
+  let currentData = null;
+  let currentView = 'week';
+
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+  function hourToAmPm(h) {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:00 ${ampm}`;
+  }
+
+  function scoreToStars(score, maxScore) {
+    if (maxScore === 0) return '⭐';
+    const r = score / maxScore;
+    if (r >= 0.85) return '⭐⭐⭐⭐⭐';
+    if (r >= 0.65) return '⭐⭐⭐⭐';
+    if (r >= 0.45) return '⭐⭐⭐';
+    if (r >= 0.25) return '⭐⭐';
+    return '⭐';
+  }
+
+  // heat color based on intensity 0-1
+  function heatColor(intensity) {
+    if (intensity === 0) return null;
+    const r = Math.round(255 * Math.min(1, intensity * 2));
+    const g = Math.round(100 * (1 - intensity));
+    return `rgba(${r},${g},50,${0.15 + intensity * 0.7})`;
+  }
+
+  async function loadSub() {
+    const sub = document.getElementById('subInput').value.trim().replace(/^r\//,'');
+    const tz = document.getElementById('tzSelect').value;
+    if (!sub) return;
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true; btn.textContent = 'Loading...';
+    document.getElementById('viewTabsArea').style.display = 'none';
+    document.getElementById('feed').innerHTML = `<div class="skeleton"></div><div class="skeleton" style="height:300px"></div>`;
+
+    try {
+      const res = await fetch(`${API}/sub-post-timing?sub=${encodeURIComponent(sub)}&tz=${encodeURIComponent(tz)}&limit=500`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      currentData = json.data;
+      document.getElementById('viewTabsArea').style.display = 'block';
+      renderView(currentView);
+    } catch(e) {
+      document.getElementById('feed').innerHTML = `<div class="error-msg">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Analyze';
+    }
+  }
+
+  function switchView(view, btn) {
+    currentView = view;
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    if (currentData) renderView(view);
+  }
+
+  function renderView(view) {
+    const byDay = currentData[view]; // { Monday: { 0: score, 1: score, ... }, ... }
+    if (!byDay || Object.keys(byDay).length === 0) {
+      document.getElementById('feed').innerHTML = `<div class="empty">Not enough data for this time range.</div>`;
+      return;
+    }
+
+    // Find global max for color scaling
+    let globalMax = 0;
+    for (const day of Object.values(byDay)) {
+      for (const score of Object.values(day)) {
+        if (score > globalMax) globalMax = score;
+      }
+    }
+
+    // ── Heatmap ──
+    let heatHtml = `<div class="heatmap-wrap">
+      <div class="heatmap-label">engagement heatmap — ${view === 'week' ? 'last 7 days' : 'last 30 days'}</div>
+      <div class="heatmap-grid">
+        <div class="heatmap-header"></div>`;
+
+    for (let h = 0; h < 24; h++) {
+      heatHtml += `<div class="heatmap-header">${h}h</div>`;
+    }
+
+    for (const day of DAYS) {
+      heatHtml += `<div class="heatmap-day">${day.slice(0,3)}</div>`;
+      const hours = byDay[day] || {};
+      for (let h = 0; h < 24; h++) {
+        const score = hours[h] || 0;
+        const intensity = globalMax > 0 ? score / globalMax : 0;
+        const color = heatColor(intensity);
+        const bg = color ? `background:${color};` : '';
+        const title = score > 0 ? `${day} ${hourToAmPm(h)}: ${score} pts` : '';
+        heatHtml += `<div class="heatmap-cell" style="${bg}" title="${title}"></div>`;
+      }
+    }
+
+    heatHtml += `</div>
+      <div class="legend">
+        <span>Low</span>
+        ${[0.1,0.3,0.5,0.7,0.9].map(i => `<div class="legend-swatch" style="background:${heatColor(i)}"></div>`).join('')}
+        <span>High</span>
+      </div>
+    </div>`;
+
+    // ── Best windows per day ──
+    let windowsHtml = `<div class="windows-grid">`;
+    for (const day of DAYS) {
+      const hours = byDay[day];
+      if (!hours || Object.keys(hours).length === 0) continue;
+      const dayMax = Math.max(...Object.values(hours));
+      const top3 = Object.entries(hours).sort((a,b) => b[1]-a[1]).slice(0,3);
+      windowsHtml += `<div class="window-card">
+        <div class="window-day">${day}</div>
+        ${top3.map(([h, score]) => `
+          <div class="window-slot">
+            <span class="window-time">${hourToAmPm(parseInt(h))}</span>
+            <span class="window-stars">${scoreToStars(score, dayMax)}</span>
+          </div>`).join('')}
+      </div>`;
+    }
+    windowsHtml += `</div>`;
+
+    document.getElementById('feed').innerHTML = heatHtml + windowsHtml;
+  }
+
+  document.getElementById('subInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadSub(); });
+</script>
 </body>
 </html>

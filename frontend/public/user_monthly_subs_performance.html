@@ -1,59 +1,277 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mode="sfw">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Ranking – SubTracker</title>
-  <link rel="stylesheet" href="header.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monthly Performance — SubTracker</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
+      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+      --radius: 12px; --header-bg: rgba(14,14,16,0.92);
+      --knob-x: 2px; --knob-color: #555566;
+    }
+    [data-mode="nsfw"] {
+      --bg: #f5f0eb; --surface: #ffffff; --surface2: #ede8e0;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.16);
+      --text: #1a1209; --muted: #7a6a55; --accent: #c0392b;
+      --green: #27ae60; --blue: #2980b9; --amber: #e67e22;
+      --header-bg: rgba(245,240,235,0.94);
+      --knob-x: 22px; --knob-color: #c0392b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
+    a { color: inherit; text-decoration: none; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 32px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--header-bg);
+      backdrop-filter: blur(12px); z-index: 10; transition: background 0.4s;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .nav-tabs { display: flex; gap: 6px; }
+    .nav-tab { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; min-width: 28px; }
+    .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; }
+    [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
+    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
+
+    main { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+    .page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .page-sub { font-size: 13px; color: var(--muted); font-family: var(--mono); margin-bottom: 32px; }
+
+    .search-form { display: flex; gap: 10px; margin-bottom: 12px; }
+    .search-form input, .search-form select {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 16px; color: var(--text);
+      font-family: var(--font); font-size: 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-form input { flex: 1; }
+    .search-form input::placeholder { color: var(--muted); }
+    .search-form input:focus, .search-form select:focus { border-color: var(--accent); }
+    .search-form select option { background: var(--surface); }
+    .btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* metric strip */
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .metric-value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+    .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
+    .chart-wrap { position: relative; width: 100%; height: 220px; }
+
+    /* stacked bar chart for upvotes vs comments */
+    .perf-list { display: flex; flex-direction: column; gap: 4px; }
+    .perf-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px; transition: border-color 0.15s;
+    }
+    .perf-card:hover { border-color: var(--border2); }
+    .perf-num { font-family: var(--mono); font-size: 12px; color: var(--muted); width: 24px; flex-shrink: 0; text-align: right; }
+    .perf-body { flex: 1; min-width: 0; }
+    .perf-name { font-size: 14px; font-weight: 600; }
+    .perf-bar-wrap { height: 4px; background: var(--surface2); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .perf-bar { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.6s ease; }
+    .perf-right { text-align: right; flex-shrink: 0; }
+    .perf-score { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+    .perf-detail { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+    .perf-stars { font-size: 12px; }
+
+    .empty { padding: 48px; text-align: center; color: var(--muted); font-size: 13px; }
+    .error-msg { padding: 16px; background: rgba(255,69,0,0.08); border: 1px solid rgba(255,69,0,0.2); border-radius: 8px; color: var(--accent); font-size: 13px; font-family: var(--mono); }
+    .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); height: 64px; margin-bottom: 4px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
+    @media (max-width: 768px) {
+      header { padding: 16px; flex-wrap: wrap; gap: 10px; }
+      .metrics { grid-template-columns: repeat(2,1fr); }
+      .nav-tabs { flex-wrap: wrap; }
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <div class="logo-dot"></div>
-      <a href="index.html">SubTracker</a>
-    </div>
 
-    <!-- NAV TABS -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <a href="index.html">SubTracker</a>
+  </div>
+  <div class="header-right">
     <div class="nav-tabs">
-      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
-      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
-      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
-      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+      <button class="nav-tab" id="tab-index" onclick="location.href='index.html'">Sub Tracker</button>
+      <button class="nav-tab" id="tab-userRanking" onclick="location.href='user_Ranking.html'">User Ranking</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="location.href='user_monthly_subs_performance.html'">Monthly Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="location.href='sub_post_timing.html'">Post Timing</button>
     </div>
+    <div class="theme-toggle" onclick="toggleMode()">
+      <span class="theme-label">safe</span>
+      <div class="toggle-track"><div class="toggle-knob"></div></div>
+      <span class="theme-label">dark</span>
+    </div>
+  </div>
+</header>
 
-    <!-- Only shown on index/home -->
-    <div class="header-right" id="headerExtras">
-      <div class="search-bar">
-        <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input type="text" id="searchInput" placeholder="Search subreddits..." />
-      </div>
+<main>
+  <div class="page-title">Monthly Performance</div>
+  <div class="page-sub">Analyze which subreddits a user performs best in over a given time window.</div>
 
-      <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-        <span class="theme-label">safe</span>
-        <div class="toggle-track">
-          <div class="toggle-knob"></div>
+  <div class="search-form">
+    <input type="text" id="usernameInput" placeholder="Reddit username (e.g. kaiaacocoacrustsun)" />
+    <select id="monthsSelect">
+      <option value="1">Last 1 month</option>
+      <option value="3">Last 3 months</option>
+      <option value="6">Last 6 months</option>
+      <option value="12">Last 12 months</option>
+    </select>
+    <button class="btn" id="fetchBtn" onclick="loadUser()">Analyze</button>
+  </div>
+
+  <div id="metricsArea" style="display:none;">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Subreddits</div><div class="metric-value" id="m-subs">—</div><div class="metric-sub">active in</div></div>
+      <div class="metric"><div class="metric-label">Total Posts</div><div class="metric-value" id="m-posts">—</div><div class="metric-sub">in window</div></div>
+      <div class="metric"><div class="metric-label">Total Upvotes</div><div class="metric-value" id="m-upvotes">—</div><div class="metric-sub">across all subs</div></div>
+      <div class="metric"><div class="metric-label">Top Sub</div><div class="metric-value" id="m-top" style="font-size:14px;padding-top:4px">—</div><div class="metric-sub">best performance</div></div>
+    </div>
+  </div>
+
+  <div id="chartArea" style="display:none;">
+    <div class="chart-card">
+      <div class="chart-label">Upvotes vs comments by subreddit</div>
+      <div class="chart-wrap"><canvas id="perfChart"></canvas></div>
+    </div>
+  </div>
+
+  <div id="feed"><div class="empty">Enter a Reddit username above to get started.</div></div>
+</main>
+
+<footer>SubTracker · Monthly Performance · data from Reddit API</footer>
+
+<script>
+  const p = window.location.pathname.split('/').pop() || 'index.html';
+  const tabMap = {'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming'};
+  const el = document.getElementById(tabMap[p] || 'tab-userMonthly');
+  if (el) el.classList.add('active');
+
+  let nsfwMode = localStorage.getItem('subtracker-mode') === 'nsfw';
+  if (nsfwMode) document.documentElement.setAttribute('data-mode', 'nsfw');
+  function toggleMode() {
+    nsfwMode = !nsfwMode;
+    document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
+    localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  }
+
+  const API = 'http://localhost:3001/api';
+  let perfChart;
+
+  function fmt(n) {
+    if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+    return String(n||0);
+  }
+
+  async function loadUser() {
+    const username = document.getElementById('usernameInput').value.trim();
+    const months = document.getElementById('monthsSelect').value;
+    if (!username) return;
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true; btn.textContent = 'Loading...';
+    document.getElementById('metricsArea').style.display = 'none';
+    document.getElementById('chartArea').style.display = 'none';
+    document.getElementById('feed').innerHTML = [...Array(5)].map(() => `<div class="skeleton"></div>`).join('');
+
+    try {
+      const res = await fetch(`${API}/user-monthly?user=${encodeURIComponent(username)}&months=${months}&limit=500`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      renderMonthly(json.data, username, months);
+    } catch(e) {
+      document.getElementById('feed').innerHTML = `<div class="error-msg">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Analyze';
+    }
+  }
+
+  function renderMonthly(data, username, months) {
+    if (!data || data.error) {
+      document.getElementById('feed').innerHTML = `<div class="error-msg">${data?.error || 'No data returned'}</div>`;
+      return;
+    }
+    if (data.length === 0) {
+      document.getElementById('feed').innerHTML = `<div class="empty">No posts found for u/${username} in the last ${months} month(s).</div>`;
+      return;
+    }
+
+    const totalPosts = data.reduce((s,d) => s + d.posts, 0);
+    const totalUpvotes = data.reduce((s,d) => s + d.upvotes, 0);
+    const maxScore = Math.max(...data.map(d => d.score));
+
+    document.getElementById('metricsArea').style.display = 'block';
+    document.getElementById('m-subs').textContent = data.length;
+    document.getElementById('m-posts').textContent = fmt(totalPosts);
+    document.getElementById('m-upvotes').textContent = fmt(totalUpvotes);
+    document.getElementById('m-top').textContent = 'r/'+data[0].subreddit;
+
+    // Chart
+    const top8 = data.slice(0,8);
+    document.getElementById('chartArea').style.display = 'block';
+    if (perfChart) perfChart.destroy();
+    perfChart = new Chart(document.getElementById('perfChart'), {
+      type: 'bar',
+      data: {
+        labels: top8.map(d => 'r/'+d.subreddit),
+        datasets: [
+          { label: 'Upvotes', data: top8.map(d => d.upvotes), backgroundColor: 'rgba(255,69,0,0.75)', borderRadius: 4, borderWidth: 0 },
+          { label: 'Comments', data: top8.map(d => d.comments), backgroundColor: 'rgba(59,130,246,0.65)', borderRadius: 4, borderWidth: 0 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#888899', font: { size: 11 }, boxWidth: 10 } }, tooltip: {} },
+        scales: {
+          x: { stacked: false, grid: { display: false }, ticks: { color: '#888899', font: { size: 10 }, maxRotation: 35 } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false }, ticks: { color: '#888899', font: { size: 10 }, callback: v => fmt(v) } }
+        }
+      }
+    });
+
+    // List
+    document.getElementById('feed').innerHTML = `<div class="perf-list">${data.map((sub, i) => {
+      const barPct = maxScore > 0 ? Math.round(sub.score / maxScore * 100) : 0;
+      return `<div class="perf-card">
+        <span class="perf-num">${i+1}</span>
+        <div class="perf-body">
+          <div class="perf-name">r/${sub.subreddit} <span class="perf-stars">${sub.stars}</span></div>
+          <div class="perf-bar-wrap"><div class="perf-bar" style="width:${barPct}%"></div></div>
         </div>
-        <span class="theme-label right">dark</span>
-      </div>
+        <div class="perf-right">
+          <div class="perf-score">${fmt(sub.score)}</div>
+          <div class="perf-detail">⬆ ${fmt(sub.upvotes)} · 💬 ${fmt(sub.comments)} · ${sub.posts} posts</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }
 
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        Live
-      </div>
-    </div>
-  </header>
-
-  <!-- Your page content here -->
-  <main>
-    <h1>Monthly</h1>
-  </main>
-
-  <!-- Include shared header JS -->
-  <script src="header.js"></script>
+  document.getElementById('usernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadUser(); });
+</script>
 </body>
 </html>
