@@ -365,7 +365,7 @@ app.get('/api/sub-post-timing', async (req, res) => {
 
 // Catch-all → frontend
 app.get('/{*path}', (req, res) => {
-  res.sendFile(path.join(__dirname, '../index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/public/index.html'));
 });
 
 app.listen(PORT, () => {
