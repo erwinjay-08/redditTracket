@@ -140,25 +140,6 @@ app.get('/api/rising', async (req, res) => {
 });
 
 // GET /api/new
-// app.get('/api/new', async (req, res) => {
-//   try {
-//     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
-//     const nsfw = wantsNsfw(req);
-
-//     if (nsfw) {
-//       const live = await reddit.fetchNsfwNew(limit);
-//       return res.json({ source: 'live', data: live.map(formatSub) });
-//     }
-
-//     const live = await reddit.fetchNew(limit * 2);
-//     // use strict filter — new subs have unreliable over18 flags from Reddit
-//     const data = live.map(formatSub).filter(d => d.over18 !== true).slice(0, limit);
-//     res.json({ source: 'live', data });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// });
-
 app.get('/api/new', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
@@ -170,7 +151,9 @@ app.get('/api/new', async (req, res) => {
     }
 
     const live = await reddit.fetchNew(limit * 2);
-    res.json({ source: 'live', data: filterNsfw(live.map(formatSub), false).slice(0, limit) });
+    // use strict filter — new subs have unreliable over18 flags from Reddit
+    const data = live.map(formatSub).filter(d => d.over18 !== true).slice(0, limit);
+    res.json({ source: 'live', data });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

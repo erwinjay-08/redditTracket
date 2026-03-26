@@ -50,9 +50,17 @@ async function fetchTrending(limit = 25) {
 }
 
 async function fetchNew(limit = 25) {
-  const data = await redditGet('/subreddits/new', { limit });
-  return data.data.children.map(c => c.data);
+  const data = await redditGet('/subreddits/new', { limit: limit * 4 });
+  return data.data.children
+    .map(c => c.data)
+    .filter(d => d.subscribers >= 100)  
+    .slice(0, limit);
 }
+
+// async function fetchNew(limit = 25) {
+//   const data = await redditGet('/subreddits/new', { limit });
+//   return data.data.children.map(c => c.data);
+// }
 
 async function fetchRising(limit = 25) {
   const data = await redditGet('/r/all/rising', { limit });
@@ -89,14 +97,14 @@ async function fetchNsfwTrending(limit = 25) {
 async function fetchNsfwRising(limit = 25) {
   const data = await redditGet('/subreddits/search', {
     q: 'nsfw',
-    sort: 'activity',      
-    limit,
+    sort: 'activity',
+    limit: limit * 2,        
     include_over_18: 'on',
   });
-
   return data.data.children
     .map(c => c.data)
-    .filter(d => d.subscribers < 500000);
+    .filter(d => d.subscribers < 2000000)  
+    .slice(0, limit);
 }
 
 async function fetchNsfwNew(limit = 25) {
@@ -109,8 +117,8 @@ async function fetchNsfwNew(limit = 25) {
   return data.data.children.map(c => c.data);
 }
 
-async function searchSubreddits(query, limit = 10, includeNsfw = false) {
-  const params = { q: query, limit };
+async function searchSubreddits(query, limit = 10, includeNsfw = false, sort = 'relevance') {
+  const params = { q: query, limit, sort };
   if (includeNsfw) params.include_over_18 = 'on';
   const data = await redditGet('/subreddits/search', params);
   return data.data.children.map(c => c.data);
