@@ -191,7 +191,10 @@
     localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
   }
 
-  const API = 'http://localhost:3001/api';
+  const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001/api'
+  : 'https://YOUR-APP.onrender.com/api';
+  
   let rankChart;
 
   function fmt(n) {
