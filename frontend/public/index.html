@@ -224,6 +224,27 @@
 
     .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 
+    /* ── Category filter pills ── */
+    .category-bar {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      margin-bottom: 20px; align-items: center;
+    }
+    .cat-label {
+      font-family: var(--mono); font-size: 10px; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-right: 4px; flex-shrink: 0; padding-top: 1px;
+    }
+    .cat-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 11px; font-family: var(--mono); color: var(--muted);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .cat-pill:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .cat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .cat-pill .cat-icon { font-size: 12px; }
+
     /* ── Panel ── */
     .panel {
       background: var(--surface);
@@ -379,6 +400,10 @@
     </div>
   </div>
 
+  <div class="category-bar" id="categoryBar">
+    <span class="cat-label">Filter</span>
+  </div>
+
   <div class="grid">
     <div class="panel">
       <div class="panel-header">
@@ -477,7 +502,12 @@ function toggleMode() {
   modeEl.textContent = nsfwMode ? '18+' : 'Safe';
   modeEl.style.color = nsfwMode ? '#c0392b' : '';
 
+  // FIX 3: clear search and reset category on toggle
+  document.getElementById('searchInput').value = '';
+  activeCategory = null;
+
   localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  buildCategoryBar();
   load(currentTab);
 }
 
@@ -586,8 +616,7 @@ function switchTab(tab, btn) {
   btn.classList.add('active');
   const q = document.getElementById('searchInput').value.trim();
   if (q) {
-    // re-run the search on the new tab instead of clearing it
-    document.getElementById('searchInput').dispatchEvent(new Event('input'));
+    runSearch(q);
   } else {
     load(tab);
   }
@@ -601,7 +630,7 @@ document.getElementById('searchInput').addEventListener('input', e => {
   searchTimeout = setTimeout(async () => {
     document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
     try {
-      const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0' });
+      const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0', tab: currentTab });
       const res = await fetch(`${API}/search?${params}`);
       const json = await res.json();
       render(json.data || [], currentTab);
@@ -617,6 +646,90 @@ if (saved === 'nsfw') {
   document.getElementById('m-mode').textContent = '18+';
   document.getElementById('m-mode').style.color = '#c0392b';
 }
+
+const SFW_CATS = [
+  { label: 'All',          icon: '🌐', q: null },
+  { label: 'Gaming',       icon: '🎮', q: 'gaming' },
+  { label: 'Tech',         icon: '💻', q: 'programming technology' },
+  { label: 'Science',      icon: '🔬', q: 'science' },
+  { label: 'Sports',       icon: '⚽', q: 'sports' },
+  { label: 'Movies & TV',  icon: '🎬', q: 'movies television' },
+  { label: 'Music',        icon: '🎵', q: 'music' },
+  { label: 'Art',          icon: '🎨', q: 'art design' },
+  { label: 'Finance',      icon: '💰', q: 'finance investing stocks' },
+  { label: 'Crypto',       icon: '₿',  q: 'cryptocurrency bitcoin' },
+  { label: 'Fitness',      icon: '💪', q: 'fitness gym' },
+  { label: 'Food',         icon: '🍔', q: 'food cooking recipes' },
+  { label: 'Travel',       icon: '✈️', q: 'travel' },
+  { label: 'Anime',        icon: '⛩️', q: 'anime manga' },
+  { label: 'Memes',        icon: '😂', q: 'memes funny humor' },
+  { label: 'News',         icon: '📰', q: 'news world politics' },
+  { label: 'Books',        icon: '📚', q: 'books reading literature' },
+  { label: 'Pets',         icon: '🐾', q: 'pets dogs cats animals' },
+  { label: 'DIY',          icon: '🔧', q: 'diy crafts hobbies' },
+  { label: 'Mental Health',icon: '🧠', q: 'mentalhealth anxiety' },
+];
+
+const NSFW_CATS = [
+  { label: 'All',       icon: '🔞', q: null },
+  { label: 'General',   icon: '🔥', q: 'nsfw' },
+  { label: 'Amateur',   icon: '📸', q: 'amateur' },
+  { label: 'Cosplay',   icon: '🎭', q: 'cosplay' },
+  { label: 'Latina',    icon: '🌹', q: 'latina' },
+  { label: 'Asian',     icon: '🌸', q: 'asian' },
+  { label: 'Ebony',     icon: '✨', q: 'ebony' },
+  { label: 'Redhead',   icon: '🦊', q: 'redhead' },
+  { label: 'Petite',    icon: '🌟', q: 'petite' },
+  { label: 'Curvy',     icon: '💫', q: 'curvy' },
+  { label: 'Mature',    icon: '🍷', q: 'mature milf' },
+  { label: 'Art/Drawn', icon: '🖌️', q: 'hentai drawn' },
+  { label: 'Couples',   icon: '💑', q: 'couples' },
+  { label: 'Fitness',   icon: '💪', q: 'fitnessgirls nsfw' },
+  { label: 'Stories',   icon: '📖', q: 'erotic stories' },
+  { label: 'Discussion',icon: '💬', q: 'sex discussion advice' },
+];
+
+let activeCategory = null;
+
+function buildCategoryBar() {
+  const bar = document.getElementById('categoryBar');
+  const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
+  bar.innerHTML = '<span class="cat-label">Filter</span>';
+  cats.forEach(cat => {
+    const pill = document.createElement('button');
+    pill.className = 'cat-pill' + (activeCategory === cat.q ? ' active' : '');
+    pill.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.label}`;
+    pill.onclick = () => selectCategory(cat.q, pill);
+    bar.appendChild(pill);
+  });
+}
+
+function selectCategory(q, pill) {
+  activeCategory = q;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  if (q === null) {
+    document.getElementById('searchInput').value = '';
+    load(currentTab);
+  } else {
+    document.getElementById('searchInput').value = q;
+    runSearch(q);
+  }
+}
+
+async function runSearch(q) {
+  document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
+  try {
+    const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0', tab: currentTab });
+    const res = await fetch(`${API}/search?${params}`);
+    const json = await res.json();
+    render(json.data || [], currentTab);
+  } catch {
+    document.getElementById('feed').innerHTML = `<div class="empty">Search failed.</div>`;
+  }
+}
+
+buildCategoryBar();
 
 load('trending');
 </script>
