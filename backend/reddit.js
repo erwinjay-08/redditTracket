@@ -50,17 +50,16 @@ async function fetchTrending(limit = 25) {
 }
 
 async function fetchNew(limit = 25) {
-  const data = await redditGet('/subreddits/new', { limit: limit * 4 });
+  const data = await redditGet('/subreddits/search', {
+    q: 'community',
+    sort: 'new',
+    limit: limit * 3,
+  });
   return data.data.children
     .map(c => c.data)
-    .filter(d => d.subscribers >= 100)  
+    .filter(d => d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 500000)
     .slice(0, limit);
 }
-
-// async function fetchNew(limit = 25) {
-//   const data = await redditGet('/subreddits/new', { limit });
-//   return data.data.children.map(c => c.data);
-// }
 
 async function fetchRising(limit = 25) {
   const data = await redditGet('/r/all/rising', { limit });
@@ -109,12 +108,15 @@ async function fetchNsfwRising(limit = 25) {
 
 async function fetchNsfwNew(limit = 25) {
   const data = await redditGet('/subreddits/search', {
-    q: 'nsfw new',
+    q: 'nsfw',
     sort: 'new',
-    limit,
+    limit: limit * 2,
     include_over_18: 'on',
   });
-  return data.data.children.map(c => c.data);
+  return data.data.children
+    .map(c => c.data)
+    .filter(d => d.subscribers >= 500 && d.subscribers <= 500000)
+    .slice(0, limit);
 }
 
 async function searchSubreddits(query, limit = 10, includeNsfw = false, sort = 'relevance') {
