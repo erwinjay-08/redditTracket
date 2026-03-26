@@ -363,6 +363,70 @@ app.get('/api/sub-post-timing', async (req, res) => {
   }
 });
 
+// GET /api/sub-engagement?sub=NAME
+app.get('/api/sub-engagement', async (req, res) => {
+  const subName = req.query.sub;
+  if (!subName) return res.status(400).json({ error: 'sub param required' });
+
+  try {
+    const [about, engagement] = await Promise.all([
+      reddit.getSubreddit(subName),
+      reddit.getSubEngagement(subName, 25),
+    ]);
+
+    const subscribers   = about.subscribers || 0;
+    const activeUsers   = about.active_user_count || 0;
+    const over18        = about.over18 === true;
+
+    const engagementRate = subscribers > 0
+      ? ((activeUsers / subscribers) * 100).toFixed(2)
+      : 0;
+
+    let safetyScore = 50;
+
+    // Size factor: smaller = safer for new accounts
+    if (subscribers < 5000)        safetyScore += 30;
+    else if (subscribers < 50000)  safetyScore += 20;
+    else if (subscribers < 200000) safetyScore += 10;
+    else if (subscribers < 500000) safetyScore += 0;
+    else if (subscribers < 1000000) safetyScore -= 10;
+    else                           safetyScore -= 20;
+
+    const rate = parseFloat(engagementRate);
+    if (rate > 2)       safetyScore += 15;
+    else if (rate > 1)  safetyScore += 10;
+    else if (rate > 0.5) safetyScore += 5;
+    else                safetyScore -= 5;
+
+    if (over18) safetyScore += 10;
+
+    safetyScore = Math.max(0, Math.min(100, safetyScore));
+
+    let safetyLabel, safetyColor;
+    if (safetyScore >= 75)      { safetyLabel = 'Great for new accounts'; safetyColor = 'green'; }
+    else if (safetyScore >= 55) { safetyLabel = 'Good for new accounts';  safetyColor = 'blue'; }
+    else if (safetyScore >= 40) { safetyLabel = 'Moderate — proceed with care'; safetyColor = 'amber'; }
+    else                        { safetyLabel = 'Risky — high karma required'; safetyColor = 'red'; }
+
+    res.json({
+      sub: subName,
+      subscribers,
+      active_users: activeUsers,
+      engagement_rate: parseFloat(engagementRate),
+      over18,
+      newcomer_safety: {
+        score: safetyScore,
+        label: safetyLabel,
+        color: safetyColor,
+      },
+      top_posts: engagement || null,
+    });
+  } catch (err) {
+    console.error('[sub-engagement]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Catch-all → frontend
 app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/public/index.html'));

@@ -44,9 +44,39 @@ async function redditGet(path, params = {}) {
   return resp.data;
 }
 
+// ── SFW ──────────────────────────────────────────────────────────────────────
+
 async function fetchTrending(limit = 25) {
-  const data = await redditGet('/subreddits/popular', { limit });
-  return data.data.children.map(c => c.data);
+  const data = await redditGet('/subreddits/popular', { limit: limit * 2 });
+  return data.data.children
+    .map(c => c.data)
+    .filter(d => d.subscribers >= 300000)
+    .slice(0, limit);
+}
+
+async function fetchRising(limit = 25) {
+  const data = await redditGet('/r/all/rising', { limit: 100 });
+  const posts = data.data.children.map(c => c.data);
+  const seen = new Set();
+  const subs = [];
+  for (const post of posts) {
+    if (!seen.has(post.subreddit)) {
+      seen.add(post.subreddit);
+      const subscribers = post.subreddit_subscribers || 0;
+      if (subscribers >= 10000 && subscribers <= 500000) {
+        subs.push({
+          display_name: post.subreddit,
+          subscribers,
+          public_description: '',
+          active_user_count: 0,
+          over18: post.over_18,
+          created_utc: 0,
+          title: post.subreddit,
+        });
+      }
+    }
+  }
+  return subs.slice(0, limit);
 }
 
 async function fetchNew(limit = 25) {
@@ -57,52 +87,35 @@ async function fetchNew(limit = 25) {
   });
   return data.data.children
     .map(c => c.data)
-    .filter(d => d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 500000)
+    .filter(d => d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 100000)
     .slice(0, limit);
 }
 
-async function fetchRising(limit = 25) {
-  const data = await redditGet('/r/all/rising', { limit });
-  const posts = data.data.children.map(c => c.data);
-  const seen = new Set();
-  const subs = [];
-  for (const post of posts) {
-    if (!seen.has(post.subreddit)) {
-      seen.add(post.subreddit);
-      subs.push({
-        display_name: post.subreddit,
-        subscribers: post.subreddit_subscribers,
-        public_description: '',
-        active_user_count: 0,
-        over18: post.over_18,
-        created_utc: 0,
-        title: post.subreddit,
-      });
-    }
-  }
-  return subs;
-}
+// ── NSFW ─────────────────────────────────────────────────────────────────────
 
 async function fetchNsfwTrending(limit = 25) {
   const data = await redditGet('/subreddits/search', {
     q: 'nsfw',
-    sort: 'relevance',       // ← relevance = biggest/most known
-    limit,
+    sort: 'relevance',
+    limit: limit * 2,
     include_over_18: 'on',
   });
-  return data.data.children.map(c => c.data);
+  return data.data.children
+    .map(c => c.data)
+    .filter(d => d.subscribers >= 300000)
+    .slice(0, limit);
 }
 
 async function fetchNsfwRising(limit = 25) {
   const data = await redditGet('/subreddits/search', {
     q: 'nsfw',
     sort: 'activity',
-    limit: limit * 2,        
+    limit: limit * 3,
     include_over_18: 'on',
   });
   return data.data.children
     .map(c => c.data)
-    .filter(d => d.subscribers < 2000000)  
+    .filter(d => d.subscribers >= 10000 && d.subscribers <= 500000)
     .slice(0, limit);
 }
 
@@ -110,14 +123,16 @@ async function fetchNsfwNew(limit = 25) {
   const data = await redditGet('/subreddits/search', {
     q: 'nsfw',
     sort: 'new',
-    limit: limit * 2,
+    limit: limit * 3,
     include_over_18: 'on',
   });
   return data.data.children
     .map(c => c.data)
-    .filter(d => d.subscribers >= 500 && d.subscribers <= 500000)
+    .filter(d => d.subscribers >= 500 && d.subscribers <= 100000)
     .slice(0, limit);
 }
+
+// ── Search & utils ───────────────────────────────────────────────────────────
 
 async function searchSubreddits(query, limit = 10, includeNsfw = false, sort = 'relevance') {
   const params = { q: query, limit, sort };
@@ -131,14 +146,34 @@ async function getSubreddit(name) {
   return data.data;
 }
 
+// Fetch top posts from a sub to calculate engagement rate
+async function getSubEngagement(name, postLimit = 25) {
+  try {
+    const data = await redditGet(`/r/${name}/hot`, { limit: postLimit });
+    const posts = data.data.children.map(c => c.data);
+    if (!posts.length) return null;
+
+    const totalScore    = posts.reduce((s, p) => s + p.score, 0);
+    const totalComments = posts.reduce((s, p) => s + p.num_comments, 0);
+    const avgScore      = Math.round(totalScore / posts.length);
+    const avgComments   = Math.round(totalComments / posts.length);
+    const avgEngagement = avgScore + avgComments;
+
+    return { avgScore, avgComments, avgEngagement, postsAnalyzed: posts.length };
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   fetchTrending,
   fetchNew,
   fetchNsfwTrending,
-  fetchNsfwRising, 
+  fetchNsfwRising,
   fetchNsfwNew,
   fetchRising,
   searchSubreddits,
   getSubreddit,
+  getSubEngagement,
   redditGet,
 };
