@@ -120,16 +120,31 @@ async function fetchNsfwRising(limit = 25) {
 }
 
 async function fetchNsfwNew(limit = 25) {
-  const data = await redditGet('/subreddits/search', {
-    q: 'nsfw',
-    sort: 'new',
-    limit: limit * 3,
-    include_over_18: 'on',
-  });
-  return data.data.children
-    .map(c => c.data)
-    .filter(d => d.subscribers >= 500 && d.subscribers <= 100000)
-    .slice(0, limit);
+  const queries = ['nsfw', 'adult', 'xxx', '18plus', 'onlyfans'];
+  const seen = new Set();
+  const results = [];
+
+  for (const q of queries) {
+    if (results.length >= limit) break;
+    try {
+      const data = await redditGet('/subreddits/search', {
+        q,
+        sort: 'new',
+        limit: 50,
+        include_over_18: 'on',
+      });
+      for (const c of data.data.children) {
+        const d = c.data;
+        if (!seen.has(d.display_name) && d.subscribers >= 500 && d.subscribers <= 100000) {
+          seen.add(d.display_name);
+          results.push(d);
+        }
+      }
+    } catch {}
+  }
+
+  results.sort((a, b) => b.created_utc - a.created_utc);
+  return results.slice(0, limit);
 }
 
 // ── Search & utils ───────────────────────────────────────────────────────────
