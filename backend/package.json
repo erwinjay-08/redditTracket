@@ -18,6 +18,8 @@
     "express": "^5.2.1",
     "node-cron": "^4.2.1",
     "nodemon": "^3.1.14"
+  },
+  "devDependencies": {
+    "supabase": "^2.84.4"
   }
 }
-
