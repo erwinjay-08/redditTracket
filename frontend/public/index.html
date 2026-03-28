@@ -126,9 +126,13 @@
     .eng-tips { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
     .eng-tips-title { font-size: 11px; font-weight: 600; margin-bottom: 8px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .eng-tip { font-size: 11px; color: var(--muted); padding: 4px 0; display: flex; gap: 8px; line-height: 1.4; align-items: flex-start; }
-    /* FIX 2 — SVG icon sizing instead of emoji */
+    
     .eng-tip-icon { flex-shrink: 0; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
     .eng-tip-icon svg { width: 14px; height: 14px; }
+
+    .eng-cta { margin-top: 16px; display: flex; justify-content: center;}
+    .eng-cta a { background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; padding: 5px 24px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); transition: all 0.2s;}
+    .eng-cta a:hover { background: transparent; color: var(--accent); }
 
     .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; height: 48px; }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -362,14 +366,21 @@ async function loadEngagement(subName) {
         </div>
       </div>
 
-      <div class="eng-tips">
+         <div class="eng-tips">
         <div class="eng-tips-title">Insights for r/${subName}</div>
         ${tips.map(t => `
           <div class="eng-tip">
             <span class="eng-tip-icon">${t.icon}</span>
             <span>${t.text}</span>
           </div>`).join('')}
+      </div>
+
+      <div class="eng-cta">
+        <a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">
+          Go to r/${subName}
+        </a>
       </div>`;
+
   } catch(e) {
     body.innerHTML = `<div class="engagement-empty">Could not load data for r/${subName}</div>`;
   }

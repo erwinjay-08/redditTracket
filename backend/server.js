@@ -358,9 +358,24 @@ app.get('/api/sub-post-timing', async (req, res) => {
       meta: { sub: subName, tz: tzName, posts_scanned: posts.length }
     });
   } catch (err) {
-    console.error('[sub-post-timing]', err.message);
-    res.status(500).json({ error: err.message });
+  console.error('[sub-post-timing]', err.message);
+  const status = err.response?.status;
+  if (status === 403 || status === 404) {
+    return res.status(200).json({
+      data: { week: {}, month: {} },
+      meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+      warning: 'This subreddit is private, quarantined, or age-restricted.'
+    });
   }
+  if (status === 429) {
+    return res.status(200).json({
+      data: { week: {}, month: {} },
+      meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+      warning: 'Reddit rate limit hit — please wait a few seconds and try again.'
+    });
+  }
+  res.status(500).json({ error: err.message });
+}
 });
 
 // GET /api/sub-engagement?sub=NAME
