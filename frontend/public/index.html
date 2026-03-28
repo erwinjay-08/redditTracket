@@ -6,268 +6,80 @@
   <title>SubTracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
-    /* ── SFW theme (default) ── */
     :root {
-      --bg: #0e0e10;
-      --surface: #18181b;
-      --surface2: #222228;
-      --border: rgba(255,255,255,0.08);
-      --border2: rgba(255,255,255,0.14);
-      --text: #f0f0f0;
-      --muted: #888899;
-      --accent: #ff4500;
-      --green: #22c55e;
-      --blue: #3b82f6;
-      --amber: #f59e0b;
-      --font: 'Syne', sans-serif;
-      --mono: 'DM Mono', monospace;
-      --radius: 12px;
-      --header-bg: rgba(14,14,16,0.92);
-      --knob-x: 2px;
-      --knob-color: #555566;
+      --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
+      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+      --radius: 12px; --header-bg: rgba(14,14,16,0.92);
+      --knob-x: 2px; --knob-color: #555566;
     }
-
-    /* ── NSFW theme ("dark mode") — warm light palette ── */
     [data-mode="nsfw"] {
-      --bg: #f5f0eb;
-      --surface: #ffffff;
-      --surface2: #ede8e0;
-      --border: rgba(0,0,0,0.08);
-      --border2: rgba(0,0,0,0.16);
-      --text: #1a1209;
-      --muted: #7a6a55;
-      --accent: #c0392b;
-      --green: #27ae60;
-      --blue: #2980b9;
-      --amber: #e67e22;
+      --bg: #f5f0eb; --surface: #ffffff; --surface2: #ede8e0;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.16);
+      --text: #1a1209; --muted: #7a6a55; --accent: #c0392b;
+      --green: #27ae60; --blue: #2980b9; --amber: #e67e22;
       --header-bg: rgba(245,240,235,0.94);
-      --knob-x: 22px;
-      --knob-color: #c0392b;
+      --knob-x: 22px; --knob-color: #c0392b;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      min-height: 100vh;
-      transition: background 0.4s, color 0.3s;
-    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
+    a { color: inherit; text-decoration: none; }
 
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 32px;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: var(--header-bg);
-      backdrop-filter: blur(12px);
-      z-index: 10;
-      transition: background 0.4s, border-color 0.3s;
-    }
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-    .logo-img {
-    width: 28px;
-    height: 28px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .logo-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--header-bg); backdrop-filter: blur(12px); z-index: 10; transition: background 0.4s, border-color 0.3s; }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-img { width: 28px; height: 28px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .logo-img img { width: 100%; height: 100%; object-fit: contain; }
     .header-right { display: flex; align-items: center; gap: 16px; }
-
-    .nav-tabs {
-  display: flex;
-  gap: 6px;
-  margin-right: 10px;
-}
-
-.nav-tab {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.nav-tab:hover {
-  background: var(--surface2);
-  color: var(--text);
-  border-color: var(--border2);
-}
-
-    /* ── Theme/NSFW toggle ── */
-    .theme-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .theme-label {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-      transition: color 0.3s;
-      min-width: 28px;
-    }
+    .nav-tabs { display: flex; gap: 6px; margin-right: 10px; }
+    .nav-tab { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
     .theme-label.right { text-align: left; }
-    .toggle-track {
-      width: 44px; height: 24px;
-      border-radius: 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      position: relative;
-      flex-shrink: 0;
-      transition: background 0.3s, border-color 0.3s;
-    }
-    [data-mode="nsfw"] .toggle-track {
-      background: rgba(192,57,43,0.1);
-      border-color: rgba(192,57,43,0.25);
-    }
-    .toggle-knob {
-      width: 18px; height: 18px;
-      border-radius: 50%;
-      background: var(--knob-color);
-      position: absolute;
-      top: 2px;
-      left: var(--knob-x);
-      transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s;
-    }
-
-    /* ── Live badge ── */
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--green);
-      background: rgba(34,197,94,0.1);
-      border: 1px solid rgba(34,197,94,0.2);
-      border-radius: 20px;
-      padding: 4px 12px;
-    }
-    .live-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s infinite;
-    }
+    .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
+    [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
+    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 20px; padding: 4px 12px; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* ── Search ── */
-    .search-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 8px 14px;
-      width: 220px;
-      transition: background 0.3s, border-color 0.3s;
-    }
-    .search-bar input {
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 13px;
-      width: 100%;
-    }
+    .search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 14px; width: 220px; transition: background 0.3s, border-color 0.3s; }
+    .search-bar input { background: none; border: none; outline: none; color: var(--text); font-family: var(--font); font-size: 13px; width: 100%; }
     .search-bar input::placeholder { color: var(--muted); }
 
     main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
 
-    /* ── Metrics ── */
-    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px; }
-    .metric {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      transition: background 0.3s, border-color 0.2s;
-    }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: background 0.3s, border-color 0.2s; }
     .metric:hover { border-color: var(--border2); }
     .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
     .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
+    .category-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+    .cat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 4px; flex-shrink: 0; padding-top: 1px; }
+    .cat-pill { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .cat-pill:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .cat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .cat-pill .cat-icon { font-size: 12px; }
+
     .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 
-    /* ── Panel ── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: background 0.3s, border-color 0.3s;
-    }
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-    }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: background 0.3s, border-color 0.3s; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
     .panel-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
     .tabs { display: flex; gap: 4px; }
-    .tab {
-      padding: 5px 12px;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      background: none;
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 12px;
-      color: var(--muted);
-      transition: all 0.15s;
-    }
+    .tab { padding: 5px 12px; border-radius: 6px; border: 1px solid transparent; background: none; cursor: pointer; font-family: var(--font); font-size: 12px; color: var(--muted); transition: all 0.15s; }
     .tab:hover { color: var(--text); background: var(--surface2); }
     .tab.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
 
-    /* ── Feed cards ── */
     .feed { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-    .sub-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-      text-decoration: none;
-      color: inherit;
-    }
+    .sub-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; text-decoration: none; color: inherit; }
     .sub-card:hover { background: var(--surface2); }
     .rank { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
     .sub-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
@@ -281,30 +93,48 @@
     .neutral { color: var(--muted); }
 
     .badge { display: inline-block; font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
-    .badge-hot { background: rgba(255,69,0,0.15); color: #ff4500; }
-    .badge-new { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .badge-hot    { background: rgba(255,69,0,0.15); color: #ff4500; }
+    .badge-new    { background: rgba(34,197,94,0.12); color: #22c55e; }
     .badge-rising { background: rgba(59,130,246,0.12); color: #3b82f6; }
-    .badge-nsfw { background: rgba(192,57,43,0.12); color: #c0392b; border: 1px solid rgba(192,57,43,0.2); }
+    .badge-nsfw   { background: rgba(192,57,43,0.12); color: #c0392b; border: 1px solid rgba(192,57,43,0.2); }
+    .badge-safe   { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
 
-    /* ── Charts ── */
     .chart-panel { display: flex; flex-direction: column; gap: 12px; }
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      transition: background 0.3s, border-color 0.3s;
-    }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: background 0.3s, border-color 0.3s; }
     .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
     .chart-wrap { position: relative; width: 100%; height: 200px; }
 
-    .skeleton {
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-      border-radius: 6px;
-      height: 48px;
-    }
+    /* ── Engagement panel ── */
+    .engagement-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: background 0.3s, border-color 0.3s; }
+    .engagement-title { font-size: 12px; font-weight: 600; margin-bottom: 14px; }
+    .engagement-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; line-height: 1.5; }
+    .engagement-empty { font-size: 11px; color: var(--muted); font-family: var(--mono); text-align: center; padding: 20px 0; }
+
+    .safety-score-wrap { margin-bottom: 16px; }
+    .safety-score-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .safety-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .safety-score-num { font-size: 22px; font-weight: 700; }
+    .safety-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+    .safety-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+    .safety-verdict { font-size: 11px; font-family: var(--mono); font-weight: 500; }
+
+    .eng-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .eng-stat { background: var(--surface2); border-radius: 8px; padding: 10px; }
+    .eng-stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .eng-stat-value { font-size: 16px; font-weight: 700; }
+
+    .eng-tips { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .eng-tips-title { font-size: 11px; font-weight: 600; margin-bottom: 8px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .eng-tip { font-size: 11px; color: var(--muted); padding: 4px 0; display: flex; gap: 8px; line-height: 1.4; align-items: flex-start; }
+    
+    .eng-tip-icon { flex-shrink: 0; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .eng-tip-icon svg { width: 14px; height: 14px; }
+
+    .eng-cta { margin-top: 16px; display: flex; justify-content: center;}
+    .eng-cta a { background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; padding: 5px 24px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); transition: all 0.2s;}
+    .eng-cta a:hover { background: transparent; color: var(--accent); }
+
+    .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; height: 48px; }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
     .empty { padding: 32px; text-align: center; color: var(--muted); font-size: 13px; }
 
@@ -315,6 +145,7 @@
       .search-bar { display: none; }
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .grid { grid-template-columns: 1fr; }
+      .nav-tabs { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -322,45 +153,30 @@
 
 <header>
   <div class="logo">
-    <div class="logo-img">
-      <img src="rsc/logo.png" alt="SubTracker Logo">
-    </div>
-      <a href="index.html">SubTracker</a>
+    <div class="logo-img"><img src="rsc/logo.png" alt="SubTracker Logo"></div>
+    <a href="index.html">SubTracker</a>
   </div>
-
   <div class="search-bar">
     <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="searchInput" placeholder="Search subreddits..." />
   </div>
-
   <div class="header-right">
-
-  <!-- NAV TABS -->
-  <div class="nav-tabs">
-   <button class="nav-tab" id="tab-index" onclick="goPage('index.html') ">Sub Tracker</button>
+    <div class="nav-tabs">
+      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
       <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
       <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
       <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
-  </div>
-
-  <!-- Existing Toggle -->
-  <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-    <span class="theme-label">safe</span>
-    <div class="toggle-track">
-      <div class="toggle-knob"></div>
     </div>
-    <span class="theme-label right">dark</span>
+    <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
+      <span class="theme-label">safe</span>
+      <div class="toggle-track"><div class="toggle-knob"></div></div>
+      <span class="theme-label right">dark</span>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
   </div>
-
-  <div class="live-badge">
-    <div class="live-dot"></div>
-    Live
-  </div>
-</div>
 </header>
 
 <main>
-
   <div class="metrics">
     <div class="metric">
       <div class="metric-label">Tracked</div>
@@ -377,6 +193,10 @@
       <div class="metric-value" id="m-mode" style="font-size:16px;padding-top:6px">Safe</div>
       <div class="metric-sub">content filter</div>
     </div>
+  </div>
+
+  <div class="category-bar" id="categoryBar">
+    <span class="cat-label">Filter</span>
   </div>
 
   <div class="grid">
@@ -405,128 +225,215 @@
         <div class="chart-label">Activity ratio</div>
         <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
       </div>
+      <div class="engagement-panel" id="engagementPanel">
+        <div class="engagement-title">Newcomer Safety Check</div>
+        <div id="engagementBody">
+          <div class="engagement-hint">Click any subreddit card to see its engagement stats and whether it's safe for new Reddit accounts.</div>
+          <div class="engagement-empty">No subreddit selected</div>
+        </div>
+      </div>
     </div>
   </div>
 </main>
 
-<footer>
-  SubTracker · data from Reddit API · refreshes every 30 minutes
-</footer>
+<footer>SubTracker · data from Reddit API · refreshes every 30 minutes</footer>
 
 <script>
-const rawPath = window.location.pathname.split("/").pop();
-const path = rawPath === '' ? 'index.html' : rawPath;
-
-const pageTabMap = {
-  'index.html': 'tab-index',
-  'user_Ranking.html': 'tab-userRanking',
-  'user_monthly_subs_performance.html': 'tab-userMonthly',
-  'sub_post_timing.html': 'tab-subPostTiming'
-};
-
+// ── Nav tab active ────────────────────────────────────────────────────────────
+const rawPath = window.location.pathname.split('/').pop();
+const currentPath = rawPath === '' ? 'index.html' : rawPath;
+const pageTabMap = { 'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming' };
 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-const activeTabId = pageTabMap[path] || 'tab-index';
-const activeTab = document.getElementById(activeTabId);
-if (activeTab) activeTab.classList.add('active');
+const navEl = document.getElementById(pageTabMap[currentPath] || 'tab-index');
+if (navEl) navEl.classList.add('active');
 </script>
 
 <script>
-const API = 'http://localhost:3001/api';
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001/api'
+  : 'https://YOUR-APP.onrender.com/api';
+
 let barChart, donutChart;
 let currentTab = 'trending';
 let nsfwMode = false;
+let activeCategory = null;
 
-const ICONS = {
-  gaming:'🎮', programming:'💻', science:'🔬', movies:'🎬',
-  fitness:'💪', music:'🎵', art:'🎨', books:'📚', food:'🍔',
-  travel:'✈️', sports:'⚽', technology:'📱', crypto:'₿', default:'📌'
-};
+const ICONS = { gaming:'🎮', programming:'💻', science:'🔬', movies:'🎬', fitness:'💪', music:'🎵', art:'🎨', books:'📚', food:'🍔', travel:'✈️', sports:'⚽', technology:'📱', crypto:'₿', default:'📌' };
 const ICON_BG_SFW  = ['rgba(255,69,0,0.12)','rgba(59,130,246,0.12)','rgba(34,197,94,0.12)','rgba(245,158,11,0.12)','rgba(168,85,247,0.12)'];
 const ICON_BG_NSFW = ['rgba(192,57,43,0.10)','rgba(120,40,31,0.10)','rgba(169,50,38,0.10)','rgba(146,43,33,0.10)','rgba(100,30,22,0.10)'];
 
-function getIcon(name) {
-  const n = name.toLowerCase();
-  for (const k of Object.keys(ICONS)) { if (n.includes(k)) return ICONS[k]; }
-  return ICONS.default;
-}
-function fmt(n) {
-  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
-  return String(n || 0);
-}
-function getBadge(tab, i, isOver18) {
+// FIX 2 — SVG icons (no emojis)
+const SVGICONS = {
+  check: `<svg viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,8 6,12 14,4"/></svg>`,
+  warn:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L14 13H2L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r="0.5" fill="#f59e0b"/></svg>`,
+  block: `<svg viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="4.5" y1="4.5" x2="11.5" y2="11.5"/></svg>`,
+  fire:  `<svg viewBox="0 0 16 16" fill="none" stroke="#ff4500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13c-2.5 0-4.5-1.8-4.5-4.5 0-1.8 1-2.8 1.8-3.8 0 1.5 1 2.3 1.7 2.3C7 5.2 8 3 10 2c-1 2 0 3.5 1.5 4.5.8.7 1 1.5 1 2.5C12.5 11.2 10.5 13 8 13z"/></svg>`,
+  thumb: `<svg viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h2.5V14H2z"/><path d="M4.5 9l2-5.5c.8 0 1.5.7 1.5 1.5v2.5h3.5l-1 6H4.5z"/></svg>`,
+  sleep: `<svg viewBox="0 0 16 16" fill="none" stroke="#888899" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="9" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="3" y1="11" x2="9" y2="11"/></svg>`,
+  bulb:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h4M7 14h2M8 2a4 4 0 0 1 3 6.7V10H5V8.7A4 4 0 0 1 8 2z"/></svg>`,
+};
+
+function getIcon(name) { const n = name.toLowerCase(); for (const k of Object.keys(ICONS)) { if (n.includes(k)) return ICONS[k]; } return ICONS.default; }
+function fmt(n) { if (n >= 1e6) return (n/1e6).toFixed(1)+'M'; if (n >= 1e3) return (n/1e3).toFixed(1)+'K'; return String(n||0); }
+
+function getBadge(tab, i, isOver18, subscribers) {
   const parts = [];
   if (isOver18) parts.push('<span class="badge badge-nsfw">nsfw</span>');
   if (tab === 'trending' && i < 3) parts.push('<span class="badge badge-hot">hot</span>');
   else if (tab === 'rising') parts.push('<span class="badge badge-rising">rising</span>');
   else if (tab === 'new') parts.push('<span class="badge badge-new">new</span>');
+  if (subscribers < 50000 && !isOver18) parts.push('<span class="badge badge-safe">new-acc ok</span>');
   return parts.join('');
 }
+
 function growthEl(sub, tab) {
   if (tab === 'rising' && sub.growth_pct) return `<div class="sub-growth up">+${sub.growth_pct.toFixed(1)}%</div>`;
   if (sub.active_users) return `<div class="sub-growth neutral">${fmt(sub.active_users)} online</div>`;
   return '';
 }
 
-// ── Toggle (theme switch = NSFW filter) ──────────────────────────────────────
+// FIX 3 — Clear engagement panel
+function clearEngagement() {
+  document.getElementById('engagementBody').innerHTML = `
+    <div class="engagement-hint">Click any subreddit card to see its engagement stats and whether it's safe for new Reddit accounts.</div>
+    <div class="engagement-empty">No subreddit selected</div>`;
+}
+
+// ── Engagement panel ──────────────────────────────────────────────────────────
+async function loadEngagement(subName) {
+  const body = document.getElementById('engagementBody');
+  body.innerHTML = `<div class="skeleton" style="height:80px;margin-bottom:8px"></div><div class="skeleton" style="height:50px"></div>`;
+
+  try {
+    const res = await fetch(`${API}/sub-engagement?sub=${encodeURIComponent(subName)}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+
+    const colorMap = { green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444' };
+    const scoreColor = colorMap[d.newcomer_safety.color] || '#888899';
+
+    // Build tips using SVG icons
+    const tips = [];
+    if (d.subscribers < 10000)
+      tips.push({ icon: SVGICONS.check, text: 'Small community — low automod strictness, great for new accounts' });
+    else if (d.subscribers < 100000)
+      tips.push({ icon: SVGICONS.check, text: 'Mid-size sub — generally welcoming to newer accounts' });
+    else if (d.subscribers < 500000)
+      tips.push({ icon: SVGICONS.warn,  text: 'Large sub — some karma requirements may apply' });
+    else
+      tips.push({ icon: SVGICONS.block, text: 'Very large sub — strict automod, karma threshold likely required' });
+
+    if (d.engagement_rate > 1.5)
+      tips.push({ icon: SVGICONS.fire,  text: 'Highly active — posts get seen quickly' });
+    else if (d.engagement_rate > 0.5)
+      tips.push({ icon: SVGICONS.thumb, text: 'Decent activity — good engagement potential' });
+    else
+      tips.push({ icon: SVGICONS.sleep, text: 'Low activity ratio — posts may get buried' });
+
+    if (d.newcomer_safety.score >= 70)
+      tips.push({ icon: SVGICONS.bulb, text: 'Tip: Post quality content and follow sub rules — you should be fine here' });
+    else
+      tips.push({ icon: SVGICONS.bulb, text: 'Tip: Build some karma in smaller subs first before posting here' });
+
+    body.innerHTML = `
+      <div class="safety-score-wrap">
+        <div class="safety-score-header">
+          <span class="safety-score-label">Newcomer Safety Score</span>
+          <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
+        </div>
+        <div class="safety-bar-track">
+          <div class="safety-bar-fill" style="width:${d.newcomer_safety.score}%;background:${scoreColor}"></div>
+        </div>
+        <div class="safety-verdict" style="color:${scoreColor}">${d.newcomer_safety.label}</div>
+      </div>
+
+      <div class="eng-stats">
+        <div class="eng-stat">
+          <div class="eng-stat-label">Members</div>
+          <div class="eng-stat-value">${fmt(d.subscribers)}</div>
+        </div>
+        <div class="eng-stat">
+          <div class="eng-stat-label">Active Now</div>
+          <div class="eng-stat-value">${fmt(d.active_users)}</div>
+        </div>
+        <div class="eng-stat">
+          <div class="eng-stat-label">Engagement %</div>
+          <div class="eng-stat-value">${d.engagement_rate}%</div>
+        </div>
+        <div class="eng-stat">
+          <div class="eng-stat-label">Avg Post Score</div>
+          <div class="eng-stat-value">${d.top_posts ? fmt(d.top_posts.avgScore) : '—'}</div>
+        </div>
+      </div>
+
+         <div class="eng-tips">
+        <div class="eng-tips-title">Insights for r/${subName}</div>
+        ${tips.map(t => `
+          <div class="eng-tip">
+            <span class="eng-tip-icon">${t.icon}</span>
+            <span>${t.text}</span>
+          </div>`).join('')}
+      </div>
+
+      <div class="eng-cta">
+        <a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">
+          Go to r/${subName}
+        </a>
+      </div>`;
+
+  } catch(e) {
+    body.innerHTML = `<div class="engagement-empty">Could not load data for r/${subName}</div>`;
+  }
+}
+
+// ── Toggle — FIX 3: clears engagement ────────────────────────────────────────
 function toggleMode() {
   nsfwMode = !nsfwMode;
   document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
-
-  const modeEl = document.getElementById('m-mode');
-  modeEl.textContent = nsfwMode ? '18+' : 'Safe';
-  modeEl.style.color = nsfwMode ? '#c0392b' : '';
-
+  document.getElementById('m-mode').textContent = nsfwMode ? '18+' : 'Safe';
+  document.getElementById('m-mode').style.color = nsfwMode ? '#c0392b' : '';
+  document.getElementById('searchInput').value = '';
+  activeCategory = null;
+  clearEngagement();
   localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
+  buildCategoryBar();
   load(currentTab);
 }
 
+// ── Load ──────────────────────────────────────────────────────────────────────
 async function load(tab) {
-  const feedEl = document.getElementById("feed");
-  feedEl.innerHTML = `<div class="skeleton"></div>`;
-
+  const feedEl = document.getElementById('feed');
+  feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
   try {
-    let res;
-    if(tab === "userRanking") {
-      res = await fetch(`${API}/user-ranking?user=johndoe&limit=50`);
-    } else if(tab === "userMonthly") {
-      res = await fetch(`${API}/user-monthly?user=johndoe&months=1&limit=50`);
-    } else if(tab === "subPostTiming") {
-      res = await fetch(`${API}/sub-post-timing?sub=someSub&limit=100`);
-    } else {
-      res = await fetch(`${API}/${tab}?limit=20&nsfw=${nsfwMode?1:0}`);
-    }
+    const res = await fetch(`${API}/${tab}?limit=20&nsfw=${nsfwMode?1:0}`);
     const json = await res.json();
     render(json.data || [], tab);
-  } catch(e) {
-    feedEl.innerHTML = `<div class="empty">Failed to fetch data</div>`;
+  } catch {
+    feedEl.innerHTML = `<div class="empty">Could not reach the backend.<br>Make sure the server is running on port 3001.</div>`;
   }
 }
 
 function render(data, tab) {
   const feedEl = document.getElementById('feed');
   const iconBg = nsfwMode ? ICON_BG_NSFW : ICON_BG_SFW;
-
   const total = data.reduce((s,d) => s + (d.subscribers||0), 0);
-  const avgActive = data.length ? Math.round(data.reduce((s,d) => s + (d.active_users||0), 0) / data.length) : 0;
-
   document.getElementById('m-tracked').textContent = data.length;
   document.getElementById('m-members').textContent = fmt(total);
 
   feedEl.innerHTML = data.map((sub, i) => `
-    <a class="sub-card" href="${sub.url||'#'}" target="_blank" rel="noopener">
+    <a class="sub-card" href="${sub.url||'#'}" target="_blank" rel="noopener"
+       onclick="loadEngagement('${sub.name}'); return false;">
       <span class="rank">${i+1}</span>
       <div class="sub-icon" style="background:${iconBg[i%5]}">${getIcon(sub.name)}</div>
       <div class="sub-body">
-        <div class="sub-name">r/${sub.name} ${getBadge(tab, i, sub.over18)}</div>
+        <div class="sub-name">r/${sub.name} ${getBadge(tab, i, sub.over18, sub.subscribers)}</div>
         <div class="sub-desc">${sub.description || sub.title || 'No description'}</div>
       </div>
       <div class="sub-right">
         <div class="sub-members">${fmt(sub.subscribers)}</div>
         ${growthEl(sub, tab)}
       </div>
-    </a>
-  `).join('');
+    </a>`).join('');
 
   renderBarChart(data.slice(0,8));
   renderDonutChart(data.slice(0,5));
@@ -534,82 +441,124 @@ function render(data, tab) {
 
 function renderBarChart(data) {
   if (barChart) barChart.destroy();
-  const fill  = nsfwMode ? 'rgba(192,57,43,0.7)'  : 'rgba(255,69,0,0.7)';
-  const hover = nsfwMode ? 'rgba(169,50,38,0.9)'  : 'rgba(255,107,53,0.9)';
+  const fill  = nsfwMode ? 'rgba(192,57,43,0.7)' : 'rgba(255,69,0,0.7)';
+  const hover = nsfwMode ? 'rgba(169,50,38,0.9)' : 'rgba(255,107,53,0.9)';
   const tick  = nsfwMode ? '#7a6a55' : '#888899';
   const grid  = nsfwMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
-    data: {
-      labels: data.map(d => 'r/'+d.name),
-      datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: fill, hoverBackgroundColor: hover, borderWidth: 0, borderRadius: 4 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: tick, font: { size: 10 }, maxRotation: 35 } },
-        y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 10 }, callback: v => fmt(v) } }
-      }
-    }
+    data: { labels: data.map(d => 'r/'+d.name), datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: fill, hoverBackgroundColor: hover, borderWidth: 0, borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } }, scales: { x: { grid: { display: false }, ticks: { color: tick, font: { size: 10 }, maxRotation: 35 } }, y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 10 }, callback: v => fmt(v) } } } }
   });
 }
 
 function renderDonutChart(data) {
   if (donutChart) donutChart.destroy();
-  const colors = nsfwMode
-    ? ['#c0392b','#922b21','#e74c3c','#7b241c','#a93226']
-    : ['#ff4500','#3b82f6','#22c55e','#f59e0b','#a855f7'];
+  const colors = nsfwMode ? ['#c0392b','#922b21','#e74c3c','#7b241c','#a93226'] : ['#ff4500','#3b82f6','#22c55e','#f59e0b','#a855f7'];
   const legendColor = nsfwMode ? '#7a6a55' : '#888899';
-
   donutChart = new Chart(document.getElementById('donutChart'), {
     type: 'doughnut',
     data: { labels: data.map(d => 'r/'+d.name), datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: {
-        legend: { position: 'right', labels: { color: legendColor, font: { size: 10 }, boxWidth: 10, padding: 10 } },
-        tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } }
-      }
-    }
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { color: legendColor, font: { size: 10 }, boxWidth: 10, padding: 10 } }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } } }
   });
 }
 
-function goPage(page) {
-  window.location.href = page;
-}
+function goPage(page) { window.location.href = page; }
 
+// FIX 3 — switchTab clears engagement
 function switchTab(tab, btn) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  clearEngagement();
   const q = document.getElementById('searchInput').value.trim();
-  if (q) {
-    // re-run the search on the new tab instead of clearing it
-    document.getElementById('searchInput').dispatchEvent(new Event('input'));
-  } else {
-    load(tab);
-  }
+  q ? runSearch(q) : load(tab);
 }
 
 let searchTimeout;
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(searchTimeout);
   const q = e.target.value.trim();
-  if (!q) { load(currentTab); return; }
-  searchTimeout = setTimeout(async () => {
-    document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
-    try {
-      const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0' });
-      const res = await fetch(`${API}/search?${params}`);
-      const json = await res.json();
-      render(json.data || [], currentTab);
-    } catch { document.getElementById('feed').innerHTML = `<div class="empty">Search failed.</div>`; }
-  }, 400);
+  if (!q) { activeCategory = null; buildCategoryBar(); load(currentTab); return; }
+  searchTimeout = setTimeout(() => runSearch(q), 400);
 });
 
-// Restore saved preference
+async function runSearch(q) {
+  document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
+  try {
+    const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0', tab: currentTab });
+    const res = await fetch(`${API}/search?${params}`);
+    const json = await res.json();
+    render(json.data || [], currentTab);
+  } catch {
+    document.getElementById('feed').innerHTML = `<div class="empty">Search failed.</div>`;
+  }
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+const SFW_CATS = [
+  { label: 'All', icon: '🌐', q: null },
+  { label: 'Gaming', icon: '🎮', q: 'gaming' },
+  { label: 'Tech', icon: '💻', q: 'programming technology' },
+  { label: 'Science', icon: '🔬', q: 'science' },
+  { label: 'Sports', icon: '⚽', q: 'sports' },
+  { label: 'Movies & TV', icon: '🎬', q: 'movies television' },
+  { label: 'Music', icon: '🎵', q: 'music' },
+  { label: 'Art', icon: '🎨', q: 'art design' },
+  { label: 'Finance', icon: '💰', q: 'finance investing stocks' },
+  { label: 'Crypto', icon: '₿', q: 'cryptocurrency bitcoin' },
+  { label: 'Fitness', icon: '💪', q: 'fitness gym' },
+  { label: 'Food', icon: '🍔', q: 'food cooking recipes' },
+  { label: 'Travel', icon: '✈️', q: 'travel' },
+  { label: 'Anime', icon: '⛩️', q: 'anime manga' },
+  { label: 'Memes', icon: '😂', q: 'memes funny humor' },
+  { label: 'News', icon: '📰', q: 'news world politics' },
+  { label: 'Books', icon: '📚', q: 'books reading literature' },
+  { label: 'Pets', icon: '🐾', q: 'pets dogs cats animals' },
+  { label: 'DIY', icon: '🔧', q: 'diy crafts hobbies' },
+  { label: 'Mental Health', icon: '🧠', q: 'mentalhealth anxiety' },
+];
+const NSFW_CATS = [
+  { label: 'All', icon: '🔞', q: null },
+  { label: 'General', icon: '🔥', q: 'nsfw' },
+  { label: 'Amateur', icon: '📸', q: 'amateur' },
+  { label: 'Cosplay', icon: '🎭', q: 'cosplay' },
+  { label: 'Latina', icon: '🌹', q: 'latina' },
+  { label: 'Asian', icon: '🌸', q: 'asian' },
+  { label: 'Ebony', icon: '✨', q: 'ebony' },
+  { label: 'Redhead', icon: '🦊', q: 'redhead' },
+  { label: 'Petite', icon: '🌟', q: 'petite' },
+  { label: 'Curvy', icon: '💫', q: 'curvy' },
+  { label: 'Mature', icon: '🍷', q: 'mature milf' },
+  { label: 'Art/Drawn', icon: '🖌️', q: 'hentai drawn' },
+  { label: 'Couples', icon: '💑', q: 'couples' },
+  { label: 'Fitness', icon: '💪', q: 'fitnessgirls nsfw' },
+  { label: 'Stories', icon: '📖', q: 'erotic stories' },
+  { label: 'Discussion', icon: '💬', q: 'sex discussion advice' },
+];
+
+function buildCategoryBar() {
+  const bar = document.getElementById('categoryBar');
+  const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
+  bar.innerHTML = '<span class="cat-label">Filter</span>';
+  cats.forEach(cat => {
+    const pill = document.createElement('button');
+    pill.className = 'cat-pill' + (activeCategory === cat.q ? ' active' : '');
+    pill.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.label}`;
+    pill.onclick = () => selectCategory(cat.q, pill);
+    bar.appendChild(pill);
+  });
+}
+
+function selectCategory(q, pill) {
+  activeCategory = q;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  if (q === null) { document.getElementById('searchInput').value = ''; load(currentTab); }
+  else { document.getElementById('searchInput').value = q; runSearch(q); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 const saved = localStorage.getItem('subtracker-mode');
 if (saved === 'nsfw') {
   nsfwMode = true;
@@ -617,7 +566,7 @@ if (saved === 'nsfw') {
   document.getElementById('m-mode').textContent = '18+';
   document.getElementById('m-mode').style.color = '#c0392b';
 }
-
+buildCategoryBar();
 load('trending');
 </script>
 </body>
