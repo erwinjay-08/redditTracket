@@ -14,8 +14,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 
-// ─── Helper Functions 
+// ─── Cache ────────────────────────────────────────────────────────────────────
+const cache = {};
+function bustCache() { Object.keys(cache).forEach(k => delete cache[k]); }
 
+// ─── Formatters ───────────────────────────────────────────────────────────────
 function formatSub(d) {
   return {
     name: d.display_name,
@@ -23,7 +26,7 @@ function formatSub(d) {
     description: d.public_description || '',
     subscribers: d.subscribers || 0,
     active_users: d.active_user_count || 0,
-    over18: d.over18 || false,
+    over18: d.over18 === true,   // strict boolean — undefined/null → false
     created_utc: d.created_utc || 0,
     url: `https://reddit.com/r/${d.display_name}`,
     icon: d.icon_img || d.community_icon || null,
@@ -57,8 +60,8 @@ function scoreToStars(score, maxScore) {
 // ─── NSFW helpers ─────────────────────────────────────────────────────────────
 function wantsNsfw(req) { return req.query.nsfw === '1'; }
 function filterNsfw(items, nsfw) {
-  if (nsfw) return items; 
-  return items.filter(d => !d.over18);
+  if (nsfw) return items;
+  return items.filter(d => d.over18 !== true);
 }
 
 // ─── Data refresh ─────────────────────────────────────────────────────────────
@@ -82,13 +85,6 @@ async function refreshData() {
 cron.schedule('*/30 * * * *', refreshData);
 refreshData();
 
-// ─── NSFW helpers ─────────────────────────────────────────────────────────────
-function wantsNsfw(req) { return req.query.nsfw === '1'; }
-function filterNsfw(items, nsfw) {
-  if (nsfw) return items; 
-  return items.filter(d => !d.over18); 
-}
-
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /api/trending
@@ -97,8 +93,7 @@ app.get('/api/trending', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
     const nsfw = wantsNsfw(req);
 
-    let data;
-    let source;
+    let data, source;
 
     if (nsfw) {
       const live = await reddit.fetchNsfwTrending(limit * 2);
@@ -144,7 +139,7 @@ app.get('/api/rising', async (req, res) => {
   }
 });
 
-// GET /api/new
+
 app.get('/api/new', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
@@ -155,26 +150,37 @@ app.get('/api/new', async (req, res) => {
       return res.json({ source: 'live', data: live.map(formatSub) });
     }
 
-    const live = await reddit.fetchNew(limit * 2);
-    res.json({ source: 'live', data: filterNsfw(live.map(formatSub), false).slice(0, limit) });
+    const live = await reddit.fetchNew(limit);
+    res.json({ source: 'live', data: live.map(formatSub) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/search?q=...&nsfw=0|1
+
+// GET /api/search?q=...&nsfw=0|1&tab=trending|rising|new
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: 'q param required' });
+
     const nsfw = wantsNsfw(req);
-    const results = await reddit.searchSubreddits(q, 25, nsfw);
-    res.json({ data: filterNsfw(results.map(formatSub), nsfw).slice(0, 10) });
+    const tab  = req.query.tab || 'trending';
+    const sortMap = { trending: 'relevance', rising: 'activity', new: 'new' };
+    const sort = sortMap[tab] || 'relevance';
+
+    const results = await reddit.searchSubreddits(q, 25, nsfw, sort);
+    let filtered = filterNsfw(results.map(formatSub), nsfw);
+
+    if (tab === 'new') filtered = filtered.filter(d => d.subscribers >= 5000);
+
+    res.json({ data: filtered.slice(0, 15) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-// GET /api/subreddit/:name — detail + growth history
+
+// GET /api/subreddit/:name
 app.get('/api/subreddit/:name', async (req, res) => {
   try {
     const name = req.params.name.toLowerCase();
@@ -183,31 +189,23 @@ app.get('/api/subreddit/:name', async (req, res) => {
     const live = await reddit.getSubreddit(name);
     res.json({
       subreddit: formatSub(live),
-      history: history.map(h => ({ subscribers: h.subscribers, active_users: h.active_users, captured_at: h.captured_at })),
+      history: history.map(h => ({
+        subscribers: h.subscribers,
+        active_users: h.active_users,
+        captured_at: h.captured_at,
+      })),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-
 // GET /api/stats
 app.get('/api/stats', (req, res) => {
   res.json({ last_refresh: cache['ts'] || null });
 });
 
-// ─── Star rating helper ───────────────────────────────────────────────────────
-function scoreToStars(score, maxScore) {
-  if (!maxScore) return '⭐';
-  const r = score / maxScore;
-  if (r >= 0.85) return '⭐⭐⭐⭐⭐';
-  if (r >= 0.65) return '⭐⭐⭐⭐';
-  if (r >= 0.45) return '⭐⭐⭐';
-  if (r >= 0.25) return '⭐⭐';
-  return '⭐';
-}
-
-// ─── GET /api/user-ranking?user=USERNAME&limit=100 ────────────────────────────
+// GET /api/user-ranking?user=USERNAME&limit=100
 app.get('/api/user-ranking', async (req, res) => {
   const username = req.query.user;
   const limit = Math.min(parseInt(req.query.limit) || 100, 500);
@@ -248,7 +246,7 @@ app.get('/api/user-ranking', async (req, res) => {
   }
 });
 
-// ─── GET /api/user-monthly?user=USERNAME&months=1&limit=500 ──────────────────
+// GET /api/user-monthly?user=USERNAME&months=1&limit=500
 app.get('/api/user-monthly', async (req, res) => {
   const username = req.query.user;
   const months   = parseFloat(req.query.months) || 1;
@@ -308,16 +306,16 @@ app.get('/api/user-monthly', async (req, res) => {
   }
 });
 
-// ─── GET /api/sub-post-timing?sub=NAME&tz=Asia/Manila&limit=500 ──────────────
+// GET /api/sub-post-timing?sub=NAME&tz=Asia/Manila&limit=500
 app.get('/api/sub-post-timing', async (req, res) => {
   const subName = req.query.sub;
   const tzName  = req.query.tz || 'Asia/Manila';
   const limit   = Math.min(parseInt(req.query.limit) || 500, 1000);
   if (!subName) return res.status(400).json({ error: 'sub param required' });
 
-  const now          = Math.floor(Date.now() / 1000);
-  const weekCutoff   = now - 7  * 24 * 3600;
-  const monthCutoff  = now - 30 * 24 * 3600;
+  const now         = Math.floor(Date.now() / 1000);
+  const weekCutoff  = now - 7  * 24 * 3600;
+  const monthCutoff = now - 30 * 24 * 3600;
 
   try {
     const posts = [];
@@ -345,15 +343,10 @@ app.get('/api/sub-post-timing', async (req, res) => {
       const byDay = {};
       for (const p of posts) {
         if (p.created_utc < cutoff) continue;
-
-        const date = new Date(p.created_utc * 1000);
-
-        // Get local day name
+        const date    = new Date(p.created_utc * 1000);
         const dayStr  = date.toLocaleDateString('en-US', { timeZone: tzName, weekday: 'long' });
-        // Get local hour (0-23)
         const hourStr = date.toLocaleTimeString('en-US', { timeZone: tzName, hour: '2-digit', hour12: false });
         const hour    = parseInt(hourStr.split(':')[0]) % 24;
-
         if (!byDay[dayStr]) byDay[dayStr] = {};
         byDay[dayStr][hour] = (byDay[dayStr][hour] || 0) + p.score + p.num_comments;
       }
@@ -361,53 +354,98 @@ app.get('/api/sub-post-timing', async (req, res) => {
     }
 
     res.json({
-      data: {
-        week:  bucketPosts(weekCutoff),
-        month: bucketPosts(monthCutoff),
-      },
+      data: { week: bucketPosts(weekCutoff), month: bucketPosts(monthCutoff) },
       meta: { sub: subName, tz: tzName, posts_scanned: posts.length }
     });
   } catch (err) {
-    console.error('[sub-post-timing]', err.message);
+  console.error('[sub-post-timing]', err.message);
+  const status = err.response?.status;
+  if (status === 403 || status === 404) {
+    return res.status(200).json({
+      data: { week: {}, month: {} },
+      meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+      warning: 'This subreddit is private, quarantined, or age-restricted.'
+    });
+  }
+  if (status === 429) {
+    return res.status(200).json({
+      data: { week: {}, month: {} },
+      meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+      warning: 'Reddit rate limit hit — please wait a few seconds and try again.'
+    });
+  }
+  res.status(500).json({ error: err.message });
+}
+});
+
+// GET /api/sub-engagement?sub=NAME
+app.get('/api/sub-engagement', async (req, res) => {
+  const subName = req.query.sub;
+  if (!subName) return res.status(400).json({ error: 'sub param required' });
+
+  try {
+    const [about, engagement] = await Promise.all([
+      reddit.getSubreddit(subName),
+      reddit.getSubEngagement(subName, 25),
+    ]);
+
+    const subscribers   = about.subscribers || 0;
+    const activeUsers   = about.active_user_count || 0;
+    const over18        = about.over18 === true;
+
+    const engagementRate = subscribers > 0
+      ? ((activeUsers / subscribers) * 100).toFixed(2)
+      : 0;
+
+    let safetyScore = 50;
+
+    // Size factor: smaller = safer for new accounts
+    if (subscribers < 5000)        safetyScore += 30;
+    else if (subscribers < 50000)  safetyScore += 20;
+    else if (subscribers < 200000) safetyScore += 10;
+    else if (subscribers < 500000) safetyScore += 0;
+    else if (subscribers < 1000000) safetyScore -= 10;
+    else                           safetyScore -= 20;
+
+    const rate = parseFloat(engagementRate);
+    if (rate > 2)       safetyScore += 15;
+    else if (rate > 1)  safetyScore += 10;
+    else if (rate > 0.5) safetyScore += 5;
+    else                safetyScore -= 5;
+
+    if (over18) safetyScore += 10;
+
+    safetyScore = Math.max(0, Math.min(100, safetyScore));
+
+    let safetyLabel, safetyColor;
+    if (safetyScore >= 75)      { safetyLabel = 'Great for new accounts'; safetyColor = 'green'; }
+    else if (safetyScore >= 55) { safetyLabel = 'Good for new accounts';  safetyColor = 'blue'; }
+    else if (safetyScore >= 40) { safetyLabel = 'Moderate — proceed with care'; safetyColor = 'amber'; }
+    else                        { safetyLabel = 'Risky — high karma required'; safetyColor = 'red'; }
+
+    res.json({
+      sub: subName,
+      subscribers,
+      active_users: activeUsers,
+      engagement_rate: parseFloat(engagementRate),
+      over18,
+      newcomer_safety: {
+        score: safetyScore,
+        label: safetyLabel,
+        color: safetyColor,
+      },
+      top_posts: engagement || null,
+    });
+  } catch (err) {
+    console.error('[sub-engagement]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Catch-all → frontend
 app.get('/{*path}', (req, res) => {
-  res.sendFile(path.join(__dirname, '../index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/public/index.html'));
 });
-
-
-
-// ─── Formatters ───────────────────────────────────────────────────────────────
-function formatSub(d) {
-  return {
-    name: d.display_name,
-    title: d.title || d.display_name,
-    description: d.public_description || '',
-    subscribers: d.subscribers || 0,
-    active_users: d.active_user_count || 0,
-    over18: d.over18 || false,
-    created_utc: d.created_utc || 0,
-    url: `https://reddit.com/r/${d.display_name}`,
-    icon: d.icon_img || d.community_icon || null,
-  };
-}
-
-function formatDbRow(r) {
-  return {
-    name: r.display_name || r.name,
-    title: r.display_name || r.name,
-    description: r.description || '',
-    subscribers: r.subscribers || 0,
-    active_users: r.active_users || 0,
-    over18: r.over18 === 1,
-    growth_pct: parseFloat((r.growth_pct || 0).toFixed(2)),
-    captured_at: r.captured_at,
-    url: `https://reddit.com/r/${r.display_name || r.name}`,
-  };
-}
 
 app.listen(PORT, () => {
   console.log(`\n🚀 Reddit Tracker running at http://localhost:${PORT}`);
