@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Ranking — SubTracker</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
@@ -51,7 +52,7 @@
 
     /* ── Toggle ── */
     .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
+    .theme-label { font-family: var(--mono); font-size: 14px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
     .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; transition: background 0.3s; }
     [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
     .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
@@ -106,6 +107,12 @@
     .rank-score { font-family: var(--mono); font-size: 13px; font-weight: 500; }
     .rank-score-label { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
 
+    /* banned */
+    .banned-msg { padding: 20px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 12px; text-align: center; }
+    .banned-msg .banned-icon { font-size: 32px; margin-bottom: 10px; }
+    .banned-msg .banned-title { font-size: 16px; font-weight: 600; color: var(--amber); margin-bottom: 6px; }
+    .banned-msg .banned-desc { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
     /* bar chart */
     .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
     .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
@@ -139,11 +146,12 @@
       <button class="nav-tab" id="tab-userRanking" onclick="location.href='user_Ranking.html'">User Ranking</button>
       <button class="nav-tab" id="tab-userMonthly" onclick="location.href='user_monthly_subs_performance.html'">Monthly Performance</button>
       <button class="nav-tab" id="tab-subPostTiming" onclick="location.href='sub_post_timing.html'">Post Timing</button>
+      <button class="nav-tab" id="tab-postingIntelligence" onclick="location.href='posting_intelligence.html'">Posting Intelligence</button>
     </div>
     <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-      <span class="theme-label">safe</span>
+      <span class="theme-label">sfw</span>
       <div class="toggle-track"><div class="toggle-knob"></div></div>
-      <span class="theme-label">dark</span>
+      <span class="theme-label right">nsfw</span>
     </div>
   </div>
 </header>
@@ -220,13 +228,23 @@
     try {
       const res = await fetch(`${API}/user-ranking?user=${encodeURIComponent(username)}&limit=100`);
       const json = await res.json();
+ 
+      // Friendly banned message
+      if (json.banned) {
+        document.getElementById('feed').innerHTML = `
+          <div class="banned-msg">
+            <div class="banned-icon">🚫</div>
+            <div class="banned-title">Account Unavailable</div>
+            <div class="banned-desc">u/${username} is banned, suspended, or does not exist on Reddit.</div>
+          </div>`;
+        return;
+      }
       if (json.error) throw new Error(json.error);
       renderRanking(json.data, username);
     } catch (e) {
       document.getElementById('feed').innerHTML = `<div class="error-msg">Error: ${e.message}</div>`;
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Analyze';
+      btn.disabled = false; btn.textContent = 'Analyze';
     }
   }
 

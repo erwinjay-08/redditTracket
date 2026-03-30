@@ -13,7 +13,7 @@
       --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
       --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
       --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
-      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b; --red: #ef4444;
       --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
       --radius: 12px; --header-bg: rgba(14,14,16,0.92);
       --knob-x: 2px; --knob-color: #555566;
@@ -30,29 +30,33 @@
     body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
     a { color: inherit; text-decoration: none; }
 
-    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--header-bg); backdrop-filter: blur(12px); z-index: 10; transition: background 0.4s, border-color 0.3s; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--header-bg);
+      backdrop-filter: blur(12px); z-index: 10;
+      transition: background 0.4s, border-color 0.3s;
+      flex-wrap: wrap; gap: 10px;
+    }
     .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
     .logo-img { width: 28px; height: 28px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .logo-img img { width: 100%; height: 100%; object-fit: contain; }
-    .header-right { display: flex; align-items: center; gap: 16px; }
-    .nav-tabs { display: flex; gap: 6px; margin-right: 10px; }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
     .nav-tab { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
     .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-    .theme-label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
+    .theme-label { font-family: var(--mono); font-size: 14px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
     .theme-label.right { text-align: left; }
     .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
     [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
     .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
-    .live-badge { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 20px; padding: 4px 12px; }
-    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 14px; width: 220px; transition: background 0.3s, border-color 0.3s; }
+    .search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 14px; width: 200px; transition: background 0.3s, border-color 0.3s; }
     .search-bar input { background: none; border: none; outline: none; color: var(--text); font-family: var(--font); font-size: 13px; width: 100%; }
     .search-bar input::placeholder { color: var(--muted); }
 
-    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
 
     .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
     .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: background 0.3s, border-color 0.2s; }
@@ -79,7 +83,7 @@
     .tab.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
 
     .feed { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-    .sub-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; text-decoration: none; color: inherit; }
+    .sub-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; color: inherit; }
     .sub-card:hover { background: var(--surface2); }
     .rank { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
     .sub-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
@@ -88,9 +92,11 @@
     .sub-desc { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
     .sub-right { text-align: right; flex-shrink: 0; }
     .sub-members { font-family: var(--mono); font-size: 12px; font-weight: 500; }
-    .sub-growth { font-family: var(--mono); font-size: 10px; margin-top: 2px; }
+    .sub-meta { font-family: var(--mono); font-size: 10px; margin-top: 2px; color: var(--muted); }
+    .eng-good { color: var(--green); }
+    .eng-ok   { color: var(--blue); }
+    .eng-low  { color: var(--amber); }
     .up { color: var(--green); }
-    .neutral { color: var(--muted); }
 
     .badge { display: inline-block; font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
     .badge-hot    { background: rgba(255,69,0,0.15); color: #ff4500; }
@@ -104,13 +110,14 @@
     .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
     .chart-wrap { position: relative; width: 100%; height: 200px; }
 
-    /* ── Engagement panel ── */
+    /* ── Engagement + Hot Analysis panel ── */
     .engagement-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: background 0.3s, border-color 0.3s; }
-    .engagement-title { font-size: 12px; font-weight: 600; margin-bottom: 14px; }
-    .engagement-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; line-height: 1.5; }
+    .engagement-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+    .engagement-sub-name { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; }
+    .engagement-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); line-height: 1.5; }
     .engagement-empty { font-size: 11px; color: var(--muted); font-family: var(--mono); text-align: center; padding: 20px 0; }
 
-    .safety-score-wrap { margin-bottom: 16px; }
+    .safety-score-wrap { margin-bottom: 14px; }
     .safety-score-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .safety-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .safety-score-num { font-size: 22px; font-weight: 700; }
@@ -118,20 +125,33 @@
     .safety-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
     .safety-verdict { font-size: 11px; font-family: var(--mono); font-weight: 500; }
 
+    /* Hot section analysis */
+    .hot-analysis { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .hot-analysis-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .hot-quality-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin: 6px 0; }
+    .hot-quality-fill { height: 100%; border-radius: 3px; }
+    .hot-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 11px; font-family: var(--mono); }
+    .hot-stat-key { color: var(--muted); }
+    .hot-stat-val { font-weight: 500; }
+    .hot-verdict { font-size: 11px; font-family: var(--mono); font-weight: 600; margin-top: 8px; padding: 6px 10px; border-radius: 6px; }
+    .hot-verdict-great   { background: rgba(34,197,94,0.1);  color: var(--green); }
+    .hot-verdict-good    { background: rgba(59,130,246,0.1);  color: var(--blue); }
+    .hot-verdict-avg     { background: rgba(245,158,11,0.1);  color: var(--amber); }
+    .hot-verdict-bad     { background: rgba(239,68,68,0.1);   color: var(--red); }
+
     .eng-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .eng-stat { background: var(--surface2); border-radius: 8px; padding: 10px; }
     .eng-stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
     .eng-stat-value { font-size: 16px; font-weight: 700; }
 
-    .eng-tips { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .eng-tips { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
     .eng-tips-title { font-size: 11px; font-weight: 600; margin-bottom: 8px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .eng-tip { font-size: 11px; color: var(--muted); padding: 4px 0; display: flex; gap: 8px; line-height: 1.4; align-items: flex-start; }
-    
     .eng-tip-icon { flex-shrink: 0; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
     .eng-tip-icon svg { width: 14px; height: 14px; }
 
-    .eng-cta { margin-top: 16px; display: flex; justify-content: center;}
-    .eng-cta a { background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; padding: 5px 24px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); transition: all 0.2s;}
+    .eng-cta { margin-top: 14px; display: flex; justify-content: center; }
+    .eng-cta a { background: var(--accent); color: #fff; font-family: var(--mono); font-size: 12px; padding: 6px 20px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); transition: all 0.2s; }
     .eng-cta a:hover { background: transparent; color: var(--accent); }
 
     .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; height: 48px; }
@@ -140,12 +160,21 @@
 
     footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
 
-    @media (max-width: 768px) {
-      header { padding: 16px; flex-wrap: wrap; gap: 10px; }
-      .search-bar { display: none; }
-      .metrics { grid-template-columns: repeat(2, 1fr); }
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
       .grid { grid-template-columns: 1fr; }
-      .nav-tabs { flex-wrap: wrap; }
+      .chart-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    }
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      main { padding: 16px 12px; }
+      .search-bar { width: 100%; order: 3; }
+      .nav-tabs { gap: 4px; }
+      .nav-tab { font-size: 10px; padding: 5px 8px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .metrics .metric:last-child { display: none; }
+      .chart-panel { grid-template-columns: 1fr; }
+      .chart-wrap { height: 160px; }
     }
   </style>
 </head>
@@ -164,15 +193,16 @@
     <div class="nav-tabs">
       <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
       <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
-      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">User SubReddit Performance</button>
-      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">SubReddit Post Timing</button>
+      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">Monthly Performance</button>
+      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">Post Timing</button>
+      <button class="nav-tab" id="tab-intel" onclick="goPage('posting_intelligence.html')">Posting Intelligenc</button>
     </div>
     <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-      <span class="theme-label">safe</span>
+      <span class="theme-label">sfw</span>
       <div class="toggle-track"><div class="toggle-knob"></div></div>
-      <span class="theme-label right">dark</span>
+      <span class="theme-label right">nsfw</span>
     </div>
-    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <!-- REMOVED: live pill -->
   </div>
 </header>
 
@@ -190,7 +220,7 @@
     </div>
     <div class="metric">
       <div class="metric-label">Mode</div>
-      <div class="metric-value" id="m-mode" style="font-size:16px;padding-top:6px">Safe</div>
+      <div class="metric-value" id="m-mode" style="font-size:16px;padding-top:6px">SFW</div>
       <div class="metric-sub">content filter</div>
     </div>
   </div>
@@ -217,6 +247,13 @@
     </div>
 
     <div class="chart-panel">
+      <div class="engagement-panel" id="engagementPanel">
+        <div class="engagement-title">Newcomer Safety Check</div>
+        <div id="engagementBody">
+          <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
+          <div class="engagement-empty">No subreddit selected</div>
+        </div>
+      </div>
       <div class="chart-card">
         <div class="chart-label">Member distribution</div>
         <div class="chart-wrap"><canvas id="barChart"></canvas></div>
@@ -225,13 +262,6 @@
         <div class="chart-label">Activity ratio</div>
         <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
       </div>
-      <div class="engagement-panel" id="engagementPanel">
-        <div class="engagement-title">Newcomer Safety Check</div>
-        <div id="engagementBody">
-          <div class="engagement-hint">Click any subreddit card to see its engagement stats and whether it's safe for new Reddit accounts.</div>
-          <div class="engagement-empty">No subreddit selected</div>
-        </div>
-      </div>
     </div>
   </div>
 </main>
@@ -239,10 +269,9 @@
 <footer>SubTracker · data from Reddit API · refreshes every 30 minutes</footer>
 
 <script>
-// ── Nav tab active ────────────────────────────────────────────────────────────
 const rawPath = window.location.pathname.split('/').pop();
 const currentPath = rawPath === '' ? 'index.html' : rawPath;
-const pageTabMap = { 'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming' };
+const pageTabMap = { 'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming','posting_intelligence.html':'tab-intel' };
 document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
 const navEl = document.getElementById(pageTabMap[currentPath] || 'tab-index');
 if (navEl) navEl.classList.add('active');
@@ -262,10 +291,9 @@ const ICONS = { gaming:'🎮', programming:'💻', science:'🔬', movies:'🎬'
 const ICON_BG_SFW  = ['rgba(255,69,0,0.12)','rgba(59,130,246,0.12)','rgba(34,197,94,0.12)','rgba(245,158,11,0.12)','rgba(168,85,247,0.12)'];
 const ICON_BG_NSFW = ['rgba(192,57,43,0.10)','rgba(120,40,31,0.10)','rgba(169,50,38,0.10)','rgba(146,43,33,0.10)','rgba(100,30,22,0.10)'];
 
-// FIX 2 — SVG icons (no emojis)
 const SVGICONS = {
   check: `<svg viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,8 6,12 14,4"/></svg>`,
-  warn:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L14 13H2L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r="0.5" fill="#f59e0b"/></svg>`,
+  warn:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L14 13H2L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/></svg>`,
   block: `<svg viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="4.5" y1="4.5" x2="11.5" y2="11.5"/></svg>`,
   fire:  `<svg viewBox="0 0 16 16" fill="none" stroke="#ff4500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13c-2.5 0-4.5-1.8-4.5-4.5 0-1.8 1-2.8 1.8-3.8 0 1.5 1 2.3 1.7 2.3C7 5.2 8 3 10 2c-1 2 0 3.5 1.5 4.5.8.7 1 1.5 1 2.5C12.5 11.2 10.5 13 8 13z"/></svg>`,
   thumb: `<svg viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h2.5V14H2z"/><path d="M4.5 9l2-5.5c.8 0 1.5.7 1.5 1.5v2.5h3.5l-1 6H4.5z"/></svg>`,
@@ -286,33 +314,46 @@ function getBadge(tab, i, isOver18, subscribers) {
   return parts.join('');
 }
 
-function growthEl(sub, tab) {
-  if (tab === 'rising' && sub.growth_pct) return `<div class="sub-growth up">+${sub.growth_pct.toFixed(1)}%</div>`;
-  if (sub.active_users) return `<div class="sub-growth neutral">${fmt(sub.active_users)} online</div>`;
+// Engagement label shown on sub card (uses quality_score from server)
+function engLabel(sub) {
+  const rate = sub.engagement_rate || 0;
+  if (rate > 2)    return `<span class="eng-good">▲ ${rate.toFixed(2)}% eng</span>`;
+  if (rate > 0.5)  return `<span class="eng-ok">~ ${rate.toFixed(2)}% eng</span>`;
+  if (rate > 0)    return `<span class="eng-low">▼ ${rate.toFixed(2)}% eng</span>`;
   return '';
 }
 
-// FIX 3 — Clear engagement panel
+function growthEl(sub, tab) {
+  if (tab === 'rising' && sub.growth_pct) return `<div class="sub-meta up">+${sub.growth_pct.toFixed(1)}%</div>`;
+  const el = engLabel(sub);
+  return el ? `<div class="sub-meta">${el}</div>` : '';
+}
+
 function clearEngagement() {
   document.getElementById('engagementBody').innerHTML = `
-    <div class="engagement-hint">Click any subreddit card to see its engagement stats and whether it's safe for new Reddit accounts.</div>
+    <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
     <div class="engagement-empty">No subreddit selected</div>`;
 }
 
-// ── Engagement panel ──────────────────────────────────────────────────────────
+// ── Engagement + Hot Analysis panel ──────────────────────────────────────────
 async function loadEngagement(subName) {
   const body = document.getElementById('engagementBody');
-  body.innerHTML = `<div class="skeleton" style="height:80px;margin-bottom:8px"></div><div class="skeleton" style="height:50px"></div>`;
+  body.innerHTML = `<div class="skeleton" style="height:70px;margin-bottom:8px"></div><div class="skeleton" style="height:50px;margin-bottom:8px"></div><div class="skeleton" style="height:80px"></div>`;
 
   try {
-    const res = await fetch(`${API}/sub-engagement?sub=${encodeURIComponent(subName)}`);
-    const d = await res.json();
+    // Fetch both in parallel
+    const [engRes, hotRes] = await Promise.all([
+      fetch(`${API}/sub-engagement?sub=${encodeURIComponent(subName)}`),
+      fetch(`${API}/hot-analysis?sub=${encodeURIComponent(subName)}`),
+    ]);
+    const d    = await engRes.json();
+    const hot  = await hotRes.json();
     if (d.error) throw new Error(d.error);
 
     const colorMap = { green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444' };
     const scoreColor = colorMap[d.newcomer_safety.color] || '#888899';
 
-    // Build tips using SVG icons
+    // Safety tips
     const tips = [];
     if (d.subscribers < 10000)
       tips.push({ icon: SVGICONS.check, text: 'Small community — low automod strictness, great for new accounts' });
@@ -321,24 +362,31 @@ async function loadEngagement(subName) {
     else if (d.subscribers < 500000)
       tips.push({ icon: SVGICONS.warn,  text: 'Large sub — some karma requirements may apply' });
     else
-      tips.push({ icon: SVGICONS.block, text: 'Very large sub — strict automod, karma threshold likely required' });
+      tips.push({ icon: SVGICONS.block, text: 'Very large sub — strict automod, karma threshold likely' });
 
-    if (d.engagement_rate > 1.5)
-      tips.push({ icon: SVGICONS.fire,  text: 'Highly active — posts get seen quickly' });
-    else if (d.engagement_rate > 0.5)
-      tips.push({ icon: SVGICONS.thumb, text: 'Decent activity — good engagement potential' });
+    if ((d.avg_score || 0) > 500)
+      tips.push({ icon: SVGICONS.fire,  text: 'Hot posts get high scores — very active community' });
+    else if ((d.avg_score || 0) > 50)
+      tips.push({ icon: SVGICONS.thumb, text: 'Decent post performance — solid engagement' });
     else
-      tips.push({ icon: SVGICONS.sleep, text: 'Low activity ratio — posts may get buried' });
+      tips.push({ icon: SVGICONS.sleep, text: 'Low avg post scores — may be bot-heavy or inactive' });
 
     if (d.newcomer_safety.score >= 70)
       tips.push({ icon: SVGICONS.bulb, text: 'Tip: Post quality content and follow sub rules — you should be fine here' });
     else
       tips.push({ icon: SVGICONS.bulb, text: 'Tip: Build some karma in smaller subs first before posting here' });
 
+    // Hot section quality verdict
+    const hotColorMap = { green:'hot-verdict-great', blue:'hot-verdict-good', amber:'hot-verdict-avg', red:'hot-verdict-bad' };
+    const hotClass = hotColorMap[hot.quality_color] || 'hot-verdict-avg';
+    const hotBarPct = Math.min(100, (hot.engagement_ratio || 0) * 20);
+
     body.innerHTML = `
+      <div class="engagement-sub-name">r/${subName} · ${fmt(d.subscribers)} members</div>
+
       <div class="safety-score-wrap">
         <div class="safety-score-header">
-          <span class="safety-score-label">Newcomer Safety Score</span>
+          <span class="safety-score-label">Newcomer Safety</span>
           <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
         </div>
         <div class="safety-bar-track">
@@ -349,36 +397,42 @@ async function loadEngagement(subName) {
 
       <div class="eng-stats">
         <div class="eng-stat">
-          <div class="eng-stat-label">Members</div>
-          <div class="eng-stat-value">${fmt(d.subscribers)}</div>
-        </div>
-        <div class="eng-stat">
-          <div class="eng-stat-label">Active Now</div>
-          <div class="eng-stat-value">${fmt(d.active_users)}</div>
-        </div>
-        <div class="eng-stat">
-          <div class="eng-stat-label">Engagement %</div>
-          <div class="eng-stat-value">${d.engagement_rate}%</div>
-        </div>
-        <div class="eng-stat">
           <div class="eng-stat-label">Avg Post Score</div>
-          <div class="eng-stat-value">${d.top_posts ? fmt(d.top_posts.avgScore) : '—'}</div>
+          <div class="eng-stat-value">${fmt(d.avg_score || 0)}</div>
+        </div>
+        <div class="eng-stat">
+          <div class="eng-stat-label">Avg Comments</div>
+          <div class="eng-stat-value">${fmt(d.avg_comments || 0)}</div>
         </div>
       </div>
 
-         <div class="eng-tips">
-        <div class="eng-tips-title">Insights for r/${subName}</div>
-        ${tips.map(t => `
-          <div class="eng-tip">
-            <span class="eng-tip-icon">${t.icon}</span>
-            <span>${t.text}</span>
-          </div>`).join('')}
+      <div class="hot-analysis">
+        <div class="hot-analysis-title">Hot Section Analysis</div>
+        <div class="hot-stat-row">
+          <span class="hot-stat-key">Engagement ratio</span>
+          <span class="hot-stat-val">${(hot.engagement_ratio || 0).toFixed(3)}</span>
+        </div>
+        <div class="hot-quality-bar">
+          <div class="hot-quality-fill" style="width:${hotBarPct}%;background:${colorMap[hot.quality_color] || '#888899'}"></div>
+        </div>
+        <div class="hot-stat-row">
+          <span class="hot-stat-key">Posts analyzed</span>
+          <span class="hot-stat-val">${hot.posts_analyzed || '—'}</span>
+        </div>
+        <div class="hot-stat-row">
+          <span class="hot-stat-key">Recommended</span>
+          <span class="hot-stat-val" style="color:${hot.recommended ? 'var(--green)' : 'var(--red)'}">${hot.recommended ? 'Yes' : 'No'}</span>
+        </div>
+        <div class="hot-verdict ${hotClass}">${hot.quality || '—'}</div>
+      </div>
+
+      <div class="eng-tips">
+        <div class="eng-tips-title">Insights</div>
+        ${tips.map(t => `<div class="eng-tip"><span class="eng-tip-icon">${t.icon}</span><span>${t.text}</span></div>`).join('')}
       </div>
 
       <div class="eng-cta">
-        <a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">
-          Go to r/${subName}
-        </a>
+        <a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">Open r/${subName}</a>
       </div>`;
 
   } catch(e) {
@@ -386,11 +440,10 @@ async function loadEngagement(subName) {
   }
 }
 
-// ── Toggle — FIX 3: clears engagement ────────────────────────────────────────
 function toggleMode() {
   nsfwMode = !nsfwMode;
   document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
-  document.getElementById('m-mode').textContent = nsfwMode ? '18+' : 'Safe';
+  document.getElementById('m-mode').textContent = nsfwMode ? 'NSFW' : 'SFW';
   document.getElementById('m-mode').style.color = nsfwMode ? '#c0392b' : '';
   document.getElementById('searchInput').value = '';
   activeCategory = null;
@@ -400,7 +453,6 @@ function toggleMode() {
   load(currentTab);
 }
 
-// ── Load ──────────────────────────────────────────────────────────────────────
 async function load(tab) {
   const feedEl = document.getElementById('feed');
   feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
@@ -409,7 +461,7 @@ async function load(tab) {
     const json = await res.json();
     render(json.data || [], tab);
   } catch {
-    feedEl.innerHTML = `<div class="empty">Could not reach the backend.<br>Make sure the server is running on port 3001.</div>`;
+    feedEl.innerHTML = `<div class="empty">Could not reach the backend.</div>`;
   }
 }
 
@@ -421,8 +473,7 @@ function render(data, tab) {
   document.getElementById('m-members').textContent = fmt(total);
 
   feedEl.innerHTML = data.map((sub, i) => `
-    <a class="sub-card" href="${sub.url||'#'}" target="_blank" rel="noopener"
-       onclick="loadEngagement('${sub.name}'); return false;">
+    <div class="sub-card" onclick="loadEngagement('${sub.name}')">
       <span class="rank">${i+1}</span>
       <div class="sub-icon" style="background:${iconBg[i%5]}">${getIcon(sub.name)}</div>
       <div class="sub-body">
@@ -433,7 +484,7 @@ function render(data, tab) {
         <div class="sub-members">${fmt(sub.subscribers)}</div>
         ${growthEl(sub, tab)}
       </div>
-    </a>`).join('');
+    </div>`).join('');
 
   renderBarChart(data.slice(0,8));
   renderDonutChart(data.slice(0,5));
@@ -465,7 +516,6 @@ function renderDonutChart(data) {
 
 function goPage(page) { window.location.href = page; }
 
-// FIX 3 — switchTab clears engagement
 function switchTab(tab, btn) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -495,7 +545,6 @@ async function runSearch(q) {
   }
 }
 
-// ── Categories ────────────────────────────────────────────────────────────────
 const SFW_CATS = [
   { label: 'All', icon: '🌐', q: null },
   { label: 'Gaming', icon: '🎮', q: 'gaming' },
@@ -558,12 +607,11 @@ function selectCategory(q, pill) {
   else { document.getElementById('searchInput').value = q; runSearch(q); }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 const saved = localStorage.getItem('subtracker-mode');
 if (saved === 'nsfw') {
   nsfwMode = true;
   document.documentElement.setAttribute('data-mode', 'nsfw');
-  document.getElementById('m-mode').textContent = '18+';
+  document.getElementById('m-mode').textContent = 'NSFW';
   document.getElementById('m-mode').style.color = '#c0392b';
 }
 buildCategoryBar();
