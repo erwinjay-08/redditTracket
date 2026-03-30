@@ -659,7 +659,7 @@ app.post('/api/intel/ratings', async (req, res) => {
   if (!subreddit || !rating) return res.status(400).json({ error: 'subreddit and rating required' });
 
   const sub = subreddit.toLowerCase().replace(/^r\//, '');
-  const isNsfw = req.body.is_nsfw ?? /nsfw|adult|xxx|18\+|onlyfan|lewd|hentai|porn|nude/i.test(sub);
+  const isNsfw = req.body.is_nsfw ?? false;
   const { data, error } = await supabase.from('subreddit_ratings')
     .upsert({ subreddit: sub, rating, reason, classified_by: va_id, is_nsfw: isNsfw, updated_at: new Date().toISOString() }, { onConflict: 'subreddit' })
     .select().single();
@@ -745,22 +745,19 @@ app.post('/api/intel/sync-account', async (req, res) => {
 
 // ─── Auto-evaluate subreddits based on real post data ─────────────────────────
 async function autoEvalSubreddits(posts) {
-  // Group posts by subreddit
   const bySubreddit = {};
   for (const p of posts) {
     const sub = p.subreddit.toLowerCase();
     if (!bySubreddit[sub]) bySubreddit[sub] = [];
     bySubreddit[sub].push(p);
   }
-
+ 
   for (const [sub, subPosts] of Object.entries(bySubreddit)) {
     if (subPosts.length < 1) continue;
+ 
     const avgScore    = subPosts.reduce((s, p) => s + p.score, 0) / subPosts.length;
     const avgComments = subPosts.reduce((s, p) => s + p.num_comments, 0) / subPosts.length;
-    const avgEng      = avgScore + avgComments;
-
-    // Check for hot: high rank but low engagement
-    // We use score as proxy: score < 10 with subreddit having many posts = bad signal
+ 
     let rating = 'neutral', reason = '';
     if (avgScore >= 100 || avgComments >= 20) {
       rating = 'good';
@@ -769,9 +766,12 @@ async function autoEvalSubreddits(posts) {
       rating = 'bad';
       reason = `Auto: Low engagement — avg ${Math.round(avgScore)} upvotes only`;
     }
-
+ 
     if (rating !== 'neutral') {
-      const isNsfw = /nsfw|adult|xxx|18\+|onlyfan|lewd|hentai|porn|nude/i.test(sub);
+      // ── FIX: Use Reddit's actual over_18 flag from the post, not a name regex ──
+      // Any post in this sub marked over_18 = the sub is NSFW
+      const isNsfw = subPosts.some(p => p.over_18 === true);
+ 
       await supabase.from('subreddit_ratings').upsert(
         { subreddit: sub, rating, reason, is_nsfw: isNsfw, updated_at: new Date().toISOString() },
         { onConflict: 'subreddit', ignoreDuplicates: false }
@@ -779,6 +779,7 @@ async function autoEvalSubreddits(posts) {
     }
   }
 }
+
 
 // ─── Dashboard data for a VA ──────────────────────────────────────────────────
 app.get('/api/intel/dashboard', async (req, res) => {
