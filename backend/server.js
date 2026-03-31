@@ -1254,6 +1254,7 @@ app.get("/api/intel/scheduler", async (req, res) => {
       .from("models")
       .select("id, model_name, reddit_accounts(id, username, banned)")
       .eq("va_id", va_id);
+
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).filter((a) => !a.banned).map((a) => a.id),
     );
@@ -1263,12 +1264,14 @@ app.get("/api/intel/scheduler", async (req, res) => {
         day: "",
         already_posted_today: [],
       });
+
     const { data: posts } = await supabase
       .from("post_logs")
       .select("subreddit, upvotes, comments, posted_at, account_id")
       .in("account_id", accountIds)
       .order("posted_at", { ascending: false })
       .limit(2000);
+
     const todayDate = new Date();
     const dayName = todayDate.toLocaleDateString("en-US", {
       weekday: "long",
@@ -1276,40 +1279,31 @@ app.get("/api/intel/scheduler", async (req, res) => {
     });
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const subDayStats = {};
+
+    // ── CHANGED: score by all-time avg engagement per sub, not day-of-week ──
+    const subStats = {};
     for (const p of posts || []) {
-      const postDay = new Date(p.posted_at).toLocaleDateString("en-US", {
-        weekday: "long",
-        timeZone: "Asia/Manila",
-      });
       const sub = p.subreddit;
-      if (!subDayStats[sub]) subDayStats[sub] = {};
-      if (!subDayStats[sub][postDay])
-        subDayStats[sub][postDay] = { total: 0, count: 0 };
-      subDayStats[sub][postDay].total += (p.upvotes || 0) + (p.comments || 0);
-      subDayStats[sub][postDay].count++;
+      if (!subStats[sub]) subStats[sub] = { total: 0, count: 0 };
+      subStats[sub].total += (p.upvotes || 0) + (p.comments || 0);
+      subStats[sub].count++;
     }
-    const todayRecs = [];
-    for (const [sub, days] of Object.entries(subDayStats)) {
-      if (days[dayName] && days[dayName].count >= 1) {
-        const avg = days[dayName].total / days[dayName].count;
-        todayRecs.push({
-          sub,
-          avg_engagement: parseFloat(avg.toFixed(1)),
-          post_count_today_day: days[dayName].count,
-          day: dayName,
-        });
-      }
-    }
-    todayRecs.sort((a, b) => b.avg_engagement - a.avg_engagement);
+
     const todayPosts = (posts || []).filter(
       (p) => new Date(p.posted_at) >= todayStart,
     );
     const postedTodaySubs = new Set(todayPosts.map((p) => p.subreddit));
-    // ── CHANGED: was slice(0, 5), now 40 ──
-    const recommendations = todayRecs
-      .slice(0, 40)
-      .map((r) => ({ ...r, already_posted_today: postedTodaySubs.has(r.sub) }));
+
+    const recommendations = Object.entries(subStats)
+      .map(([sub, s]) => ({
+        sub,
+        avg_engagement: parseFloat((s.total / s.count).toFixed(1)),
+        post_count: s.count,
+        already_posted_today: postedTodaySubs.has(sub),
+      }))
+      .sort((a, b) => b.avg_engagement - a.avg_engagement)
+      .slice(0, 40);
+
     res.json({
       recommendations,
       day: dayName,
