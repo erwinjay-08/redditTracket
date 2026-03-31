@@ -815,8 +815,8 @@ app.post("/api/intel/sync-account", async (req, res) => {
         q: `author:${username}`,
         sort: "new",
         type: "link",
-        limit: 500,
-        t: "day",
+        limit: 100,
+        t: "all",
       }),
     ]);
 
