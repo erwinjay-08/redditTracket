@@ -1467,8 +1467,6 @@
                 </button>
               </div>
             </div>
-            <div id="myModelsArea"><div class="skeleton"></div></div>
-            <div id="modelsPager"></div>
 
             <!-- Account Overview -->
             <div class="card" style="margin-top: 16px">
@@ -1984,9 +1982,7 @@
       let intelFilter = "all";
 
       // Pagination state
-      let modelsPage = 1,
-        acctPage = 1,
-        reusePage = 1;
+      ((acctPage = 1), (reusePage = 1));
       let allSubsPage = 1,
         structurePage = 1;
       let schedPage = 1,
@@ -1995,9 +1991,7 @@
         subsToTryPage = 1;
 
       // Caches
-      let modelsCache = {},
-        acctCache = {},
-        reuseCache = [];
+      ((acctCache = {}), (reuseCache = []));
       let allSubsCache = [],
         structureCache = [];
       let schedCache = [],
@@ -2200,7 +2194,6 @@
           : allModels.filter((m) => m.va_id === currentVA.id);
         renderTrendChart(trendData);
         renderMetrics(dashData);
-        renderMyModels(myModels, dashData, 1);
         renderAcctTable(myModels, dashData, 1);
         renderPostOverview(postData.data || [], 1);
         renderPerfCards(dashData);
@@ -2245,10 +2238,6 @@
               </div>`;
       }
 
-      function setModelPage(p) {
-        modelsPage = p;
-        renderMyModels(modelsCache.models, modelsCache.dash, p);
-      }
       function setAcctPage(p) {
         acctPage = p;
         renderAcctTable(acctCache.models, acctCache.dash, p);
@@ -2384,57 +2373,6 @@
         document.getElementById("dm-top-sub").textContent =
           topText.length > 18 ? topText.slice(0, 16) + "…" : topText;
         document.getElementById("dm-top-sub").title = topText;
-      }
-
-      // ── My Models (hide banned accounts) ───────────────────────────────────────
-      function renderMyModels(models, dash, page) {
-        modelsCache = { models, dash };
-        modelsPage = page;
-        const area = document.getElementById("myModelsArea");
-        const stats = dash.account_stats || {},
-          tp = dash.today_posts || [];
-        if (!models.length) {
-          area.innerHTML = `<div class="empty">No models. Go to Setup.</div>`;
-          return;
-        }
-        const start = (page - 1) * PER,
-          slice = models.slice(start, start + PER);
-        area.innerHTML = slice
-          .map((m) => {
-            const allAccts = m.reddit_accounts || [];
-            // Only show non-banned accounts in dashboard
-            const active = allAccts.filter((a) => !a.banned);
-            if (!active.length)
-              return `<div class="model-card"><div class="model-card-header"><span class="model-card-name">${m.model_name}</span><span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No active accounts</span></div></div>`;
-            const rows = active
-              .map((a) => {
-                const s = stats[a.id] || {};
-                const postedToday = tp.some((p) => p.account_id === a.id);
-                const avgUp = s.posts
-                  ? Math.round(s.totalUpvotes / s.posts)
-                  : 0;
-                return `<div class="account-row">
-                    <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
-                    <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
-                    <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
-                  </div>`;
-              })
-              .join("");
-            const postedIds = new Set(
-              tp
-                .filter((p) => active.some((a) => a.id === p.account_id))
-                .map((p) => p.account_id),
-            );
-            return `<div class="model-card">
-                  <div class="model-card-header">
-                    <span class="model-card-name">${m.model_name}</span>
-                    <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
-                  </div>
-                  ${rows}
-                </div>`;
-          })
-          .join("");
-        makePager("modelsPager", models.length, page, "setModelPage");
       }
 
       // ── Account Overview Table ──────────────────────────────────────────────────
