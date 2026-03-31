@@ -230,8 +230,6 @@
         color: var(--text);
         border-color: var(--accent);
       }
-
-      /* ── SFW/NSFW toggle (same as main site) ── */
       .theme-toggle {
         display: flex;
         align-items: center;
@@ -278,8 +276,6 @@
           left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
           background 0.3s;
       }
-
-      /* ── Header chips ── */
       .va-chip {
         display: flex;
         align-items: center;
@@ -441,6 +437,51 @@
         font-size: 13px;
         padding-top: 4px;
         line-height: 1.3;
+      }
+
+      /* ── Engagement trend chart ── */
+      .trend-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 18px;
+        margin-bottom: 16px;
+      }
+      .trend-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .trend-title {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .trend-legend {
+        display: flex;
+        gap: 12px;
+      }
+      .trend-leg-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .trend-leg-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .trend-wrap {
+        position: relative;
+        width: 100%;
+        height: 90px;
       }
 
       /* ── Model cards ── */
@@ -681,6 +722,86 @@
         border-radius: 3px;
       }
 
+      /* ── Scheduler ── */
+      .sched-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .sched-row:last-child {
+        border-bottom: none;
+      }
+      .sched-sub {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sched-eng {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--green);
+        flex-shrink: 0;
+      }
+      .sched-done {
+        font-size: 10px;
+        font-family: var(--mono);
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .sched-open {
+        font-size: 10px;
+        font-family: var(--mono);
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+
+      /* ── Subs to try ── */
+      .try-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .try-row:last-child {
+        border-bottom: none;
+      }
+      .try-sub {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .try-members {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .try-eng {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--green);
+        flex-shrink: 0;
+      }
+
       /* ── Comparison ── */
       .compare-row {
         display: flex;
@@ -733,54 +854,7 @@
         white-space: nowrap;
       }
 
-      /* ── Scheduler ── */
-      .sched-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 0;
-        border-bottom: 1px solid var(--border);
-      }
-      .sched-row:last-child {
-        border-bottom: none;
-      }
-      .sched-sub {
-        font-family: var(--mono);
-        font-size: 12px;
-        font-weight: 600;
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .sched-eng {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--green);
-        flex-shrink: 0;
-      }
-      .sched-done {
-        font-size: 10px;
-        font-family: var(--mono);
-        padding: 2px 8px;
-        border-radius: 4px;
-        flex-shrink: 0;
-        background: rgba(34, 197, 94, 0.1);
-        color: var(--green);
-        border: 1px solid rgba(34, 197, 94, 0.2);
-      }
-      .sched-open {
-        font-size: 10px;
-        font-family: var(--mono);
-        padding: 2px 8px;
-        border-radius: 4px;
-        flex-shrink: 0;
-        background: var(--surface2);
-        color: var(--muted);
-        border: 1px solid var(--border);
-      }
-
-      /* ── Date filter bar ── */
+      /* ── Filter bar ── */
       .filter-bar {
         display: flex;
         align-items: center;
@@ -834,7 +908,7 @@
         background: var(--surface2);
       }
 
-      /* ── Intel filter bar (date only) ── */
+      /* ── Intel filter bar ── */
       .intel-filter {
         display: flex;
         align-items: center;
@@ -1025,6 +1099,7 @@
         border-top: 1px solid var(--border);
         margin-top: 40px;
       }
+
       @media (max-width: 900px) {
         .dash-layout {
           grid-template-columns: 1fr;
@@ -1113,7 +1188,6 @@
           </button>
           <button class="nav-tab active">Posting Intel</button>
         </div>
-        <!-- SFW/NSFW — same as rest of site, controls both theme + content filter -->
         <div
           class="theme-toggle"
           onclick="toggleMode()"
@@ -1134,7 +1208,7 @@
             class="sync-btn"
             id="syncBtn"
             onclick="syncAllAccounts()"
-            title="Pulls latest posts from Reddit for all accounts, updates metrics, auto-rates subs, detects bans"
+            title="Pull latest posts from Reddit for all accounts"
           >
             ⟳ Sync
           </button>
@@ -1160,6 +1234,33 @@
       <!-- ══ DASHBOARD ══ -->
       <div id="tab-dashboard">
         <div id="syncAlert"></div>
+
+        <!-- Engagement trend chart (1/3 width via CSS, full row) -->
+        <div class="trend-card">
+          <div class="trend-header">
+            <span class="trend-title"
+              >Engagement Trend — Today vs Yesterday</span
+            >
+            <div class="trend-legend">
+              <div class="trend-leg-item">
+                <div
+                  class="trend-leg-dot"
+                  style="background: var(--accent)"
+                ></div>
+                Today
+              </div>
+              <div class="trend-leg-item">
+                <div
+                  class="trend-leg-dot"
+                  style="background: var(--blue)"
+                ></div>
+                Yesterday
+              </div>
+            </div>
+          </div>
+          <div class="trend-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+
         <div class="dash-layout">
           <div>
             <div class="metrics-strip">
@@ -1184,11 +1285,10 @@
             <div id="myModelsArea"><div class="skeleton"></div></div>
             <div id="modelsPager"></div>
 
+            <!-- Account Overview -->
             <div class="card" style="margin-top: 16px">
               <div class="card-title">
-                <span style="font-size: 12px; font-weight: 600"
-                  >Account Overview</span
-                >
+                <span>Account Overview</span>
                 <span
                   style="
                     font-size: 10px;
@@ -1204,33 +1304,38 @@
               <div id="acctPager"></div>
             </div>
 
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
-                margin-top: 16px;
-              "
-            >
-              <div class="card">
-                <div class="section-label">🏆 Highest Performing Sub</div>
-                <div id="topSubCard">
-                  <div class="skeleton" style="height: 60px"></div>
-                </div>
+            <!-- Post Overview -->
+            <div class="card" style="margin-top: 16px">
+              <div class="card-title">
+                <span>Post Overview</span>
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                  "
+                  id="postOverviewLabel"
+                  >Today</span
+                >
               </div>
-              <div class="card">
-                <div class="section-label">⚠️ Risky to Post</div>
-                <div id="riskySubsCard">
-                  <div class="skeleton" style="height: 60px"></div>
-                </div>
+              <div class="table-wrap" id="postOverviewTable">
+                <div class="skeleton"></div>
+              </div>
+              <div id="postOverviewPager"></div>
+            </div>
+
+            <!-- Risky to Post (moved from top cards) -->
+            <div class="card" style="margin-top: 16px">
+              <div class="section-label">Risky to Post</div>
+              <div id="riskySubsCard">
+                <div class="skeleton" style="height: 60px"></div>
               </div>
             </div>
 
+            <!-- Reuse Lock -->
             <div class="card" style="margin-top: 16px">
               <div class="card-title">
-                <span style="font-size: 12px; font-weight: 600"
-                  >⏱ Subreddit Reuse Lock</span
-                >
+                <span>Subreddit Reuse Lock</span>
                 <span
                   style="
                     font-size: 10px;
@@ -1246,8 +1351,9 @@
               <div id="reusePager"></div>
             </div>
 
+            <!-- VA Comparison -->
             <div class="card" style="margin-top: 16px">
-              <div class="section-label">📊 VA Performance Comparison</div>
+              <div class="section-label">VA Performance Comparison</div>
               <div id="compareArea">
                 <div class="skeleton" style="height: 80px"></div>
               </div>
@@ -1255,21 +1361,17 @@
           </div>
 
           <div class="sidebar">
+            <!-- All VAs Today's Posts (paginated) -->
             <div class="card">
-              <div class="card-title">
-                <span style="font-size: 12px; font-weight: 600"
-                  >All VAs — Today's Posts</span
-                >
-              </div>
+              <div class="card-title"><span>All VAs — Today's Posts</span></div>
               <div id="allVAsSidebar"><div class="skeleton"></div></div>
+              <div id="allVAsPager"></div>
             </div>
 
-            <!-- Scheduler -->
+            <!-- Best Subs to Post Today (paginated, 10/page) -->
             <div class="card">
               <div class="card-title">
-                <span style="font-size: 12px; font-weight: 600"
-                  >📅 Best Subs to Post Today</span
-                >
+                <span>Best Subs to Post Today</span>
               </div>
               <div
                 id="schedulerDay"
@@ -1286,6 +1388,7 @@
                 <div class="skeleton" style="height: 30px"></div>
                 <div class="skeleton" style="height: 30px; opacity: 0.6"></div>
               </div>
+              <div id="schedulerPager"></div>
               <div
                 style="
                   font-size: 10px;
@@ -1294,16 +1397,44 @@
                   margin-top: 8px;
                 "
               >
-                ✅ = already posted today · ○ = available
+                Done = already posted today · Open = available
               </div>
             </div>
 
+            <!-- Subs to Try Posting With -->
             <div class="card">
               <div class="card-title">
-                <span style="font-size: 12px; font-weight: 600"
-                  >🚩 Flagged Overlaps</span
+                <span>Subs to Try Posting With</span>
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                  "
+                  id="subsToTryMode"
+                  >SFW</span
                 >
               </div>
+              <div
+                style="
+                  font-size: 10px;
+                  font-family: var(--mono);
+                  color: var(--muted);
+                  margin-bottom: 10px;
+                "
+              >
+                High-engagement subs outside your usual rotation
+              </div>
+              <div id="subsToTryArea">
+                <div class="skeleton" style="height: 30px"></div>
+                <div class="skeleton" style="height: 30px; opacity: 0.6"></div>
+              </div>
+              <div id="subsToTryPager"></div>
+            </div>
+
+            <!-- Flagged Overlaps -->
+            <div class="card">
+              <div class="card-title"><span>Flagged Overlaps</span></div>
               <div id="flaggedArea">
                 <div class="empty" style="padding: 12px 0">
                   No overlaps today ✓
@@ -1343,15 +1474,15 @@
           "
         >
           <div class="card">
-            <div class="section-label">🔁 Top 5 Most Consistent Subs</div>
+            <div class="section-label">Top 5 Most Consistent Subs</div>
             <div id="consistentSubs"><div class="skeleton"></div></div>
           </div>
           <div class="card">
-            <div class="section-label">⚡ Top 5 Highest Engagement</div>
+            <div class="section-label">Top 5 Highest Engagement</div>
             <div
               style="
                 display: grid;
-                grid-template-columns: 20px 1fr 70px 60px;
+                grid-template-columns: 20px 1fr 60px 50px 50px;
                 gap: 8px;
                 padding: 4px 0 6px;
                 border-bottom: 1px solid var(--border);
@@ -1374,7 +1505,7 @@
                   color: var(--muted);
                   text-transform: uppercase;
                 "
-                >Subreddit</span
+                >Sub</span
               >
               <span
                 style="
@@ -1385,6 +1516,16 @@
                   text-align: right;
                 "
                 >Avg Eng</span
+              >
+              <span
+                style="
+                  font-family: var(--mono);
+                  font-size: 9px;
+                  color: var(--muted);
+                  text-transform: uppercase;
+                  text-align: right;
+                "
+                >Cmts</span
               >
               <span
                 style="
@@ -1406,18 +1547,32 @@
           <div class="chart-wrap"><canvas id="topSubsChart"></canvas></div>
         </div>
 
-        <div class="card" style="margin-bottom: 16px">
-          <div class="section-label">🚫 Subs Where Accounts Got Banned</div>
-          <div id="bannedSubsList">
-            <div class="empty">No banned account data.</div>
+        <!-- Subs Where Accounts Got Banned + Risky to Post side by side -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+          "
+        >
+          <div class="card">
+            <div class="section-label">Subs Where Accounts Got Banned</div>
+            <div id="bannedSubsList">
+              <div class="empty">No banned account data.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-label">Risky to Post</div>
+            <div id="riskySubsTopSubs">
+              <div class="empty">No risky subs flagged.</div>
+            </div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-title">
-            <span style="font-size: 12px; font-weight: 600"
-              >All Tracked Subs (ranked by score)</span
-            >
+            <span>All Tracked Subs (ranked by score)</span>
           </div>
           <div class="table-wrap" id="allSubsTable">
             <div class="skeleton"></div>
@@ -1465,7 +1620,6 @@
             </button>
           </div>
         </div>
-
         <div
           style="
             display: grid;
@@ -1478,8 +1632,7 @@
             <div class="alert al-b" style="margin-bottom: 16px">
               <span
                 >Auto-evaluated on every sync. High rank + low engagement → BAD.
-                High engagement → GOOD. Re-syncing overwrites ratings when
-                performance changes.</span
+                High engagement → GOOD.</span
               >
             </div>
             <div class="section-label">Auto-Evaluated Subreddits</div>
@@ -1498,10 +1651,8 @@
               <div class="form-field">
                 <label class="flabel">Rating</label
                 ><select class="fselect" id="ri-rating">
-                  <option value="good">
-                    Good — high engagement, post here
-                  </option>
-                  <option value="bad">Bad — underperforming or risky</option>
+                  <option value="good">Good — high engagement</option>
+                  <option value="bad">Bad — underperforming</option>
                   <option value="neutral">Neutral — situational</option>
                 </select>
               </div>
@@ -1532,8 +1683,10 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
           <div class="card" id="addVACard">
             <div class="card-title">
-              <span style="font-size: 12px; font-weight: 600">Add New VA</span>
-              <span class="chip chip-a" style="font-size: 9px">Admin only</span>
+              <span>Add New VA</span
+              ><span class="chip chip-a" style="font-size: 9px"
+                >Admin only</span
+              >
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -1557,7 +1710,6 @@
               <button class="btn" onclick="addVA()">Add VA</button>
             </div>
           </div>
-
           <div class="card">
             <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
               Add Model
@@ -1578,7 +1730,6 @@
               <button class="btn" onclick="addModel()">Add Model</button>
             </div>
           </div>
-
           <div class="card">
             <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
               Add Reddit Account to Model
@@ -1608,7 +1759,6 @@
               <button class="btn" onclick="addAccount()">Add Account</button>
             </div>
           </div>
-
           <div class="card" style="grid-column: 1/-1">
             <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
               Current Structure
@@ -1632,9 +1782,9 @@
           ? "http://localhost:3001/api"
           : "https://reddittracker-y65h.onrender.com/api";
 
-      const PER = 10;
+      const PER = 10; // rows per page
 
-      // ── State ─────────────────────────────────────────────────────────────────────
+      // ── State ──────────────────────────────────────────────────────────────────
       let currentVA = null,
         isAdmin = false;
       let allVAs = [],
@@ -1642,25 +1792,35 @@
         allRatings = [];
       let pinBuffer = "";
       let dashData = null,
-        overviewData = null,
-        topSubsData = null;
-      let topSubsChart = null;
+        overviewData = null;
+      let topSubsChart = null,
+        trendChart = null;
       let nsfwMode = false;
-      let intelFilter = "all"; // 'all', 'sfw', 'nsfw'
+      let intelFilter = "all";
 
-      // Pagination
+      // Pagination state
       let modelsPage = 1,
         acctPage = 1,
-        reusePage = 1,
-        allSubsPage = 1,
+        reusePage = 1;
+      let allSubsPage = 1,
         structurePage = 1;
+      let schedPage = 1,
+        allVAsPage = 1;
+      let postOverviewPage = 1,
+        subsToTryPage = 1;
+
+      // Caches
       let modelsCache = {},
         acctCache = {},
-        reuseCache = [],
-        allSubsCache = [],
+        reuseCache = [];
+      let allSubsCache = [],
         structureCache = [];
+      let schedCache = [],
+        allVAsCache = [],
+        postOverviewCache = [],
+        subsToTryCache = [];
 
-      // ── SFW/NSFW toggle (same as rest of site) ────────────────────────────────────
+      // ── SFW/NSFW toggle ────────────────────────────────────────────────────────
       function toggleMode() {
         nsfwMode = !nsfwMode;
         document.documentElement.setAttribute(
@@ -1668,12 +1828,15 @@
           nsfwMode ? "nsfw" : "sfw",
         );
         localStorage.setItem("subtracker-mode", nsfwMode ? "nsfw" : "sfw");
-        // Reload intel tab if active
+        document.getElementById("subsToTryMode").textContent = nsfwMode
+          ? "NSFW"
+          : "SFW";
+        if (currentVA) loadSubsToTry();
         if (document.getElementById("tab-intel").style.display !== "none")
           loadAutoEval();
       }
 
-      // ── PIN ───────────────────────────────────────────────────────────────────────
+      // ── PIN ────────────────────────────────────────────────────────────────────
       function pinPress(d) {
         if (pinBuffer.length >= 4) return;
         pinBuffer += d;
@@ -1690,6 +1853,7 @@
             .getElementById(`d${i}`)
             .classList.toggle("filled", i < pinBuffer.length);
       }
+
       async function pinEnter() {
         if (!pinBuffer.length) return;
         document.getElementById("pinError").textContent = "";
@@ -1716,6 +1880,7 @@
           updateDots();
         }
       }
+
       function logout() {
         sessionStorage.removeItem("va");
         currentVA = null;
@@ -1727,6 +1892,7 @@
         updateDots();
         window.location.href = "index.html";
       }
+
       async function onLogin() {
         document.getElementById("pinModal").style.display = "none";
         document.getElementById("mainContent").style.display = "block";
@@ -1735,13 +1901,16 @@
         const chip = document.getElementById("vaChip");
         if (isAdmin) chip.classList.add("admin-chip");
         document.getElementById("vaNameDisplay").textContent = isAdmin
-          ? "⭐ Admin"
+          ? "Admin"
           : currentVA.name;
+        document.getElementById("subsToTryMode").textContent = nsfwMode
+          ? "NSFW"
+          : "SFW";
         await loadBaseData();
         loadDashboard();
       }
 
-      // ── Tab ───────────────────────────────────────────────────────────────────────
+      // ── Tab ────────────────────────────────────────────────────────────────────
       function switchCtab(tab, btn) {
         document
           .querySelectorAll(".ctab")
@@ -1757,7 +1926,7 @@
         if (tab === "setup") loadSetup();
       }
 
-      // ── Base data ─────────────────────────────────────────────────────────────────
+      // ── Base data ──────────────────────────────────────────────────────────────
       async function loadBaseData() {
         const [vr, mr] = await Promise.all([
           fetch(`${API}/intel/vas`),
@@ -1767,13 +1936,13 @@
         allModels = (await mr.json()).data || [];
       }
 
-      // ── Sync ──────────────────────────────────────────────────────────────────────
+      // ── Sync ───────────────────────────────────────────────────────────────────
       async function syncAllAccounts() {
         const btn = document.getElementById("syncBtn");
         btn.disabled = true;
         btn.textContent = "⟳ Syncing...";
         const alertEl = document.getElementById("syncAlert");
-        alertEl.innerHTML = `<div class="alert al-b">Fetching Reddit data for all accounts... may take a moment.</div>`;
+        alertEl.innerHTML = `<div class="alert al-b">Fetching Reddit data for all accounts...</div>`;
         const myModels = isAdmin
           ? allModels
           : allModels.filter((m) => m.va_id === currentVA.id);
@@ -1810,32 +1979,65 @@
         loadDashboard();
       }
 
-      // ── Dashboard ─────────────────────────────────────────────────────────────────
+      // ── Dashboard ──────────────────────────────────────────────────────────────
       async function loadDashboard() {
         const adminParam = isAdmin ? "&admin=true" : "";
-        const [dashRes, overviewRes, schedRes] = await Promise.all([
+        const [
+          dashRes,
+          overviewRes,
+          schedRes,
+          trendRes,
+          overviewPostRes,
+          subsToTryRes,
+        ] = await Promise.all([
           fetch(`${API}/intel/dashboard?va_id=${currentVA.id}${adminParam}`),
           fetch(`${API}/intel/all-overview`),
           fetch(`${API}/intel/scheduler?va_id=${currentVA.id}`),
+          fetch(
+            `${API}/intel/engagement-trend?va_id=${currentVA.id}${adminParam}`,
+          ),
+          fetch(
+            `${API}/intel/post-overview?va_id=${currentVA.id}${adminParam}&days=1`,
+          ),
+          fetch(
+            `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
+          ),
         ]);
         dashData = await dashRes.json();
         overviewData = await overviewRes.json();
         const schedData = await schedRes.json();
+        const trendData = await trendRes.json();
+        const postData = await overviewPostRes.json();
+        const subsData = await subsToTryRes.json();
 
         const myModels = isAdmin
           ? allModels
           : allModels.filter((m) => m.va_id === currentVA.id);
+        renderTrendChart(trendData);
         renderMetrics(dashData);
         renderMyModels(myModels, dashData, 1);
         renderAcctTable(myModels, dashData, 1);
+        renderPostOverview(postData.data || [], 1);
         renderPerfCards(dashData);
         renderReuseLocks(dashData.reuse_locks || [], 1);
         renderComparison(overviewData.vas || []);
         renderSidebar(overviewData);
-        renderScheduler(schedData);
+        renderScheduler(schedData, 1);
+        subsToTryCache = subsData.data || [];
+        renderSubsToTry(subsToTryCache, 1);
       }
 
-      // ── Pager helper ──────────────────────────────────────────────────────────────
+      // ── Load subs to try (called on toggle) ────────────────────────────────────
+      async function loadSubsToTry() {
+        const res = await fetch(
+          `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
+        );
+        const j = await res.json();
+        subsToTryCache = j.data || [];
+        renderSubsToTry(subsToTryCache, 1);
+      }
+
+      // ── Pager helper ───────────────────────────────────────────────────────────
       function makePager(elId, total, page, setFn) {
         const el = document.getElementById(elId);
         if (!el) return;
@@ -1849,13 +2051,13 @@
           (_, i) => i + 1,
         ).filter((p) => Math.abs(p - page) <= 2);
         el.innerHTML = `<div class="pager">
-    <span class="pager-info">${(page - 1) * PER + 1}–${Math.min(page * PER, total)} of ${total}</span>
-    <div class="pager-btns">
-      <button class="pager-btn" ${page <= 1 ? "disabled" : ""} onclick="${setFn}(${page - 1})">←</button>
-      ${pages.map((p) => `<button class="pager-btn${p === page ? " cur" : ""}" onclick="${setFn}(${p})">${p}</button>`).join("")}
-      <button class="pager-btn" ${page >= totalPages ? "disabled" : ""} onclick="${setFn}(${page + 1})">→</button>
-    </div>
-  </div>`;
+          <span class="pager-info">${(page - 1) * PER + 1}–${Math.min(page * PER, total)} of ${total}</span>
+          <div class="pager-btns">
+            <button class="pager-btn" ${page <= 1 ? "disabled" : ""} onclick="${setFn}(${page - 1})">←</button>
+            ${pages.map((p) => `<button class="pager-btn${p === page ? " cur" : ""}" onclick="${setFn}(${p})">${p}</button>`).join("")}
+            <button class="pager-btn" ${page >= totalPages ? "disabled" : ""} onclick="${setFn}(${page + 1})">→</button>
+          </div>
+        </div>`;
       }
 
       function setModelPage(p) {
@@ -1878,8 +2080,95 @@
         structurePage = p;
         renderStructureRows(structureCache, p);
       }
+      function setSchedPage(p) {
+        schedPage = p;
+        renderSchedulerPage(schedCache, p);
+      }
+      function setAllVAsPage(p) {
+        allVAsPage = p;
+        renderAllVAsPage(allVAsCache, p);
+      }
+      function setPostOverviewPage(p) {
+        postOverviewPage = p;
+        renderPostOverviewPage(postOverviewCache, p);
+      }
+      function setSubsToTryPage(p) {
+        subsToTryPage = p;
+        renderSubsToTryPage(subsToTryCache, p);
+      }
 
-      // ── Metrics ───────────────────────────────────────────────────────────────────
+      // ── Trend chart ────────────────────────────────────────────────────────────
+      function renderTrendChart(data) {
+        if (trendChart) trendChart.destroy();
+        const labels = Array.from({ length: 24 }, (_, i) =>
+          i % 4 === 0 ? `${i}h` : "",
+        );
+        const tickColor = nsfwMode ? "#7a6a55" : "#888899";
+        const gridColor = nsfwMode
+          ? "rgba(0,0,0,0.05)"
+          : "rgba(255,255,255,0.04)";
+        trendChart = new Chart(document.getElementById("trendChart"), {
+          type: "line",
+          data: {
+            labels: Array.from({ length: 24 }, (_, i) => `${i}h`),
+            datasets: [
+              {
+                label: "Today",
+                data: data.today || Array(24).fill(0),
+                borderColor: "var(--accent)",
+                backgroundColor: "rgba(255,69,0,0.08)",
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+              },
+              {
+                label: "Yesterday",
+                data: data.yesterday || Array(24).fill(0),
+                borderColor: "var(--blue)",
+                backgroundColor: "rgba(59,130,246,0.06)",
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: false,
+                borderDash: [4, 3],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                mode: "index",
+                intersect: false,
+                callbacks: {
+                  label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} eng`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: tickColor, font: { size: 9 }, maxRotation: 0 },
+              },
+              y: {
+                grid: { color: gridColor },
+                border: { display: false },
+                ticks: {
+                  color: tickColor,
+                  font: { size: 9 },
+                  callback: (v) => (v > 0 ? v : ""),
+                },
+              },
+            },
+            interaction: { mode: "nearest", axis: "x", intersect: false },
+          },
+        });
+      }
+
+      // ── Metrics ────────────────────────────────────────────────────────────────
       function renderMetrics(dash) {
         const posts = dash.all_posts || [],
           tp = dash.today_posts || [];
@@ -1908,7 +2197,7 @@
         document.getElementById("dm-top-sub").title = topText;
       }
 
-      // ── My Models ─────────────────────────────────────────────────────────────────
+      // ── My Models (hide banned accounts) ───────────────────────────────────────
       function renderMyModels(models, dash, page) {
         modelsCache = { models, dash };
         modelsPage = page;
@@ -1924,8 +2213,10 @@
         area.innerHTML = slice
           .map((m) => {
             const allAccts = m.reddit_accounts || [];
+            // Only show non-banned accounts in dashboard
             const active = allAccts.filter((a) => !a.banned);
-            const banned = allAccts.filter((a) => a.banned);
+            if (!active.length)
+              return `<div class="model-card"><div class="model-card-header"><span class="model-card-name">${m.model_name}</span><span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No active accounts</span></div></div>`;
             const rows = active
               .map((a) => {
                 const s = stats[a.id] || {};
@@ -1934,10 +2225,10 @@
                   ? Math.round(s.totalUpvotes / s.posts)
                   : 0;
                 return `<div class="account-row">
-        <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
-        <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
-        <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
-      </div>`;
+              <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
+              <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
+              <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
+            </div>`;
               })
               .join("");
             const postedIds = new Set(
@@ -1946,19 +2237,18 @@
                 .map((p) => p.account_id),
             );
             return `<div class="model-card">
-      <div class="model-card-header">
-        <span class="model-card-name">${m.model_name}</span>
-        <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
-      </div>
-      ${rows || '<div style="font-size:12px;color:var(--muted)">No active accounts.</div>'}
-      ${banned.length ? `<div style="font-size:11px;color:var(--red);font-family:var(--mono);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">🚫 Banned: ${banned.map((a) => "@" + a.username).join(", ")}</div>` : ""}
-    </div>`;
+            <div class="model-card-header">
+              <span class="model-card-name">${m.model_name}</span>
+              <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
+            </div>
+            ${rows}
+          </div>`;
           })
           .join("");
         makePager("modelsPager", models.length, page, "setModelPage");
       }
 
-      // ── Account Overview Table ────────────────────────────────────────────────────
+      // ── Account Overview Table ──────────────────────────────────────────────────
       function renderAcctTable(models, dash, page) {
         acctCache = { models, dash };
         acctPage = page;
@@ -1981,7 +2271,7 @@
             const isBanned = a.banned === true;
             const isActive = !isBanned && s.posts > 0;
             const sc = isBanned ? "chip-r" : isActive ? "chip-g" : "chip-m";
-            const sl = isBanned ? "🚫 Banned" : isActive ? "Active" : "Idle";
+            const sl = isBanned ? "Banned" : isActive ? "Active" : "Idle";
             const vaName = m.vas?.name || "—";
             rows.push({ a, m, s, eng, lastSub, sc, sl, vaName });
           }
@@ -1994,52 +2284,91 @@
           slice = rows.slice(start, start + PER);
         const vaCol = isAdmin ? "<th>VA</th>" : "";
         el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Model</th><th>Last Sub</th><th>Upvotes</th><th>Comments</th><th>Avg Eng</th><th>Status</th></tr></thead>
-    <tbody>${slice
-      .map(
-        (r) => `<tr>
-      ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName || "—"}</td>` : ""}
-      <td><b>@${r.a.username}</b></td>
-      <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
-      <td style="font-family:var(--mono)">${r.lastSub}</td>
-      <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
-      <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
-      <td style="font-family:var(--mono)">${r.eng}</td>
-      <td><span class="chip ${r.sc}">${r.sl}</span></td>
-    </tr>`,
-      )
-      .join("")}</tbody></table>`;
+        <tbody>${slice
+          .map(
+            (r) => `<tr>
+          ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName}</td>` : ""}
+          <td><b>@${r.a.username}</b></td>
+          <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
+          <td style="font-family:var(--mono)">${r.lastSub}</td>
+          <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
+          <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
+          <td style="font-family:var(--mono)">${r.eng}</td>
+          <td><span class="chip ${r.sc}">${r.sl}</span></td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
         makePager("acctPager", rows.length, page, "setAcctPage");
       }
 
-      // ── Performance cards ─────────────────────────────────────────────────────────
+      // ── Post Overview ──────────────────────────────────────────────────────────
+      function renderPostOverview(data, page) {
+        postOverviewCache = data;
+        postOverviewPage = page;
+        renderPostOverviewPage(data, page);
+      }
+      function renderPostOverviewPage(data, page) {
+        postOverviewPage = page;
+        const el = document.getElementById("postOverviewTable");
+        if (!data.length) {
+          el.innerHTML = `<div class="empty">No posts today yet. Sync first.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = data.slice(start, start + PER);
+        const vaCol = isAdmin ? "<th>VA</th>" : "";
+        el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Subreddit</th><th>Upvotes</th><th>Comments</th><th>Posted At</th><th>Link</th></tr></thead>
+        <tbody>${slice
+          .map((p) => {
+            const time = new Date(p.posted_at).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Manila",
+            });
+            return `<tr>
+            ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${p.va || "—"}</td>` : ""}
+            <td style="font-family:var(--mono);font-weight:600">@${p.username || "—"}</td>
+            <td style="font-family:var(--mono)">r/${p.subreddit}</td>
+            <td style="font-family:var(--mono)">${p.upvotes || 0}</td>
+            <td style="font-family:var(--mono)">${p.comments || 0}</td>
+            <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${time}</td>
+            <td>${p.post_url ? `<a href="${p.post_url}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue)">View</a>` : "—"}</td>
+          </tr>`;
+          })
+          .join("")}</tbody></table>`;
+        makePager(
+          "postOverviewPager",
+          data.length,
+          page,
+          "setPostOverviewPage",
+        );
+      }
+
+      // ── Performance cards (risky only, no top sub) ────────────────────────────
       function renderPerfCards(dash) {
-        const top = dash.top_sub;
-        const el = document.getElementById("topSubCard");
-        if (top)
-          el.innerHTML = `<div style="font-size:20px;font-weight:700;margin-bottom:4px">r/${top.sub}</div><div style="font-size:12px;color:var(--muted);font-family:var(--mono)">${top.count} posts · avg ${top.avg.toFixed(0)} eng</div><div style="margin-top:8px"><span class="chip chip-g">Best Performer</span></div>`;
-        else
-          el.innerHTML = `<div class="empty" style="padding:8px 0">No data yet</div>`;
         fetch(`${API}/intel/ratings`)
           .then((r) => r.json())
           .then((j) => {
             const bad = (j.data || [])
               .filter((r) => r.rating === "bad")
-              .slice(0, 3);
-            const el2 = document.getElementById("riskySubsCard");
-            if (!bad.length) {
-              el2.innerHTML = `<div class="empty" style="padding:8px 0">No risky subs flagged</div>`;
-              return;
-            }
-            el2.innerHTML = bad
-              .map(
-                (r) =>
-                  `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit}</span><span class="rb rb-b">bad</span></div>`,
-              )
-              .join("");
+              .slice(0, 5);
+            const el = document.getElementById("riskySubsCard");
+            const elTS = document.getElementById("riskySubsTopSubs");
+            const html = bad.length
+              ? bad
+                  .map(
+                    (r) =>
+                      `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit}</span><span class="rb rb-b">bad</span></div>`,
+                  )
+                  .join("")
+              : `<div class="empty" style="padding:8px 0">No risky subs flagged</div>`;
+            if (el) el.innerHTML = html;
+            if (elTS) elTS.innerHTML = html;
           });
       }
 
-      // ── Reuse locks ───────────────────────────────────────────────────────────────
+      // ── Reuse locks ────────────────────────────────────────────────────────────
       function renderReuseLocks(locks, page) {
         reuseCache = locks;
         reusePage = page;
@@ -2061,16 +2390,16 @@
                 : "var(--amber)"
               : "var(--green)";
             return `<div class="reuse-row">
-      <span class="reuse-sub">r/${l.subreddit}</span>
-      <div class="reuse-bar"><div class="reuse-fill" style="width:${pct}%;background:${bc}"></div></div>
-      <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked ? "var(--red)" : "var(--green)"};flex-shrink:0">${l.locked ? "🔒 " + dl.toFixed(1) + "d" : "✅ Available"}</span>
-    </div>`;
+            <span class="reuse-sub">r/${l.subreddit}</span>
+            <div class="reuse-bar"><div class="reuse-fill" style="width:${pct}%;background:${bc}"></div></div>
+            <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked ? "var(--red)" : "var(--green)"};flex-shrink:0">${l.locked ? "🔒 " + dl.toFixed(1) + "d" : "Available"}</span>
+          </div>`;
           })
           .join("");
         makePager("reusePager", locks.length, page, "setReusePage");
       }
 
-      // ── Comparison (exclude Admin) ────────────────────────────────────────────────
+      // ── Comparison ─────────────────────────────────────────────────────────────
       function renderComparison(vaList) {
         const el = document.getElementById("compareArea");
         const filtered = vaList.filter((v) => v.name !== "Admin");
@@ -2082,46 +2411,36 @@
         const myVA = sorted.find((v) => v.id === currentVA.id);
         const myRank = sorted.indexOf(myVA) + 1;
         el.innerHTML = `<div style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:10px">Your rank: <span style="color:${myRank === 1 ? "var(--amber)" : "var(--text)"};font-weight:700">#${myRank} of ${sorted.length}</span></div>
-    ${sorted
-      .map((va, i) => {
-        const mine = va.id === currentVA.id;
-        const diff =
-          myVA && !mine
-            ? (
-                ((myVA.avgEng - va.avgEng) / Math.max(va.avgEng, 1)) *
-                100
-              ).toFixed(0)
-            : null;
-        return `<div class="compare-row">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <span style="font-size:14px;font-weight:700;color:${i === 0 ? "var(--amber)" : "var(--muted)"};width:20px;flex-shrink:0">#${i + 1}</span>
-          <span class="compare-va" style="${mine ? "color:var(--accent)" : ""}">${va.name}${mine ? " (you)" : ""}</span>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${va.avgEng} avg eng</div>
-          ${diff !== null ? `<div style="font-size:10px;font-family:var(--mono);color:${diff > 0 ? "var(--green)" : "var(--red)"}">${diff > 0 ? "+" : ""}${diff}% vs you</div>` : ""}
-        </div>
-      </div>`;
-      })
-      .join("")}`;
+        ${sorted
+          .map((va, i) => {
+            const mine = va.id === currentVA.id;
+            const diff =
+              myVA && !mine
+                ? (
+                    ((myVA.avgEng - va.avgEng) / Math.max(va.avgEng, 1)) *
+                    100
+                  ).toFixed(0)
+                : null;
+            return `<div class="compare-row">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="font-size:14px;font-weight:700;color:${i === 0 ? "var(--amber)" : "var(--muted)"};width:20px;flex-shrink:0">#${i + 1}</span>
+              <span class="compare-va" style="${mine ? "color:var(--accent)" : ""}">${va.name}${mine ? " (you)" : ""}</span>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${va.avgEng} avg eng</div>
+              ${diff !== null ? `<div style="font-size:10px;font-family:var(--mono);color:${diff > 0 ? "var(--green)" : "var(--red)"}">${diff > 0 ? "+" : ""}${diff}% vs you</div>` : ""}
+            </div>
+          </div>`;
+          })
+          .join("")}`;
       }
 
-      // ── Sidebar ───────────────────────────────────────────────────────────────────
+      // ── Sidebar (All VAs Today, paginated) ─────────────────────────────────────
       function renderSidebar(ov) {
-        const se = document.getElementById("allVAsSidebar");
         const usage = ov.sub_usage_today || {};
-        if (!Object.keys(usage).length) {
-          se.innerHTML = `<div class="empty" style="padding:8px 0">No posts today yet.</div>`;
-        } else
-          se.innerHTML = Object.entries(usage)
-            .slice(0, 15)
-            .map(
-              ([sub, users]) => `<div class="flag-row">
-    <span style="flex-shrink:0">${users.length > 1 ? "🚩" : "✓"}</span>
-    <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map((u) => `@${u.username}`).join(", ")}</div></div>
-  </div>`,
-            )
-            .join("");
+        allVAsCache = Object.entries(usage);
+        renderAllVAsPage(allVAsCache, 1);
+
         const fe = document.getElementById("flaggedArea");
         const flagged = ov.flagged_today || [];
         if (!flagged.length)
@@ -2132,40 +2451,99 @@
               (
                 f,
               ) => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-    <div style="font-size:12px;font-weight:600;color:var(--red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${f.subreddit}</div>
-    <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map((u) => `@${u.username}`).join(" · ")}</div>
-  </div>`,
+          <div style="font-size:12px;font-weight:600;color:var(--red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${f.subreddit}</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map((u) => `@${u.username}`).join(" · ")}</div>
+        </div>`,
             )
             .join("");
       }
 
-      // ── Scheduler ────────────────────────────────────────────────────────────────
-      function renderScheduler(data) {
-        const el = document.getElementById("schedulerArea");
-        const dayEl = document.getElementById("schedulerDay");
-        const recs = data.recommendations || [];
-        const day = data.day || "";
-
-        dayEl.textContent = `${day} — top 5 picks based on your post history`;
-
-        if (!recs.length) {
-          el.innerHTML = `<div class="empty" style="padding:8px 0;font-size:11px">No historical data yet. Post and sync more to unlock recommendations.</div>`;
+      function renderAllVAsPage(entries, page) {
+        allVAsPage = page;
+        const se = document.getElementById("allVAsSidebar");
+        if (!entries.length) {
+          se.innerHTML = `<div class="empty" style="padding:8px 0">No posts today yet.</div>`;
+          document.getElementById("allVAsPager").innerHTML = "";
           return;
         }
-
-        el.innerHTML = recs
+        const start = (page - 1) * PER,
+          slice = entries.slice(start, start + PER);
+        se.innerHTML = slice
           .map(
-            (r, i) => `<div class="sched-row">
-    <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:16px;flex-shrink:0">#${i + 1}</span>
-    <span class="sched-sub">r/${r.sub}</span>
-    <span class="sched-eng">${r.avg_engagement} avg</span>
-    <span class="${r.already_posted_today ? "sched-done" : "sched-open"}">${r.already_posted_today ? "✅ Done" : "○ Open"}</span>
-  </div>`,
+            ([sub, users]) => `<div class="flag-row">
+          <span style="flex-shrink:0;font-size:12px">${users.length > 1 ? "🚩" : "✓"}</span>
+          <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map((u) => `@${u.username}`).join(", ")}</div></div>
+        </div>`,
           )
           .join("");
+        makePager("allVAsPager", entries.length, page, "setAllVAsPage");
       }
 
-      // ── Top Subs ──────────────────────────────────────────────────────────────────
+      // ── Scheduler (paginated, 10/page from 40) ─────────────────────────────────
+      function renderScheduler(data, page) {
+        schedCache = data.recommendations || [];
+        const dayEl = document.getElementById("schedulerDay");
+        dayEl.textContent = `${data.day || ""} — based on your post history`;
+        renderSchedulerPage(schedCache, page);
+      }
+      function renderSchedulerPage(recs, page) {
+        schedPage = page;
+        const el = document.getElementById("schedulerArea");
+        if (!recs.length) {
+          el.innerHTML = `<div class="empty" style="padding:8px 0;font-size:11px">No historical data yet. Post and sync more.</div>`;
+          document.getElementById("schedulerPager").innerHTML = "";
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = recs.slice(start, start + PER);
+        el.innerHTML = slice
+          .map(
+            (r, i) => `<div class="sched-row">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:24px;flex-shrink:0">#${start + i + 1}</span>
+          <span class="sched-sub">r/${r.sub}</span>
+          <span class="sched-eng">${r.avg_engagement} avg</span>
+          <span class="${r.already_posted_today ? "sched-done" : "sched-open"}">${r.already_posted_today ? "Done" : "Open"}</span>
+        </div>`,
+          )
+          .join("");
+        makePager("schedulerPager", recs.length, page, "setSchedPage");
+      }
+
+      // ── Subs to Try ────────────────────────────────────────────────────────────
+      function renderSubsToTry(data, page) {
+        subsToTryCache = data;
+        subsToTryPage = page;
+        renderSubsToTryPage(data, page);
+      }
+      function renderSubsToTryPage(data, page) {
+        subsToTryPage = page;
+        const el = document.getElementById("subsToTryArea");
+        if (!data.length) {
+          el.innerHTML = `<div class="empty" style="padding:8px 0;font-size:11px">No suggestions available for current filter.</div>`;
+          document.getElementById("subsToTryPager").innerHTML = "";
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = data.slice(start, start + PER);
+        el.innerHTML = slice
+          .map((s) => {
+            const members =
+              s.subscribers >= 1e6
+                ? (s.subscribers / 1e6).toFixed(1) + "M"
+                : s.subscribers >= 1e3
+                  ? (s.subscribers / 1e3).toFixed(0) + "K"
+                  : String(s.subscribers);
+            return `<div class="try-row">
+            <span class="try-sub">r/${s.name}</span>
+            <span class="try-members">${members}</span>
+            <span class="try-eng">${s.engagement_rate.toFixed(2)}%</span>
+          </div>`;
+          })
+          .join("");
+        makePager("subsToTryPager", data.length, page, "setSubsToTryPage");
+      }
+
+      // ── Top Subs ───────────────────────────────────────────────────────────────
       function clearTSFilter() {
         document.getElementById("ts-from").value = "";
         document.getElementById("ts-to").value = "";
@@ -2173,18 +2551,17 @@
       }
 
       async function loadTopSubs() {
-        const from = document.getElementById("ts-from").value;
-        const to = document.getElementById("ts-to").value;
+        const from = document.getElementById("ts-from").value,
+          to = document.getElementById("ts-to").value;
         let url = `${API}/intel/top-subs`;
         const params = [];
         if (from) params.push(`from=${encodeURIComponent(from)}`);
         if (to) params.push(`to=${encodeURIComponent(to)}`);
         if (params.length) url += "?" + params.join("&");
-
         const res = await fetch(url);
         const raw = await res.json();
-        const top = raw.top || [];
-        const consistent = raw.consistent || [];
+        const top = raw.top || [],
+          consistent = raw.consistent || [];
 
         // Consistent
         const ce = document.getElementById("consistentSubs");
@@ -2198,7 +2575,7 @@
               .join("")
           : `<div class="empty">Post more to see data.</div>`;
 
-        // High engagement
+        // High engagement (with comments column)
         const he = document.getElementById("highEngSubs");
         he.innerHTML = top.slice(0, 5).length
           ? top
@@ -2207,12 +2584,13 @@
                 (
                   s,
                   i,
-                ) => `<div style="display:grid;grid-template-columns:20px 1fr 70px 60px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
-        <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i + 1}</span>
-        <span style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${s.sub}</span>
-        <span style="font-family:var(--mono);font-size:12px;color:var(--green);text-align:right">${s.avg_engagement}</span>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.post_count}</span>
-      </div>`,
+                ) => `<div style="display:grid;grid-template-columns:20px 1fr 60px 50px 50px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+              <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i + 1}</span>
+              <span style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${s.sub}</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--green);text-align:right">${s.avg_engagement}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.avg_comments || "—"}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.post_count}</span>
+            </div>`,
               )
               .join("")
           : `<div class="empty">No engagement data yet.</div>`;
@@ -2276,7 +2654,7 @@
             },
           });
 
-        // Banned accounts — show last sub
+        // Banned accounts
         const be = document.getElementById("bannedSubsList");
         const banned = raw.banned_accounts || [];
         be.innerHTML = banned.length
@@ -2285,20 +2663,23 @@
                 (
                   a,
                 ) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <span class="chip chip-r">🚫 Banned</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${a.username}</div>
-          ${a.last_sub ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>` : ""}
-        </div>
-        ${a.va ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>` : ""}
-      </div>`,
+              <span class="chip chip-r">Banned</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${a.username}</div>
+                ${a.last_sub ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>` : ""}
+              </div>
+              ${a.va ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>` : ""}
+            </div>`,
               )
               .join("")
           : `<div class="empty">No banned accounts.</div>`;
 
-        // All subs table (no nsfw filter — show everything)
+        // All subs table (with comments)
         allSubsCache = top;
         renderAllSubsTable(top, 1);
+
+        // Risky in top subs tab
+        renderPerfCards({});
       }
 
       function renderAllSubsTable(subs, page) {
@@ -2310,24 +2691,25 @@
         }
         const start = (page - 1) * PER,
           slice = subs.slice(start, start + PER);
-        el.innerHTML = `<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
-    <tbody>${slice
-      .map(
-        (s, i) => `<tr>
-      <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
-      <td><b>r/${s.sub}</b></td>
-      <td style="font-family:var(--mono)">${s.avg_engagement}</td>
-      <td style="font-family:var(--mono)">${s.peak_engagement}</td>
-      <td style="font-family:var(--mono)">${s.post_count}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
-      <td><span class="chip chip-b">${s.score}</span></td>
-    </tr>`,
-      )
-      .join("")}</tbody></table>`;
+        el.innerHTML = `<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Avg Cmts</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
+        <tbody>${slice
+          .map(
+            (s, i) => `<tr>
+          <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
+          <td><b>r/${s.sub}</b></td>
+          <td style="font-family:var(--mono)">${s.avg_engagement}</td>
+          <td style="font-family:var(--mono)">${s.avg_comments || "—"}</td>
+          <td style="font-family:var(--mono)">${s.peak_engagement}</td>
+          <td style="font-family:var(--mono)">${s.post_count}</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
+          <td><span class="chip chip-b">${s.score}</span></td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
         makePager("allSubsPager", subs.length, page, "setAllSubsPage");
       }
 
-      // ── Subreddit Intel ───────────────────────────────────────────────────────────
+      // ── Subreddit Intel ────────────────────────────────────────────────────────
       function clearIntelFilter() {
         document.getElementById("in-from").value = "";
         document.getElementById("in-to").value = "";
@@ -2346,22 +2728,15 @@
         const res = await fetch(`${API}/intel/ratings`);
         const j = await res.json();
         let ratings = j.data || [];
-
-        // Apply type filter
         if (intelFilter === "nsfw")
           ratings = ratings.filter((r) => r.is_nsfw === true);
         else if (intelFilter === "sfw")
           ratings = ratings.filter((r) => r.is_nsfw !== true);
-        // 'all' = no filter
-
-        // Also respect page-level nsfw mode
         if (nsfwMode) ratings = ratings.filter((r) => r.is_nsfw === true);
         else if (!nsfwMode && intelFilter === "all")
           ratings = ratings.filter((r) => r.is_nsfw !== true);
-
-        // Date filter
-        const from = document.getElementById("in-from").value;
-        const to = document.getElementById("in-to").value;
+        const from = document.getElementById("in-from").value,
+          to = document.getElementById("in-to").value;
         if (from)
           ratings = ratings.filter(
             (r) => new Date(r.updated_at) >= new Date(from),
@@ -2370,14 +2745,12 @@
           ratings = ratings.filter(
             (r) => new Date(r.updated_at) <= new Date(to + "T23:59:59"),
           );
-
         allRatings = ratings;
         const el = document.getElementById("autoEvalList");
         if (!ratings.length) {
           el.innerHTML = `<div class="empty">No evaluations for this filter.<br>Sync accounts to auto-evaluate, or change filter.</div>`;
           return;
         }
-
         const grouped = { good: [], bad: [], neutral: [] };
         ratings.forEach((r) => {
           if (grouped[r.rating]) grouped[r.rating].push(r);
@@ -2387,30 +2760,29 @@
           { key: "bad", label: "Bad — Avoid", color: "var(--red)" },
           { key: "neutral", label: "Neutral", color: "var(--muted)" },
         ];
-
         el.innerHTML = sections
           .filter((s) => grouped[s.key].length)
           .map(
             (s) => `
-    <div style="margin-bottom:18px">
-      <div class="section-label" style="color:${s.color}">${s.label} (${grouped[s.key].length})</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${grouped[s.key]
-          .map(
-            (
-              r,
-            ) => `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw ? '<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>' : ""}</div>
-            ${r.reason ? `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>` : ""}
-          </div>
-          <span class="rb rb-${r.rating === "good" ? "g" : r.rating === "bad" ? "b" : "n"}">${r.rating}${r.reason?.startsWith("Auto:") ? "&nbsp;(auto)" : ""}</span>
-          <button class="btn btn-sm btn-ro" onclick="deleteRating('${r.subreddit}')">Remove</button>
-        </div>`,
-          )
-          .join("")}
-      </div>
-    </div>`,
+          <div style="margin-bottom:18px">
+            <div class="section-label" style="color:${s.color}">${s.label} (${grouped[s.key].length})</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${grouped[s.key]
+                .map(
+                  (
+                    r,
+                  ) => `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw ? '<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>' : ""}</div>
+                  ${r.reason ? `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>` : ""}
+                </div>
+                <span class="rb rb-${r.rating === "good" ? "g" : r.rating === "bad" ? "b" : "n"}">${r.rating}${r.reason?.startsWith("Auto:") ? "&nbsp;(auto)" : ""}</span>
+                <button class="btn btn-sm btn-ro" onclick="deleteRating('${r.subreddit}')">Remove</button>
+              </div>`,
+                )
+                .join("")}
+            </div>
+          </div>`,
           )
           .join("");
       }
@@ -2459,7 +2831,7 @@
         loadAutoEval();
       }
 
-      // ── Setup ─────────────────────────────────────────────────────────────────────
+      // ── Setup ──────────────────────────────────────────────────────────────────
       function loadSetup() {
         const vaList = isAdmin
           ? allVAs
@@ -2508,7 +2880,7 @@
             const isBanned = a.banned === true;
             const sc = isBanned ? "chip-r" : a.is_active ? "chip-g" : "chip-m";
             const sl = isBanned
-              ? "🚫 Banned"
+              ? "Banned"
               : a.is_active
                 ? "Active"
                 : "Inactive";
@@ -2536,17 +2908,17 @@
         const start = (page - 1) * PER,
           slice = rows.slice(start, start + PER);
         el.innerHTML = `<table><thead><tr><th>VA</th><th>Model</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
-    <tbody>${slice
-      .map(
-        (r) => `<tr>
-      <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
-      <td style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis">${r.model}</td>
-      <td style="font-family:var(--mono);overflow:hidden;text-overflow:ellipsis">${r.id ? "@" + r.username : r.username}</td>
-      <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
-      <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
-    </tr>`,
-      )
-      .join("")}</tbody></table>`;
+        <tbody>${slice
+          .map(
+            (r) => `<tr>
+          <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
+          <td style="font-family:var(--mono);font-weight:600">${r.model}</td>
+          <td style="font-family:var(--mono)">${r.id ? "@" + r.username : r.username}</td>
+          <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
+          <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
         makePager("structurePager", rows.length, page, "setStructurePage");
       }
 
@@ -2674,7 +3046,7 @@
         setTimeout(() => (el.innerHTML = ""), 4000);
       }
 
-      // ── Init ──────────────────────────────────────────────────────────────────────
+      // ── Init ───────────────────────────────────────────────────────────────────
       const savedMode = localStorage.getItem("subtracker-mode");
       if (savedMode === "nsfw") {
         nsfwMode = true;
