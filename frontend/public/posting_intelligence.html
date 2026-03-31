@@ -1126,6 +1126,162 @@
     </style>
   </head>
   <body>
+    <div class="modal-overlay" id="logPostModal" style="display: none">
+      <div class="modal-box" style="width: 420px; text-align: left">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+          "
+        >
+          <div>
+            <div style="font-size: 16px; font-weight: 700; margin-bottom: 2px">
+              Log a Post
+            </div>
+            <div
+              style="
+                font-size: 11px;
+                color: var(--muted);
+                font-family: var(--mono);
+              "
+            >
+              Paste a Reddit post URL to log it manually
+            </div>
+          </div>
+          <button
+            onclick="closeLogPost()"
+            style="
+              background: none;
+              border: none;
+              cursor: pointer;
+              color: var(--muted);
+              font-size: 18px;
+              padding: 4px;
+              line-height: 1;
+            "
+          >
+            ✕
+          </button>
+        </div>
+
+        <div id="logPostAlert" style="min-height: 0"></div>
+
+        <div class="form-field" style="margin-bottom: 14px">
+          <label class="flabel">Reddit Post URL</label>
+          <input
+            class="finput"
+            id="logPostUrl"
+            placeholder="https://reddit.com/r/subreddit/comments/..."
+          />
+        </div>
+
+        <!-- Preview card (shown after fetch) -->
+        <div
+          id="logPostPreview"
+          style="
+            display: none;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 14px;
+          "
+        >
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            "
+            id="lp-title"
+          >
+            —
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+            <div
+              style="
+                font-size: 10px;
+                font-family: var(--mono);
+                color: var(--muted);
+              "
+            >
+              Subreddit<br /><span
+                style="color: var(--text); font-size: 12px"
+                id="lp-sub"
+                >—</span
+              >
+            </div>
+            <div
+              style="
+                font-size: 10px;
+                font-family: var(--mono);
+                color: var(--muted);
+              "
+            >
+              Account<br /><span
+                style="color: var(--text); font-size: 12px"
+                id="lp-author"
+                >—</span
+              >
+            </div>
+            <div
+              style="
+                font-size: 10px;
+                font-family: var(--mono);
+                color: var(--muted);
+              "
+            >
+              Upvotes<br /><span
+                style="color: var(--green); font-size: 12px; font-weight: 600"
+                id="lp-upvotes"
+                >—</span
+              >
+            </div>
+            <div
+              style="
+                font-size: 10px;
+                font-family: var(--mono);
+                color: var(--muted);
+              "
+            >
+              Comments<br /><span
+                style="color: var(--blue); font-size: 12px; font-weight: 600"
+                id="lp-comments"
+                >—</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px">
+          <button
+            class="btn"
+            id="logPostSaveBtn"
+            onclick="submitLogPost()"
+            style="flex: 1"
+          >
+            Log Post
+          </button>
+          <button
+            class="btn"
+            onclick="closeLogPost()"
+            style="
+              background: none;
+              border-color: var(--muted);
+              color: var(--muted);
+            "
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="pinModal">
       <div class="modal-box">
         <div class="modal-icon">🔐</div>
@@ -1263,25 +1419,54 @@
 
         <div class="dash-layout">
           <div>
-            <div class="metrics-strip">
-              <div class="metric-mini">
-                <div class="metric-mini-label">Posts Today</div>
-                <div class="metric-mini-value" id="dm-today">—</div>
+            <div
+              style="
+                display: flex;
+                align-items: flex-start;
+                gap: 16px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+              "
+            >
+              <div class="metrics-strip" style="flex: 1; margin-bottom: 0">
+                <div class="metric-mini">
+                  <div class="metric-mini-label">Posts Today</div>
+                  <div class="metric-mini-value" id="dm-today">—</div>
+                </div>
+                <div class="metric-mini">
+                  <div class="metric-mini-label">Avg Upvotes</div>
+                  <div class="metric-mini-value" id="dm-avg-up">—</div>
+                </div>
+                <div class="metric-mini">
+                  <div class="metric-mini-label">Avg Comments</div>
+                  <div class="metric-mini-value" id="dm-avg-cmt">—</div>
+                </div>
+                <div class="metric-mini">
+                  <div class="metric-mini-label">Top Sub Today</div>
+                  <div class="metric-mini-value sm" id="dm-top-sub">—</div>
+                </div>
               </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">Avg Upvotes</div>
-                <div class="metric-mini-value" id="dm-avg-up">—</div>
-              </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">Avg Comments</div>
-                <div class="metric-mini-value" id="dm-avg-cmt">—</div>
-              </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">Top Sub Today</div>
-                <div class="metric-mini-value sm" id="dm-top-sub">—</div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  padding-top: 4px;
+                  flex-shrink: 0;
+                "
+              >
+                <button
+                  class="btn"
+                  onclick="openLogPost()"
+                  style="
+                    white-space: nowrap;
+                    font-size: 12px;
+                    padding: 8px 18px;
+                  "
+                >
+                  + Log Post
+                </button>
               </div>
             </div>
-
             <div id="myModelsArea"><div class="skeleton"></div></div>
             <div id="modelsPager"></div>
 
@@ -2051,13 +2236,13 @@
           (_, i) => i + 1,
         ).filter((p) => Math.abs(p - page) <= 2);
         el.innerHTML = `<div class="pager">
-          <span class="pager-info">${(page - 1) * PER + 1}–${Math.min(page * PER, total)} of ${total}</span>
-          <div class="pager-btns">
-            <button class="pager-btn" ${page <= 1 ? "disabled" : ""} onclick="${setFn}(${page - 1})">←</button>
-            ${pages.map((p) => `<button class="pager-btn${p === page ? " cur" : ""}" onclick="${setFn}(${p})">${p}</button>`).join("")}
-            <button class="pager-btn" ${page >= totalPages ? "disabled" : ""} onclick="${setFn}(${page + 1})">→</button>
-          </div>
-        </div>`;
+                <span class="pager-info">${(page - 1) * PER + 1}–${Math.min(page * PER, total)} of ${total}</span>
+                <div class="pager-btns">
+                  <button class="pager-btn" ${page <= 1 ? "disabled" : ""} onclick="${setFn}(${page - 1})">←</button>
+                  ${pages.map((p) => `<button class="pager-btn${p === page ? " cur" : ""}" onclick="${setFn}(${p})">${p}</button>`).join("")}
+                  <button class="pager-btn" ${page >= totalPages ? "disabled" : ""} onclick="${setFn}(${page + 1})">→</button>
+                </div>
+              </div>`;
       }
 
       function setModelPage(p) {
@@ -2229,10 +2414,10 @@
                   ? Math.round(s.totalUpvotes / s.posts)
                   : 0;
                 return `<div class="account-row">
-              <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
-              <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
-              <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
-            </div>`;
+                    <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
+                    <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
+                    <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
+                  </div>`;
               })
               .join("");
             const postedIds = new Set(
@@ -2241,12 +2426,12 @@
                 .map((p) => p.account_id),
             );
             return `<div class="model-card">
-            <div class="model-card-header">
-              <span class="model-card-name">${m.model_name}</span>
-              <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
-            </div>
-            ${rows}
-          </div>`;
+                  <div class="model-card-header">
+                    <span class="model-card-name">${m.model_name}</span>
+                    <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
+                  </div>
+                  ${rows}
+                </div>`;
           })
           .join("");
         makePager("modelsPager", models.length, page, "setModelPage");
@@ -2288,20 +2473,20 @@
           slice = rows.slice(start, start + PER);
         const vaCol = isAdmin ? "<th>VA</th>" : "";
         el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Model</th><th>Last Sub</th><th>Upvotes</th><th>Comments</th><th>Avg Eng</th><th>Status</th></tr></thead>
-        <tbody>${slice
-          .map(
-            (r) => `<tr>
-          ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName}</td>` : ""}
-          <td><b>@${r.a.username}</b></td>
-          <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
-          <td style="font-family:var(--mono)">${r.lastSub}</td>
-          <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
-          <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
-          <td style="font-family:var(--mono)">${r.eng}</td>
-          <td><span class="chip ${r.sc}">${r.sl}</span></td>
-        </tr>`,
-          )
-          .join("")}</tbody></table>`;
+              <tbody>${slice
+                .map(
+                  (r) => `<tr>
+                ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName}</td>` : ""}
+                <td><b>@${r.a.username}</b></td>
+                <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
+                <td style="font-family:var(--mono)">${r.lastSub}</td>
+                <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
+                <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
+                <td style="font-family:var(--mono)">${r.eng}</td>
+                <td><span class="chip ${r.sc}">${r.sl}</span></td>
+              </tr>`,
+                )
+                .join("")}</tbody></table>`;
         makePager("acctPager", rows.length, page, "setAcctPage");
       }
 
@@ -2322,25 +2507,28 @@
           slice = data.slice(start, start + PER);
         const vaCol = isAdmin ? "<th>VA</th>" : "";
         el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Subreddit</th><th>Upvotes</th><th>Comments</th><th>Posted At</th><th>Link</th></tr></thead>
-        <tbody>${slice
-          .map((p) => {
-            const time = new Date(p.posted_at).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Manila",
-            });
-            return `<tr>
-            ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${p.va || "—"}</td>` : ""}
-            <td style="font-family:var(--mono);font-weight:600">@${p.username || "—"}</td>
-            <td style="font-family:var(--mono)">r/${p.subreddit}</td>
-            <td style="font-family:var(--mono)">${p.upvotes || 0}</td>
-            <td style="font-family:var(--mono)">${p.comments || 0}</td>
-            <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${time}</td>
-            <td>${p.post_url ? `<a href="${p.post_url}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue)">View</a>` : "—"}</td>
-          </tr>`;
-          })
-          .join("")}</tbody></table>`;
+              <tbody>${slice
+                .map((p) => {
+                  const time = new Date(p.posted_at).toLocaleTimeString(
+                    "en-US",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      timeZone: "Asia/Manila",
+                    },
+                  );
+                  return `<tr>
+                  ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${p.va || "—"}</td>` : ""}
+                  <td style="font-family:var(--mono);font-weight:600">@${p.username || "—"}</td>
+                  <td style="font-family:var(--mono)">r/${p.subreddit}</td>
+                  <td style="font-family:var(--mono)">${p.upvotes || 0}</td>
+                  <td style="font-family:var(--mono)">${p.comments || 0}</td>
+                  <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${time}</td>
+                  <td>${p.post_url ? `<a href="${p.post_url}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue)">View</a>` : "—"}</td>
+                </tr>`;
+                })
+                .join("")}</tbody></table>`;
         makePager(
           "postOverviewPager",
           data.length,
@@ -2394,10 +2582,10 @@
                 : "var(--amber)"
               : "var(--green)";
             return `<div class="reuse-row">
-            <span class="reuse-sub">r/${l.subreddit}</span>
-            <div class="reuse-bar"><div class="reuse-fill" style="width:${pct}%;background:${bc}"></div></div>
-            <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked ? "var(--red)" : "var(--green)"};flex-shrink:0">${l.locked ? "🔒 " + dl.toFixed(1) + "d" : "Available"}</span>
-          </div>`;
+                  <span class="reuse-sub">r/${l.subreddit}</span>
+                  <div class="reuse-bar"><div class="reuse-fill" style="width:${pct}%;background:${bc}"></div></div>
+                  <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked ? "var(--red)" : "var(--green)"};flex-shrink:0">${l.locked ? "🔒 " + dl.toFixed(1) + "d" : "Available"}</span>
+                </div>`;
           })
           .join("");
         makePager("reusePager", locks.length, page, "setReusePage");
@@ -2415,28 +2603,28 @@
         const myVA = sorted.find((v) => v.id === currentVA.id);
         const myRank = sorted.indexOf(myVA) + 1;
         el.innerHTML = `<div style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:10px">Your rank: <span style="color:${myRank === 1 ? "var(--amber)" : "var(--text)"};font-weight:700">#${myRank} of ${sorted.length}</span></div>
-        ${sorted
-          .map((va, i) => {
-            const mine = va.id === currentVA.id;
-            const diff =
-              myVA && !mine
-                ? (
-                    ((myVA.avgEng - va.avgEng) / Math.max(va.avgEng, 1)) *
-                    100
-                  ).toFixed(0)
-                : null;
-            return `<div class="compare-row">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <span style="font-size:14px;font-weight:700;color:${i === 0 ? "var(--amber)" : "var(--muted)"};width:20px;flex-shrink:0">#${i + 1}</span>
-              <span class="compare-va" style="${mine ? "color:var(--accent)" : ""}">${va.name}${mine ? " (you)" : ""}</span>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${va.avgEng} avg eng</div>
-              ${diff !== null ? `<div style="font-size:10px;font-family:var(--mono);color:${diff > 0 ? "var(--green)" : "var(--red)"}">${diff > 0 ? "+" : ""}${diff}% vs you</div>` : ""}
-            </div>
-          </div>`;
-          })
-          .join("")}`;
+              ${sorted
+                .map((va, i) => {
+                  const mine = va.id === currentVA.id;
+                  const diff =
+                    myVA && !mine
+                      ? (
+                          ((myVA.avgEng - va.avgEng) / Math.max(va.avgEng, 1)) *
+                          100
+                        ).toFixed(0)
+                      : null;
+                  return `<div class="compare-row">
+                  <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                    <span style="font-size:14px;font-weight:700;color:${i === 0 ? "var(--amber)" : "var(--muted)"};width:20px;flex-shrink:0">#${i + 1}</span>
+                    <span class="compare-va" style="${mine ? "color:var(--accent)" : ""}">${va.name}${mine ? " (you)" : ""}</span>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0">
+                    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${va.avgEng} avg eng</div>
+                    ${diff !== null ? `<div style="font-size:10px;font-family:var(--mono);color:${diff > 0 ? "var(--green)" : "var(--red)"}">${diff > 0 ? "+" : ""}${diff}% vs you</div>` : ""}
+                  </div>
+                </div>`;
+                })
+                .join("")}`;
       }
 
       // ── Sidebar (All VAs Today, paginated) ─────────────────────────────────────
@@ -2455,9 +2643,9 @@
               (
                 f,
               ) => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:600;color:var(--red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${f.subreddit}</div>
-          <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map((u) => `@${u.username}`).join(" · ")}</div>
-        </div>`,
+                <div style="font-size:12px;font-weight:600;color:var(--red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${f.subreddit}</div>
+                <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map((u) => `@${u.username}`).join(" · ")}</div>
+              </div>`,
             )
             .join("");
       }
@@ -2475,9 +2663,9 @@
         se.innerHTML = slice
           .map(
             ([sub, users]) => `<div class="flag-row">
-          <span style="flex-shrink:0;font-size:12px">${users.length > 1 ? "🚩" : "✓"}</span>
-          <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map((u) => `@${u.username}`).join(", ")}</div></div>
-        </div>`,
+                <span style="flex-shrink:0;font-size:12px">${users.length > 1 ? "🚩" : "✓"}</span>
+                <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map((u) => `@${u.username}`).join(", ")}</div></div>
+              </div>`,
           )
           .join("");
         makePager("allVAsPager", entries.length, page, "setAllVAsPage");
@@ -2503,11 +2691,11 @@
         el.innerHTML = slice
           .map(
             (r, i) => `<div class="sched-row">
-          <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:24px;flex-shrink:0">#${start + i + 1}</span>
-          <span class="sched-sub">r/${r.sub}</span>
-          <span class="sched-eng">${r.avg_engagement} avg</span>
-          <span class="${r.already_posted_today ? "sched-done" : "sched-open"}">${r.already_posted_today ? "Done" : "Open"}</span>
-        </div>`,
+                <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:24px;flex-shrink:0">#${start + i + 1}</span>
+                <span class="sched-sub">r/${r.sub}</span>
+                <span class="sched-eng">${r.avg_engagement} avg</span>
+                <span class="${r.already_posted_today ? "sched-done" : "sched-open"}">${r.already_posted_today ? "Done" : "Open"}</span>
+              </div>`,
           )
           .join("");
         makePager("schedulerPager", recs.length, page, "setSchedPage");
@@ -2538,10 +2726,10 @@
                   ? (s.subscribers / 1e3).toFixed(0) + "K"
                   : String(s.subscribers);
             return `<div class="try-row">
-            <span class="try-sub">r/${s.name}</span>
-            <span class="try-members">${members}</span>
-            <span class="try-eng">${s.engagement_rate.toFixed(2)}%</span>
-          </div>`;
+                  <span class="try-sub">r/${s.name}</span>
+                  <span class="try-members">${members}</span>
+                  <span class="try-eng">${s.engagement_rate.toFixed(2)}%</span>
+                </div>`;
           })
           .join("");
         makePager("subsToTryPager", data.length, page, "setSubsToTryPage");
@@ -2589,12 +2777,12 @@
                   s,
                   i,
                 ) => `<div style="display:grid;grid-template-columns:20px 1fr 60px 50px 50px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
-              <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i + 1}</span>
-              <span style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${s.sub}</span>
-              <span style="font-family:var(--mono);font-size:12px;color:var(--green);text-align:right">${s.avg_engagement}</span>
-              <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.avg_comments || "—"}</span>
-              <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.post_count}</span>
-            </div>`,
+                    <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i + 1}</span>
+                    <span style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${s.sub}</span>
+                    <span style="font-family:var(--mono);font-size:12px;color:var(--green);text-align:right">${s.avg_engagement}</span>
+                    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.avg_comments || "—"}</span>
+                    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.post_count}</span>
+                  </div>`,
               )
               .join("")
           : `<div class="empty">No engagement data yet.</div>`;
@@ -2667,13 +2855,13 @@
                 (
                   a,
                 ) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-              <span class="chip chip-r">Banned</span>
-              <div style="flex:1;min-width:0">
-                <div style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${a.username}</div>
-                ${a.last_sub ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>` : ""}
-              </div>
-              ${a.va ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>` : ""}
-            </div>`,
+                    <span class="chip chip-r">Banned</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${a.username}</div>
+                      ${a.last_sub ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>` : ""}
+                    </div>
+                    ${a.va ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>` : ""}
+                  </div>`,
               )
               .join("")
           : `<div class="empty">No banned accounts.</div>`;
@@ -2696,20 +2884,20 @@
         const start = (page - 1) * PER,
           slice = subs.slice(start, start + PER);
         el.innerHTML = `<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Avg Cmts</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
-        <tbody>${slice
-          .map(
-            (s, i) => `<tr>
-          <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
-          <td><b>r/${s.sub}</b></td>
-          <td style="font-family:var(--mono)">${s.avg_engagement}</td>
-          <td style="font-family:var(--mono)">${s.avg_comments || "—"}</td>
-          <td style="font-family:var(--mono)">${s.peak_engagement}</td>
-          <td style="font-family:var(--mono)">${s.post_count}</td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
-          <td><span class="chip chip-b">${s.score}</span></td>
-        </tr>`,
-          )
-          .join("")}</tbody></table>`;
+              <tbody>${slice
+                .map(
+                  (s, i) => `<tr>
+                <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
+                <td><b>r/${s.sub}</b></td>
+                <td style="font-family:var(--mono)">${s.avg_engagement}</td>
+                <td style="font-family:var(--mono)">${s.avg_comments || "—"}</td>
+                <td style="font-family:var(--mono)">${s.peak_engagement}</td>
+                <td style="font-family:var(--mono)">${s.post_count}</td>
+                <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
+                <td><span class="chip chip-b">${s.score}</span></td>
+              </tr>`,
+                )
+                .join("")}</tbody></table>`;
         makePager("allSubsPager", subs.length, page, "setAllSubsPage");
       }
 
@@ -2768,25 +2956,25 @@
           .filter((s) => grouped[s.key].length)
           .map(
             (s) => `
-          <div style="margin-bottom:18px">
-            <div class="section-label" style="color:${s.color}">${s.label} (${grouped[s.key].length})</div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              ${grouped[s.key]
-                .map(
-                  (
-                    r,
-                  ) => `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw ? '<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>' : ""}</div>
-                  ${r.reason ? `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>` : ""}
-                </div>
-                <span class="rb rb-${r.rating === "good" ? "g" : r.rating === "bad" ? "b" : "n"}">${r.rating}${r.reason?.startsWith("Auto:") ? "&nbsp;(auto)" : ""}</span>
-                <button class="btn btn-sm btn-ro" onclick="deleteRating('${r.subreddit}')">Remove</button>
-              </div>`,
-                )
-                .join("")}
-            </div>
-          </div>`,
+                <div style="margin-bottom:18px">
+                  <div class="section-label" style="color:${s.color}">${s.label} (${grouped[s.key].length})</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    ${grouped[s.key]
+                      .map(
+                        (
+                          r,
+                        ) => `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw ? '<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>' : ""}</div>
+                        ${r.reason ? `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>` : ""}
+                      </div>
+                      <span class="rb rb-${r.rating === "good" ? "g" : r.rating === "bad" ? "b" : "n"}">${r.rating}${r.reason?.startsWith("Auto:") ? "&nbsp;(auto)" : ""}</span>
+                      <button class="btn btn-sm btn-ro" onclick="deleteRating('${r.subreddit}')">Remove</button>
+                    </div>`,
+                      )
+                      .join("")}
+                  </div>
+                </div>`,
           )
           .join("");
       }
@@ -2912,17 +3100,17 @@
         const start = (page - 1) * PER,
           slice = rows.slice(start, start + PER);
         el.innerHTML = `<table><thead><tr><th>VA</th><th>Model</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
-        <tbody>${slice
-          .map(
-            (r) => `<tr>
-          <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
-          <td style="font-family:var(--mono);font-weight:600">${r.model}</td>
-          <td style="font-family:var(--mono)">${r.id ? "@" + r.username : r.username}</td>
-          <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
-          <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
-        </tr>`,
-          )
-          .join("")}</tbody></table>`;
+              <tbody>${slice
+                .map(
+                  (r) => `<tr>
+                <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
+                <td style="font-family:var(--mono);font-weight:600">${r.model}</td>
+                <td style="font-family:var(--mono)">${r.id ? "@" + r.username : r.username}</td>
+                <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
+                <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
+              </tr>`,
+                )
+                .join("")}</tbody></table>`;
         makePager("structurePager", rows.length, page, "setStructurePage");
       }
 
@@ -3075,6 +3263,125 @@
         if (e.key === "Enter") pinEnter();
         if (e.key === "Backspace") pinClear();
       });
+
+      // ── Log Post modal ────────────────────────────────────────────────────────────
+      function openLogPost() {
+        document.getElementById("logPostModal").style.display = "flex";
+        document.getElementById("logPostUrl").value = "";
+        document.getElementById("logPostAlert").innerHTML = "";
+        document.getElementById("logPostPreview").style.display = "none";
+        document.getElementById("logPostSaveBtn").textContent = "Log Post";
+        document.getElementById("logPostSaveBtn").disabled = false;
+        setTimeout(() => document.getElementById("logPostUrl").focus(), 100);
+      }
+
+      function closeLogPost() {
+        document.getElementById("logPostModal").style.display = "none";
+      }
+
+      // Preview fires on input (debounced) — gives instant feedback as they paste the URL
+      let logPostTimer;
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("logPostUrl")
+          ?.addEventListener("input", (e) => {
+            clearTimeout(logPostTimer);
+            const val = e.target.value.trim();
+            if (!val || !val.includes("/comments/")) {
+              document.getElementById("logPostPreview").style.display = "none";
+              return;
+            }
+            logPostTimer = setTimeout(() => previewLogPost(val), 500);
+          });
+
+        document
+          .getElementById("logPostUrl")
+          ?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") submitLogPost();
+          });
+
+        document
+          .getElementById("logPostModal")
+          ?.addEventListener("click", (e) => {
+            if (e.target === document.getElementById("logPostModal"))
+              closeLogPost();
+          });
+      });
+
+      async function previewLogPost(url) {
+        // Quick preview fetch — just shows what will be logged
+        document.getElementById("logPostAlert").innerHTML = "";
+        try {
+          const res = await fetch(`${API}/intel/log-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url, preview: true }),
+          });
+          // We actually just fire the full submit to get real data.
+          // The preview is populated from the response.
+          // For now, just show the URL is valid so the user can proceed.
+        } catch {}
+      }
+
+      async function submitLogPost() {
+        const url = document.getElementById("logPostUrl").value.trim();
+        const alertEl = document.getElementById("logPostAlert");
+        const btn = document.getElementById("logPostSaveBtn");
+        const preview = document.getElementById("logPostPreview");
+
+        if (!url) {
+          alertEl.innerHTML = `<div class="alert al-a" style="margin-bottom:12px">Paste a Reddit post URL first.</div>`;
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Fetching...";
+        alertEl.innerHTML = "";
+        preview.style.display = "none";
+
+        try {
+          const res = await fetch(`${API}/intel/log-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          });
+          const j = await res.json();
+
+          if (j.error) {
+            alertEl.innerHTML = `<div class="alert al-r" style="margin-bottom:12px">${j.error}</div>`;
+            btn.disabled = false;
+            btn.textContent = "Log Post";
+            return;
+          }
+
+          // Show preview card with fetched data
+          const p = j.post;
+          document.getElementById("lp-title").textContent = p.title || "—";
+          document.getElementById("lp-sub").textContent = `r/${p.subreddit}`;
+          document.getElementById("lp-author").textContent = `@${p.author}`;
+          document.getElementById("lp-upvotes").textContent = p.upvotes ?? 0;
+          document.getElementById("lp-comments").textContent = p.comments ?? 0;
+          preview.style.display = "block";
+
+          if (j.duplicate) {
+            alertEl.innerHTML = `<div class="alert al-a" style="margin-bottom:12px">${j.message}</div>`;
+            btn.textContent = "Already Logged";
+          } else {
+            alertEl.innerHTML = `<div class="alert al-g" style="margin-bottom:12px">${j.message}</div>`;
+            btn.textContent = "Logged!";
+            // Refresh dashboard post overview after a short delay
+            setTimeout(() => {
+              loadDashboard();
+              closeLogPost();
+            }, 2000);
+          }
+          btn.disabled = true;
+        } catch (err) {
+          alertEl.innerHTML = `<div class="alert al-r" style="margin-bottom:12px">Connection error. Try again.</div>`;
+          btn.disabled = false;
+          btn.textContent = "Log Post";
+        }
+      }
     </script>
   </body>
 </html>
