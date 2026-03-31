@@ -1,1082 +1,2704 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-mode="sfw">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Posting Intelligence — SubTracker</title>
-  <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    :root {
-      --bg:#0e0e10;--surface:#18181b;--surface2:#222228;
-      --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
-      --text:#f0f0f0;--muted:#888899;--accent:#ff4500;
-      --green:#22c55e;--blue:#3b82f6;--amber:#f59e0b;--red:#ef4444;
-      --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
-      --radius:12px;--header-bg:rgba(14,14,16,0.92);
-      --knob-x:2px;--knob-color:#555566;
-    }
-    [data-mode="nsfw"] {
-      --bg:#f5f0eb;--surface:#ffffff;--surface2:#ede8e0;
-      --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.16);
-      --text:#1a1209;--muted:#7a6a55;--accent:#c0392b;
-      --green:#27ae60;--blue:#2980b9;--amber:#e67e22;
-      --header-bg:rgba(245,240,235,0.94);
-      --knob-x:22px;--knob-color:#c0392b;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;transition:background 0.4s,color 0.3s;}
-    a{color:inherit;text-decoration:none;}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Posting Intelligence — SubTracker</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+      :root {
+        --bg: #0e0e10;
+        --surface: #18181b;
+        --surface2: #222228;
+        --border: rgba(255, 255, 255, 0.08);
+        --border2: rgba(255, 255, 255, 0.14);
+        --text: #f0f0f0;
+        --muted: #888899;
+        --accent: #ff4500;
+        --green: #22c55e;
+        --blue: #3b82f6;
+        --amber: #f59e0b;
+        --red: #ef4444;
+        --font: "Syne", sans-serif;
+        --mono: "DM Mono", monospace;
+        --radius: 12px;
+        --header-bg: rgba(14, 14, 16, 0.92);
+        --knob-x: 2px;
+        --knob-color: #555566;
+      }
+      [data-mode="nsfw"] {
+        --bg: #f5f0eb;
+        --surface: #ffffff;
+        --surface2: #ede8e0;
+        --border: rgba(0, 0, 0, 0.08);
+        --border2: rgba(0, 0, 0, 0.16);
+        --text: #1a1209;
+        --muted: #7a6a55;
+        --accent: #c0392b;
+        --green: #27ae60;
+        --blue: #2980b9;
+        --amber: #e67e22;
+        --header-bg: rgba(245, 240, 235, 0.94);
+        --knob-x: 22px;
+        --knob-color: #c0392b;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        min-height: 100vh;
+        transition:
+          background 0.4s,
+          color 0.3s;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
 
-    /* ── PIN Modal ── */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:200;}
-    .modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px 36px;width:340px;text-align:center;}
-    .modal-icon{font-size:36px;margin-bottom:14px;}
-    .modal-title{font-size:20px;font-weight:700;margin-bottom:4px;}
-    .modal-sub{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:24px;}
-    .pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:20px;}
-    .pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--border2);transition:all 0.2s;}
-    .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
-    .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
-    .pin-btn{padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:16px;font-weight:500;cursor:pointer;transition:all 0.15s;}
-    .pin-btn:hover{background:var(--border2);}
-    .pin-btn:active{transform:scale(0.95);}
-    .pin-clear{background:rgba(255,69,0,0.1);color:var(--accent);border-color:rgba(255,69,0,0.2);}
-    .pin-enter{background:rgba(34,197,94,0.1);color:var(--green);border-color:rgba(34,197,94,0.2);}
-    .pin-error{font-size:12px;color:var(--red);font-family:var(--mono);min-height:16px;margin-top:4px;}
+      /* ── PIN Modal ── */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.88);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+      }
+      .modal-box {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 20px;
+        padding: 40px 36px;
+        width: 340px;
+        text-align: center;
+      }
+      .modal-icon {
+        font-size: 36px;
+        margin-bottom: 14px;
+      }
+      .modal-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .modal-sub {
+        font-size: 12px;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-bottom: 24px;
+      }
+      .pin-dots {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .pin-dot {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid var(--border2);
+        transition: all 0.2s;
+      }
+      .pin-dot.filled {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .pin-pad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .pin-btn {
+        padding: 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .pin-btn:hover {
+        background: var(--border2);
+      }
+      .pin-btn:active {
+        transform: scale(0.95);
+      }
+      .pin-clear {
+        background: rgba(255, 69, 0, 0.1);
+        color: var(--accent);
+        border-color: rgba(255, 69, 0, 0.2);
+      }
+      .pin-enter {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+        border-color: rgba(34, 197, 94, 0.2);
+      }
+      .pin-error {
+        font-size: 12px;
+        color: var(--red);
+        font-family: var(--mono);
+        min-height: 16px;
+        margin-top: 4px;
+      }
 
-    /* ── Header ── */
-    header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--header-bg);backdrop-filter:blur(12px);z-index:10;flex-wrap:wrap;gap:10px;transition:background 0.4s,border-color 0.3s;}
-    .logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-0.02em;}
-    .logo-img{width:26px;height:26px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-    .logo-img img{width:100%;height:100%;object-fit:contain;}
-    .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-    .nav-tabs{display:flex;gap:5px;flex-wrap:wrap;}
-    .nav-tab{padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-family:var(--mono);color:var(--muted);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-    .nav-tab:hover{background:var(--surface2);color:var(--text);border-color:var(--border2);}
-    .nav-tab.active{background:var(--surface2);color:var(--text);border-color:var(--accent);}
+      /* ── Header ── */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--header-bg);
+        backdrop-filter: blur(12px);
+        z-index: 10;
+        flex-wrap: wrap;
+        gap: 10px;
+        transition:
+          background 0.4s,
+          border-color 0.3s;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .logo-img {
+        width: 26px;
+        height: 26px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .logo-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .nav-tabs {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .nav-tab {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .nav-tab:hover {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .nav-tab.active {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--accent);
+      }
 
-    /* ── SFW/NSFW toggle (same as main site) ── */
-    .theme-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
-    .theme-label{font-family:var(--mono);font-size:14px;color:var(--muted);letter-spacing:0.04em;transition:color 0.3s;min-width:28px;}
-    .theme-label.right{text-align:left;}
-    .toggle-track{width:44px;height:24px;border-radius:12px;background:var(--surface2);border:1px solid var(--border2);position:relative;flex-shrink:0;transition:background 0.3s,border-color 0.3s;}
-    [data-mode="nsfw"] .toggle-track{background:rgba(192,57,43,0.1);border-color:rgba(192,57,43,0.25);}
-    .toggle-knob{width:18px;height:18px;border-radius:50%;background:var(--knob-color);position:absolute;top:2px;left:var(--knob-x);transition:left 0.3s cubic-bezier(.4,0,.2,1),background 0.3s;}
+      /* ── SFW/NSFW toggle (same as main site) ── */
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .theme-label {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        transition: color 0.3s;
+        min-width: 28px;
+      }
+      .theme-label.right {
+        text-align: left;
+      }
+      .toggle-track {
+        width: 44px;
+        height: 24px;
+        border-radius: 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        position: relative;
+        flex-shrink: 0;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      [data-mode="nsfw"] .toggle-track {
+        background: rgba(192, 57, 43, 0.1);
+        border-color: rgba(192, 57, 43, 0.25);
+      }
+      .toggle-knob {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--knob-color);
+        position: absolute;
+        top: 2px;
+        left: var(--knob-x);
+        transition:
+          left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          background 0.3s;
+      }
 
-    /* ── Header chips ── */
-    .va-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:20px;padding:4px 12px;}
-    .admin-chip{color:var(--amber)!important;background:rgba(245,158,11,0.1)!important;border-color:rgba(245,158,11,0.2)!important;}
-    .logout-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.2s;}
-    .logout-btn:hover{border-color:var(--red);color:var(--red);}
-    .sync-btn{padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);color:var(--blue);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-    .sync-btn:hover{background:rgba(59,130,246,0.2);}
-    .sync-btn:disabled{opacity:0.4;cursor:not-allowed;}
+      /* ── Header chips ── */
+      .va-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--green);
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 20px;
+        padding: 4px 12px;
+      }
+      .admin-chip {
+        color: var(--amber) !important;
+        background: rgba(245, 158, 11, 0.1) !important;
+        border-color: rgba(245, 158, 11, 0.2) !important;
+      }
+      .logout-btn {
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: none;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .logout-btn:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
+      .sync-btn {
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--blue);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .sync-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+      }
+      .sync-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
 
-    /* ── Layout ── */
-    main{max-width:1400px;margin:0 auto;padding:20px 16px;}
-    .content-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
-    .ctab{padding:10px 16px;border-radius:8px 8px 0 0;background:none;border:1px solid transparent;cursor:pointer;font-family:var(--font);font-size:13px;color:var(--muted);transition:all 0.15s;border-bottom:2px solid transparent;}
-    .ctab:hover{color:var(--text);background:var(--surface2);}
-    .ctab.active{color:var(--text);font-weight:600;border-bottom-color:var(--accent);}
-    .dash-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;}
+      /* ── Layout ── */
+      main {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px 16px;
+      }
+      .content-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .ctab {
+        padding: 10px 16px;
+        border-radius: 8px 8px 0 0;
+        background: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--muted);
+        transition: all 0.15s;
+        border-bottom: 2px solid transparent;
+      }
+      .ctab:hover {
+        color: var(--text);
+        background: var(--surface2);
+      }
+      .ctab.active {
+        color: var(--text);
+        font-weight: 600;
+        border-bottom-color: var(--accent);
+      }
+      .dash-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 16px;
+        align-items: start;
+      }
 
-    /* ── Cards ── */
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:background 0.3s,border-color 0.2s;}
-    .card:hover{border-color:var(--border2);}
-    .card-title{font-size:12px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
-    .section-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+      /* ── Cards ── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px;
+        transition:
+          background 0.3s,
+          border-color 0.2s;
+      }
+      .card:hover {
+        border-color: var(--border2);
+      }
+      .card-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .section-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 10px;
+      }
 
-    /* ── Metrics strip ── */
-    .metrics-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
-    .metric-mini{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0;transition:background 0.3s,border-color 0.2s;}
-    .metric-mini-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-    .metric-mini-value{font-size:22px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .metric-mini-value.sm{font-size:13px;padding-top:4px;line-height:1.3;}
+      /* ── Metrics strip ── */
+      .metrics-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .metric-mini {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        min-width: 0;
+        transition:
+          background 0.3s,
+          border-color 0.2s;
+      }
+      .metric-mini-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 4px;
+      }
+      .metric-mini-value {
+        font-size: 22px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .metric-mini-value.sm {
+        font-size: 13px;
+        padding-top: 4px;
+        line-height: 1.3;
+      }
 
-    /* ── Model cards ── */
-    .model-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;transition:background 0.3s,border-color 0.2s;}
-    .model-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;}
-    .model-card-name{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;}
-    .account-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
-    .account-row:last-child{border-bottom:none;}
-    .account-avatar{width:28px;height:28px;border-radius:50%;background:rgba(255,69,0,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);font-weight:600;flex-shrink:0;}
-    .account-info{flex:1;min-width:0;}
-    .account-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .account-meta{font-size:11px;color:var(--muted);font-family:var(--mono);}
-    .acct-status{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;flex-shrink:0;white-space:nowrap;}
-    .s-active{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
-    .s-idle{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
-    .posted-today{color:var(--green);font-family:var(--mono);font-size:11px;white-space:nowrap;}
-    .not-posted{color:var(--amber);font-family:var(--mono);font-size:11px;white-space:nowrap;}
+      /* ── Model cards ── */
+      .model-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 12px;
+        transition:
+          background 0.3s,
+          border-color 0.2s;
+      }
+      .model-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        gap: 8px;
+      }
+      .model-card-name {
+        font-size: 14px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 220px;
+      }
+      .account-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .account-row:last-child {
+        border-bottom: none;
+      }
+      .account-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 69, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-family: var(--mono);
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+      .account-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .account-name {
+        font-size: 13px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .account-meta {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+      }
+      .acct-status {
+        font-size: 10px;
+        font-family: var(--mono);
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .s-active {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .s-idle {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .posted-today {
+        color: var(--green);
+        font-family: var(--mono);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .not-posted {
+        color: var(--amber);
+        font-family: var(--mono);
+        font-size: 11px;
+        white-space: nowrap;
+      }
 
-    /* ── Pagination ── */
-    .pager{display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;margin-top:8px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;}
-    .pager-info{color:var(--muted);}
-    .pager-btns{display:flex;gap:4px;}
-    .pager-btn{padding:4px 9px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.15s;}
-    .pager-btn:hover{border-color:var(--border2);}
-    .pager-btn:disabled{opacity:0.3;cursor:not-allowed;}
-    .pager-btn.cur{border-color:var(--accent);color:var(--accent);}
+      /* ── Pagination ── */
+      .pager {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0 0;
+        margin-top: 8px;
+        border-top: 1px solid var(--border);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      .pager-info {
+        color: var(--muted);
+      }
+      .pager-btns {
+        display: flex;
+        gap: 4px;
+      }
+      .pager-btn {
+        padding: 4px 9px;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .pager-btn:hover {
+        border-color: var(--border2);
+      }
+      .pager-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .pager-btn.cur {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
 
-    /* ── Table ── */
-    .table-wrap{overflow-x:auto;}
-    table{width:100%;border-collapse:collapse;font-size:12px;}
-    th{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
-    td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    tr:hover td{background:var(--surface2);}
-    tr:last-child td{border-bottom:none;}
-    .chip{display:inline-block;font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:4px;}
-    .chip-g{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
-    .chip-b{background:rgba(59,130,246,0.12);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
-    .chip-a{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.2);}
-    .chip-r{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.2);}
-    .chip-m{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+      /* ── Table ── */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      td {
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      tr:hover td {
+        background: var(--surface2);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .chip {
+        display: inline-block;
+        font-size: 9px;
+        font-family: var(--mono);
+        padding: 2px 7px;
+        border-radius: 4px;
+      }
+      .chip-g {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .chip-b {
+        background: rgba(59, 130, 246, 0.12);
+        color: var(--blue);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+      .chip-a {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--amber);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+      }
+      .chip-r {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--red);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .chip-m {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
 
-    /* ── Reuse lock ── */
-    .reuse-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
-    .reuse-row:last-child{border-bottom:none;}
-    .reuse-sub{font-family:var(--mono);font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .reuse-bar{width:60px;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;flex-shrink:0;}
-    .reuse-fill{height:100%;border-radius:3px;}
+      /* ── Reuse lock ── */
+      .reuse-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .reuse-row:last-child {
+        border-bottom: none;
+      }
+      .reuse-sub {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .reuse-bar {
+        width: 60px;
+        height: 5px;
+        background: var(--surface2);
+        border-radius: 3px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .reuse-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
 
-    /* ── Comparison ── */
-    .compare-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
-    .compare-row:last-child{border-bottom:none;}
-    .compare-va{font-family:var(--mono);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;}
+      /* ── Comparison ── */
+      .compare-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .compare-row:last-child {
+        border-bottom: none;
+      }
+      .compare-va {
+        font-family: var(--mono);
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 130px;
+      }
 
-    /* ── Sidebar ── */
-    .sidebar{display:flex;flex-direction:column;gap:12px;}
-    .flag-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
-    .flag-row:last-child{border-bottom:none;}
-    .flag-sub{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .flag-users{font-size:10px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      /* ── Sidebar ── */
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .flag-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .flag-row:last-child {
+        border-bottom: none;
+      }
+      .flag-sub {
+        font-size: 12px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .flag-users {
+        font-size: 10px;
+        color: var(--muted);
+        font-family: var(--mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-    /* ── Scheduler ── */
-    .sched-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
-    .sched-row:last-child{border-bottom:none;}
-    .sched-sub{font-family:var(--mono);font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .sched-eng{font-family:var(--mono);font-size:11px;color:var(--green);flex-shrink:0;}
-    .sched-done{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;flex-shrink:0;background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
-    .sched-open{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;flex-shrink:0;background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+      /* ── Scheduler ── */
+      .sched-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .sched-row:last-child {
+        border-bottom: none;
+      }
+      .sched-sub {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sched-eng {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--green);
+        flex-shrink: 0;
+      }
+      .sched-done {
+        font-size: 10px;
+        font-family: var(--mono);
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .sched-open {
+        font-size: 10px;
+        font-family: var(--mono);
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
 
-    /* ── Date filter bar ── */
-    .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border);}
-    .filter-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0;}
-    .date-in{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color 0.2s;}
-    .date-in:focus{border-color:var(--accent);}
-    .fbtn{padding:7px 14px;border-radius:7px;border:1px solid var(--accent);background:none;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.15s;}
-    .fbtn:hover{background:rgba(255,69,0,0.1);}
-    .fbtn-muted{border-color:var(--muted);color:var(--muted);}
-    .fbtn-muted:hover{background:var(--surface2);}
+      /* ── Date filter bar ── */
+      .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .filter-lbl {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        flex-shrink: 0;
+      }
+      .date-in {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 7px 12px;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 12px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .date-in:focus {
+        border-color: var(--accent);
+      }
+      .fbtn {
+        padding: 7px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--accent);
+        background: none;
+        color: var(--accent);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .fbtn:hover {
+        background: rgba(255, 69, 0, 0.1);
+      }
+      .fbtn-muted {
+        border-color: var(--muted);
+        color: var(--muted);
+      }
+      .fbtn-muted:hover {
+        background: var(--surface2);
+      }
 
-    /* ── Intel filter bar (date only) ── */
-    .intel-filter{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+      /* ── Intel filter bar (date only) ── */
+      .intel-filter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
 
-    /* ── Chart ── */
-    .chart-wrap{position:relative;width:100%;height:180px;}
+      /* ── Chart ── */
+      .chart-wrap {
+        position: relative;
+        width: 100%;
+        height: 180px;
+      }
 
-    /* ── Forms ── */
-    .form-grid{display:grid;gap:12px;}
-    .form-field{display:flex;flex-direction:column;gap:5px;}
-    .flabel{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
-    .finput,.fselect{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;width:100%;transition:border-color 0.2s;}
-    .finput:focus,.fselect:focus{border-color:var(--accent);}
-    .finput::placeholder{color:var(--muted);}
-    .fselect option{background:var(--surface);}
+      /* ── Forms ── */
+      .form-grid {
+        display: grid;
+        gap: 12px;
+      }
+      .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .flabel {
+        font-size: 10px;
+        font-family: var(--mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .finput,
+      .fselect {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 9px 13px;
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        outline: none;
+        width: 100%;
+        transition: border-color 0.2s;
+      }
+      .finput:focus,
+      .fselect:focus {
+        border-color: var(--accent);
+      }
+      .finput::placeholder {
+        color: var(--muted);
+      }
+      .fselect option {
+        background: var(--surface);
+      }
 
-    /* ── Alerts ── */
-    .alert{padding:10px 14px;border-radius:8px;font-size:12px;font-family:var(--mono);line-height:1.5;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start;}
-    .al-r{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:var(--red);}
-    .al-a{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);color:var(--amber);}
-    .al-g{background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:var(--green);}
-    .al-b{background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:var(--blue);}
+      /* ── Alerts ── */
+      .alert {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-family: var(--mono);
+        line-height: 1.5;
+        margin-bottom: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .al-r {
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: var(--red);
+      }
+      .al-a {
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        color: var(--amber);
+      }
+      .al-g {
+        background: rgba(34, 197, 94, 0.08);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        color: var(--green);
+      }
+      .al-b {
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        color: var(--blue);
+      }
 
-    /* ── Buttons ── */
-    .btn{padding:9px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s;white-space:nowrap;}
-    .btn:hover{opacity:0.85;}
-    .btn:disabled{opacity:0.4;cursor:not-allowed;}
-    .btn-sm{padding:5px 11px;font-size:11px;}
-    .btn-ro{border-color:var(--red);color:var(--red);background:transparent;}
-    .btn-ro:hover{background:rgba(239,68,68,0.08);opacity:1;}
+      /* ── Buttons ── */
+      .btn {
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-family: var(--font);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.15s;
+        white-space: nowrap;
+      }
+      .btn:hover {
+        opacity: 0.85;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-sm {
+        padding: 5px 11px;
+        font-size: 11px;
+      }
+      .btn-ro {
+        border-color: var(--red);
+        color: var(--red);
+        background: transparent;
+      }
+      .btn-ro:hover {
+        background: rgba(239, 68, 68, 0.08);
+        opacity: 1;
+      }
 
-    /* ── Rating badges ── */
-    .rb{display:inline-block;font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:4px;letter-spacing:0.04em;}
-    .rb-g{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
-    .rb-b{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.2);}
-    .rb-n{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+      /* ── Rating badges ── */
+      .rb {
+        display: inline-block;
+        font-size: 9px;
+        font-family: var(--mono);
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.04em;
+      }
+      .rb-g {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .rb-b {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--red);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .rb-n {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
 
-    .skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;height:48px;margin-bottom:8px;}
-    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .empty{padding:24px;text-align:center;color:var(--muted);font-size:13px;}
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          var(--surface2) 25%,
+          var(--surface) 50%,
+          var(--surface2) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 8px;
+        height: 48px;
+        margin-bottom: 8px;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
 
-    footer{text-align:center;padding:20px;color:var(--muted);font-size:11px;font-family:var(--mono);border-top:1px solid var(--border);margin-top:40px;}
-    @media(max-width:900px){.dash-layout{grid-template-columns:1fr;}}
-    @media(max-width:600px){header{padding:12px 16px;}main{padding:14px 12px;}.nav-tabs{gap:4px;}.nav-tab{font-size:10px;padding:5px 7px;}.metrics-strip{grid-template-columns:repeat(2,1fr);}}
-  </style>
-</head>
-<body>
-
-<div class="modal-overlay" id="pinModal">
-  <div class="modal-box">
-    <div class="modal-icon">🔐</div>
-    <div class="modal-title">Posting Intelligence</div>
-    <div class="modal-sub">Enter your VA PIN to continue</div>
-    <div class="pin-dots">
-      <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
-      <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
-    </div>
-    <div class="pin-pad">
-      <button class="pin-btn" onclick="pinPress('1')">1</button><button class="pin-btn" onclick="pinPress('2')">2</button><button class="pin-btn" onclick="pinPress('3')">3</button>
-      <button class="pin-btn" onclick="pinPress('4')">4</button><button class="pin-btn" onclick="pinPress('5')">5</button><button class="pin-btn" onclick="pinPress('6')">6</button>
-      <button class="pin-btn" onclick="pinPress('7')">7</button><button class="pin-btn" onclick="pinPress('8')">8</button><button class="pin-btn" onclick="pinPress('9')">9</button>
-      <button class="pin-btn pin-clear" onclick="pinClear()">✕</button><button class="pin-btn" onclick="pinPress('0')">0</button><button class="pin-btn pin-enter" onclick="pinEnter()">↵</button>
-    </div>
-    <div class="pin-error" id="pinError"></div>
-  </div>
-</div>
-
-<header>
-  <div class="logo">
-    <div class="logo-img"><img src="rsc/logo.png" alt="SubTracker" onerror="this.style.display='none'"></div>
-    <a href="index.html">SubTracker</a>
-  </div>
-  <div class="header-right">
-    <div class="nav-tabs">
-      <button class="nav-tab" onclick="location.href='index.html'">Sub Tracker</button>
-      <button class="nav-tab" onclick="location.href='user_Ranking.html'">User Ranking</button>
-      <button class="nav-tab" onclick="location.href='user_monthly_subs_performance.html'">Monthly Performance</button>
-      <button class="nav-tab" onclick="location.href='sub_post_timing.html'">Post Timing</button>
-      <button class="nav-tab active">Posting Intel</button>
-    </div>
-    <!-- SFW/NSFW — same as rest of site, controls both theme + content filter -->
-    <div class="theme-toggle" onclick="toggleMode()" title="Toggle SFW/NSFW">
-      <span class="theme-label">sfw</span>
-      <div class="toggle-track"><div class="toggle-knob"></div></div>
-      <span class="theme-label right">nsfw</span>
-    </div>
-    <div id="headerExtras" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-      <div class="va-chip" id="vaChip"><span id="vaNameDisplay">—</span></div>
-      <button class="sync-btn" id="syncBtn" onclick="syncAllAccounts()" title="Pulls latest posts from Reddit for all accounts, updates metrics, auto-rates subs, detects bans">⟳ Sync</button>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-  </div>
-</header>
-
-<main id="mainContent" style="display:none">
-  <div class="content-tabs">
-    <button class="ctab active" onclick="switchCtab('dashboard',this)">Dashboard</button>
-    <button class="ctab" onclick="switchCtab('topsubs',this)">Top Subs</button>
-    <button class="ctab" onclick="switchCtab('intel',this)">Subreddit Intel</button>
-    <button class="ctab" onclick="switchCtab('setup',this)">Setup</button>
-  </div>
-
-  <!-- ══ DASHBOARD ══ -->
-  <div id="tab-dashboard">
-    <div id="syncAlert"></div>
-    <div class="dash-layout">
-      <div>
-        <div class="metrics-strip">
-          <div class="metric-mini"><div class="metric-mini-label">Posts Today</div><div class="metric-mini-value" id="dm-today">—</div></div>
-          <div class="metric-mini"><div class="metric-mini-label">Avg Upvotes</div><div class="metric-mini-value" id="dm-avg-up">—</div></div>
-          <div class="metric-mini"><div class="metric-mini-label">Avg Comments</div><div class="metric-mini-value" id="dm-avg-cmt">—</div></div>
-          <div class="metric-mini"><div class="metric-mini-label">Top Sub Today</div><div class="metric-mini-value sm" id="dm-top-sub">—</div></div>
+      footer {
+        text-align: center;
+        padding: 20px;
+        color: var(--muted);
+        font-size: 11px;
+        font-family: var(--mono);
+        border-top: 1px solid var(--border);
+        margin-top: 40px;
+      }
+      @media (max-width: 900px) {
+        .dash-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 600px) {
+        header {
+          padding: 12px 16px;
+        }
+        main {
+          padding: 14px 12px;
+        }
+        .nav-tabs {
+          gap: 4px;
+        }
+        .nav-tab {
+          font-size: 10px;
+          padding: 5px 7px;
+        }
+        .metrics-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="modal-overlay" id="pinModal">
+      <div class="modal-box">
+        <div class="modal-icon">🔐</div>
+        <div class="modal-title">Posting Intelligence</div>
+        <div class="modal-sub">Enter your VA PIN to continue</div>
+        <div class="pin-dots">
+          <div class="pin-dot" id="d0"></div>
+          <div class="pin-dot" id="d1"></div>
+          <div class="pin-dot" id="d2"></div>
+          <div class="pin-dot" id="d3"></div>
         </div>
+        <div class="pin-pad">
+          <button class="pin-btn" onclick="pinPress('1')">1</button
+          ><button class="pin-btn" onclick="pinPress('2')">2</button
+          ><button class="pin-btn" onclick="pinPress('3')">3</button>
+          <button class="pin-btn" onclick="pinPress('4')">4</button
+          ><button class="pin-btn" onclick="pinPress('5')">5</button
+          ><button class="pin-btn" onclick="pinPress('6')">6</button>
+          <button class="pin-btn" onclick="pinPress('7')">7</button
+          ><button class="pin-btn" onclick="pinPress('8')">8</button
+          ><button class="pin-btn" onclick="pinPress('9')">9</button>
+          <button class="pin-btn pin-clear" onclick="pinClear()">✕</button
+          ><button class="pin-btn" onclick="pinPress('0')">0</button
+          ><button class="pin-btn pin-enter" onclick="pinEnter()">↵</button>
+        </div>
+        <div class="pin-error" id="pinError"></div>
+      </div>
+    </div>
 
-        <div id="myModelsArea"><div class="skeleton"></div></div>
-        <div id="modelsPager"></div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">
-            <span style="font-size:12px;font-weight:600">Account Overview</span>
-            <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">last 30 days</span>
+    <header>
+      <div class="logo">
+        <div class="logo-img">
+          <img
+            src="rsc/logo.png"
+            alt="SubTracker"
+            onerror="this.style.display = 'none'"
+          />
+        </div>
+        <a href="index.html">SubTracker</a>
+      </div>
+      <div class="header-right">
+        <div class="nav-tabs">
+          <button class="nav-tab" onclick="location.href = 'index.html'">
+            Sub Tracker
+          </button>
+          <button class="nav-tab" onclick="location.href = 'user_Ranking.html'">
+            User Ranking
+          </button>
+          <button
+            class="nav-tab"
+            onclick="location.href = 'user_monthly_subs_performance.html'"
+          >
+            Monthly Performance
+          </button>
+          <button
+            class="nav-tab"
+            onclick="location.href = 'sub_post_timing.html'"
+          >
+            Post Timing
+          </button>
+          <button class="nav-tab active">Posting Intel</button>
+        </div>
+        <!-- SFW/NSFW — same as rest of site, controls both theme + content filter -->
+        <div
+          class="theme-toggle"
+          onclick="toggleMode()"
+          title="Toggle SFW/NSFW"
+        >
+          <span class="theme-label">sfw</span>
+          <div class="toggle-track"><div class="toggle-knob"></div></div>
+          <span class="theme-label right">nsfw</span>
+        </div>
+        <div
+          id="headerExtras"
+          style="display: none; align-items: center; gap: 8px; flex-wrap: wrap"
+        >
+          <div class="va-chip" id="vaChip">
+            <span id="vaNameDisplay">—</span>
           </div>
-          <div class="table-wrap" id="accountOverviewTable"><div class="skeleton"></div></div>
-          <div id="acctPager"></div>
+          <button
+            class="sync-btn"
+            id="syncBtn"
+            onclick="syncAllAccounts()"
+            title="Pulls latest posts from Reddit for all accounts, updates metrics, auto-rates subs, detects bans"
+          >
+            ⟳ Sync
+          </button>
+          <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
+      </div>
+    </header>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
-          <div class="card"><div class="section-label">🏆 Highest Performing Sub</div><div id="topSubCard"><div class="skeleton" style="height:60px"></div></div></div>
-          <div class="card"><div class="section-label">⚠️ Risky to Post</div><div id="riskySubsCard"><div class="skeleton" style="height:60px"></div></div></div>
-        </div>
+    <main id="mainContent" style="display: none">
+      <div class="content-tabs">
+        <button class="ctab active" onclick="switchCtab('dashboard', this)">
+          Dashboard
+        </button>
+        <button class="ctab" onclick="switchCtab('topsubs', this)">
+          Top Subs
+        </button>
+        <button class="ctab" onclick="switchCtab('intel', this)">
+          Subreddit Intel
+        </button>
+        <button class="ctab" onclick="switchCtab('setup', this)">Setup</button>
+      </div>
 
-        <div class="card" style="margin-top:16px">
-          <div class="card-title">
-            <span style="font-size:12px;font-weight:600">⏱ Subreddit Reuse Lock</span>
-            <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">3-day cooldown</span>
+      <!-- ══ DASHBOARD ══ -->
+      <div id="tab-dashboard">
+        <div id="syncAlert"></div>
+        <div class="dash-layout">
+          <div>
+            <div class="metrics-strip">
+              <div class="metric-mini">
+                <div class="metric-mini-label">Posts Today</div>
+                <div class="metric-mini-value" id="dm-today">—</div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">Avg Upvotes</div>
+                <div class="metric-mini-value" id="dm-avg-up">—</div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">Avg Comments</div>
+                <div class="metric-mini-value" id="dm-avg-cmt">—</div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">Top Sub Today</div>
+                <div class="metric-mini-value sm" id="dm-top-sub">—</div>
+              </div>
+            </div>
+
+            <div id="myModelsArea"><div class="skeleton"></div></div>
+            <div id="modelsPager"></div>
+
+            <div class="card" style="margin-top: 16px">
+              <div class="card-title">
+                <span style="font-size: 12px; font-weight: 600"
+                  >Account Overview</span
+                >
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                  "
+                  >last 30 days</span
+                >
+              </div>
+              <div class="table-wrap" id="accountOverviewTable">
+                <div class="skeleton"></div>
+              </div>
+              <div id="acctPager"></div>
+            </div>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-top: 16px;
+              "
+            >
+              <div class="card">
+                <div class="section-label">🏆 Highest Performing Sub</div>
+                <div id="topSubCard">
+                  <div class="skeleton" style="height: 60px"></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="section-label">⚠️ Risky to Post</div>
+                <div id="riskySubsCard">
+                  <div class="skeleton" style="height: 60px"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top: 16px">
+              <div class="card-title">
+                <span style="font-size: 12px; font-weight: 600"
+                  >⏱ Subreddit Reuse Lock</span
+                >
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                  "
+                  >3-day cooldown</span
+                >
+              </div>
+              <div id="reuseLocks">
+                <div class="empty">No reuse data yet. Sync first.</div>
+              </div>
+              <div id="reusePager"></div>
+            </div>
+
+            <div class="card" style="margin-top: 16px">
+              <div class="section-label">📊 VA Performance Comparison</div>
+              <div id="compareArea">
+                <div class="skeleton" style="height: 80px"></div>
+              </div>
+            </div>
           </div>
-          <div id="reuseLocks"><div class="empty">No reuse data yet. Sync first.</div></div>
-          <div id="reusePager"></div>
-        </div>
 
-        <div class="card" style="margin-top:16px">
-          <div class="section-label">📊 VA Performance Comparison</div>
-          <div id="compareArea"><div class="skeleton" style="height:80px"></div></div>
+          <div class="sidebar">
+            <div class="card">
+              <div class="card-title">
+                <span style="font-size: 12px; font-weight: 600"
+                  >All VAs — Today's Posts</span
+                >
+              </div>
+              <div id="allVAsSidebar"><div class="skeleton"></div></div>
+            </div>
+
+            <!-- Scheduler -->
+            <div class="card">
+              <div class="card-title">
+                <span style="font-size: 12px; font-weight: 600"
+                  >📅 Best Subs to Post Today</span
+                >
+              </div>
+              <div
+                id="schedulerDay"
+                style="
+                  font-size: 10px;
+                  font-family: var(--mono);
+                  color: var(--muted);
+                  margin-bottom: 10px;
+                "
+              >
+                Based on your historical data
+              </div>
+              <div id="schedulerArea">
+                <div class="skeleton" style="height: 30px"></div>
+                <div class="skeleton" style="height: 30px; opacity: 0.6"></div>
+              </div>
+              <div
+                style="
+                  font-size: 10px;
+                  color: var(--muted);
+                  font-family: var(--mono);
+                  margin-top: 8px;
+                "
+              >
+                ✅ = already posted today · ○ = available
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span style="font-size: 12px; font-weight: 600"
+                  >🚩 Flagged Overlaps</span
+                >
+              </div>
+              <div id="flaggedArea">
+                <div class="empty" style="padding: 12px 0">
+                  No overlaps today ✓
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="sidebar">
-        <div class="card">
-          <div class="card-title"><span style="font-size:12px;font-weight:600">All VAs — Today's Posts</span></div>
-          <div id="allVAsSidebar"><div class="skeleton"></div></div>
+      <!-- ══ TOP SUBS ══ -->
+      <div id="tab-topsubs" style="display: none">
+        <div class="filter-bar">
+          <span class="filter-lbl">Date Range</span>
+          <input type="date" class="date-in" id="ts-from" />
+          <span
+            style="
+              font-size: 11px;
+              color: var(--muted);
+              font-family: var(--mono);
+            "
+            >to</span
+          >
+          <input type="date" class="date-in" id="ts-to" />
+          <button class="fbtn" onclick="loadTopSubs()">Apply</button>
+          <button class="fbtn fbtn-muted" onclick="clearTSFilter()">
+            Clear
+          </button>
         </div>
 
-        <!-- Scheduler -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+          "
+        >
+          <div class="card">
+            <div class="section-label">🔁 Top 5 Most Consistent Subs</div>
+            <div id="consistentSubs"><div class="skeleton"></div></div>
+          </div>
+          <div class="card">
+            <div class="section-label">⚡ Top 5 Highest Engagement</div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 20px 1fr 70px 60px;
+                gap: 8px;
+                padding: 4px 0 6px;
+                border-bottom: 1px solid var(--border);
+                margin-bottom: 4px;
+              "
+            >
+              <span
+                style="
+                  font-family: var(--mono);
+                  font-size: 9px;
+                  color: var(--muted);
+                  text-transform: uppercase;
+                "
+                >#</span
+              >
+              <span
+                style="
+                  font-family: var(--mono);
+                  font-size: 9px;
+                  color: var(--muted);
+                  text-transform: uppercase;
+                "
+                >Subreddit</span
+              >
+              <span
+                style="
+                  font-family: var(--mono);
+                  font-size: 9px;
+                  color: var(--muted);
+                  text-transform: uppercase;
+                  text-align: right;
+                "
+                >Avg Eng</span
+              >
+              <span
+                style="
+                  font-family: var(--mono);
+                  font-size: 9px;
+                  color: var(--muted);
+                  text-transform: uppercase;
+                  text-align: right;
+                "
+                >Posts</span
+              >
+            </div>
+            <div id="highEngSubs"><div class="skeleton"></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px">
+          <div class="section-label">Engagement by Subreddit</div>
+          <div class="chart-wrap"><canvas id="topSubsChart"></canvas></div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px">
+          <div class="section-label">🚫 Subs Where Accounts Got Banned</div>
+          <div id="bannedSubsList">
+            <div class="empty">No banned account data.</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">
-            <span style="font-size:12px;font-weight:600">📅 Best Subs to Post Today</span>
+            <span style="font-size: 12px; font-weight: 600"
+              >All Tracked Subs (ranked by score)</span
+            >
           </div>
-          <div id="schedulerDay" style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:10px">Based on your historical data</div>
-          <div id="schedulerArea"><div class="skeleton" style="height:30px"></div><div class="skeleton" style="height:30px;opacity:0.6"></div></div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px">✅ = already posted today · ○ = available</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><span style="font-size:12px;font-weight:600">🚩 Flagged Overlaps</span></div>
-          <div id="flaggedArea"><div class="empty" style="padding:12px 0">No overlaps today ✓</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ TOP SUBS ══ -->
-  <div id="tab-topsubs" style="display:none">
-    <div class="filter-bar">
-      <span class="filter-lbl">Date Range</span>
-      <input type="date" class="date-in" id="ts-from" />
-      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">to</span>
-      <input type="date" class="date-in" id="ts-to" />
-      <button class="fbtn" onclick="loadTopSubs()">Apply</button>
-      <button class="fbtn fbtn-muted" onclick="clearTSFilter()">Clear</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div class="card">
-        <div class="section-label">🔁 Top 5 Most Consistent Subs</div>
-        <div id="consistentSubs"><div class="skeleton"></div></div>
-      </div>
-      <div class="card">
-        <div class="section-label">⚡ Top 5 Highest Engagement</div>
-        <div style="display:grid;grid-template-columns:20px 1fr 70px 60px;gap:8px;padding:4px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px">
-          <span style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">#</span>
-          <span style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Subreddit</span>
-          <span style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;text-align:right">Avg Eng</span>
-          <span style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;text-align:right">Posts</span>
-        </div>
-        <div id="highEngSubs"><div class="skeleton"></div></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="section-label">Engagement by Subreddit</div>
-      <div class="chart-wrap"><canvas id="topSubsChart"></canvas></div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="section-label">🚫 Subs Where Accounts Got Banned</div>
-      <div id="bannedSubsList"><div class="empty">No banned account data.</div></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><span style="font-size:12px;font-weight:600">All Tracked Subs (ranked by score)</span></div>
-      <div class="table-wrap" id="allSubsTable"><div class="skeleton"></div></div>
-      <div id="allSubsPager"></div>
-    </div>
-  </div>
-
-  <!-- ══ SUBREDDIT INTEL ══ -->
-  <div id="tab-intel" style="display:none">
-    <div class="intel-filter">
-      <span class="filter-lbl">Date Range</span>
-      <input type="date" class="date-in" id="in-from" />
-      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">to</span>
-      <input type="date" class="date-in" id="in-to" />
-      <button class="fbtn" onclick="loadAutoEval()">Apply</button>
-      <button class="fbtn fbtn-muted" onclick="clearIntelFilter()">Clear</button>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted)">
-        <span id="intelFilterLabel">Showing: All</span>
-        <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="cycleIntelFilter()">Filter</button>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
-      <div>
-        <div class="alert al-b" style="margin-bottom:16px">
-          <span>Auto-evaluated on every sync. High rank + low engagement → BAD. High engagement → GOOD. Re-syncing overwrites ratings when performance changes.</span>
-        </div>
-        <div class="section-label">Auto-Evaluated Subreddits</div>
-        <div id="autoEvalList"><div class="skeleton"></div></div>
-      </div>
-      <div class="card" style="position:sticky;top:80px">
-        <div style="font-size:12px;font-weight:600;margin-bottom:14px">Manual Override</div>
-        <div id="intelAlert"></div>
-        <div class="form-grid">
-          <div class="form-field"><label class="flabel">Subreddit</label><input class="finput" id="ri-sub" placeholder="e.g. cats" /></div>
-          <div class="form-field"><label class="flabel">Rating</label><select class="fselect" id="ri-rating"><option value="good">Good — high engagement, post here</option><option value="bad">Bad — underperforming or risky</option><option value="neutral">Neutral — situational</option></select></div>
-          <div class="form-field"><label class="flabel">Reason</label><input class="finput" id="ri-reason" placeholder="e.g. #2 hot 5hrs but only 25 likes" /></div>
-          <div class="form-field"><label class="flabel">Type</label><select class="fselect" id="ri-nsfw"><option value="false">SFW</option><option value="true">NSFW</option></select></div>
-          <button class="btn" onclick="saveRating()">Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SETUP ══ -->
-  <div id="tab-setup" style="display:none">
-    <div id="setupAlert"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card" id="addVACard">
-        <div class="card-title"><span style="font-size:12px;font-weight:600">Add New VA</span> <span class="chip chip-a" style="font-size:9px">Admin only</span></div>
-        <div class="form-grid">
-          <div class="form-field"><label class="flabel">VA Name</label><input class="finput" id="new-va-name" placeholder="e.g. Cristal" /></div>
-          <div class="form-field"><label class="flabel">PIN (4 digits)</label><input class="finput" id="new-va-pin" type="password" maxlength="4" placeholder="····" /></div>
-          <button class="btn" onclick="addVA()">Add VA</button>
+          <div class="table-wrap" id="allSubsTable">
+            <div class="skeleton"></div>
+          </div>
+          <div id="allSubsPager"></div>
         </div>
       </div>
 
-      <div class="card">
-        <div style="font-size:12px;font-weight:600;margin-bottom:14px">Add Model</div>
-        <div class="form-grid">
-          <div class="form-field" id="modelVAField"><label class="flabel">VA</label><select class="fselect" id="new-model-va"></select></div>
-          <div class="form-field"><label class="flabel">Model Name</label><input class="finput" id="new-model-name" placeholder="e.g. llynadi" /></div>
-          <button class="btn" onclick="addModel()">Add Model</button>
+      <!-- ══ SUBREDDIT INTEL ══ -->
+      <div id="tab-intel" style="display: none">
+        <div class="intel-filter">
+          <span class="filter-lbl">Date Range</span>
+          <input type="date" class="date-in" id="in-from" />
+          <span
+            style="
+              font-size: 11px;
+              color: var(--muted);
+              font-family: var(--mono);
+            "
+            >to</span
+          >
+          <input type="date" class="date-in" id="in-to" />
+          <button class="fbtn" onclick="loadAutoEval()">Apply</button>
+          <button class="fbtn fbtn-muted" onclick="clearIntelFilter()">
+            Clear
+          </button>
+          <div
+            style="
+              margin-left: auto;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-family: var(--mono);
+              font-size: 11px;
+              color: var(--muted);
+            "
+          >
+            <span id="intelFilterLabel">Showing: All</span>
+            <button
+              class="fbtn"
+              style="font-size: 10px; padding: 4px 10px"
+              onclick="cycleIntelFilter()"
+            >
+              Filter
+            </button>
+          </div>
+        </div>
+
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 16px;
+            align-items: start;
+          "
+        >
+          <div>
+            <div class="alert al-b" style="margin-bottom: 16px">
+              <span
+                >Auto-evaluated on every sync. High rank + low engagement → BAD.
+                High engagement → GOOD. Re-syncing overwrites ratings when
+                performance changes.</span
+              >
+            </div>
+            <div class="section-label">Auto-Evaluated Subreddits</div>
+            <div id="autoEvalList"><div class="skeleton"></div></div>
+          </div>
+          <div class="card" style="position: sticky; top: 80px">
+            <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
+              Manual Override
+            </div>
+            <div id="intelAlert"></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="flabel">Subreddit</label
+                ><input class="finput" id="ri-sub" placeholder="e.g. cats" />
+              </div>
+              <div class="form-field">
+                <label class="flabel">Rating</label
+                ><select class="fselect" id="ri-rating">
+                  <option value="good">
+                    Good — high engagement, post here
+                  </option>
+                  <option value="bad">Bad — underperforming or risky</option>
+                  <option value="neutral">Neutral — situational</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="flabel">Reason</label
+                ><input
+                  class="finput"
+                  id="ri-reason"
+                  placeholder="e.g. #2 hot 5hrs but only 25 likes"
+                />
+              </div>
+              <div class="form-field">
+                <label class="flabel">Type</label
+                ><select class="fselect" id="ri-nsfw">
+                  <option value="false">SFW</option>
+                  <option value="true">NSFW</option>
+                </select>
+              </div>
+              <button class="btn" onclick="saveRating()">Save</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div style="font-size:12px;font-weight:600;margin-bottom:14px">Add Reddit Account to Model</div>
-        <div class="form-grid">
-          <div class="form-field"><label class="flabel">Model</label><select class="fselect" id="new-acc-model"></select></div>
-          <div class="form-field"><label class="flabel">Reddit Username</label><input class="finput" id="new-acc-username" placeholder="e.g. llynadi_alt" /></div>
-          <div id="usernameCheckMsg" style="font-size:11px;font-family:var(--mono);min-height:14px;color:var(--muted)"></div>
-          <button class="btn" onclick="addAccount()">Add Account</button>
+      <!-- ══ SETUP ══ -->
+      <div id="tab-setup" style="display: none">
+        <div id="setupAlert"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+          <div class="card" id="addVACard">
+            <div class="card-title">
+              <span style="font-size: 12px; font-weight: 600">Add New VA</span>
+              <span class="chip chip-a" style="font-size: 9px">Admin only</span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="flabel">VA Name</label
+                ><input
+                  class="finput"
+                  id="new-va-name"
+                  placeholder="e.g. Cristal"
+                />
+              </div>
+              <div class="form-field">
+                <label class="flabel">PIN (4 digits)</label
+                ><input
+                  class="finput"
+                  id="new-va-pin"
+                  type="password"
+                  maxlength="4"
+                  placeholder="····"
+                />
+              </div>
+              <button class="btn" onclick="addVA()">Add VA</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
+              Add Model
+            </div>
+            <div class="form-grid">
+              <div class="form-field" id="modelVAField">
+                <label class="flabel">VA</label
+                ><select class="fselect" id="new-model-va"></select>
+              </div>
+              <div class="form-field">
+                <label class="flabel">Model Name</label
+                ><input
+                  class="finput"
+                  id="new-model-name"
+                  placeholder="e.g. llynadi"
+                />
+              </div>
+              <button class="btn" onclick="addModel()">Add Model</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
+              Add Reddit Account to Model
+            </div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="flabel">Model</label
+                ><select class="fselect" id="new-acc-model"></select>
+              </div>
+              <div class="form-field">
+                <label class="flabel">Reddit Username</label
+                ><input
+                  class="finput"
+                  id="new-acc-username"
+                  placeholder="e.g. llynadi_alt"
+                />
+              </div>
+              <div
+                id="usernameCheckMsg"
+                style="
+                  font-size: 11px;
+                  font-family: var(--mono);
+                  min-height: 14px;
+                  color: var(--muted);
+                "
+              ></div>
+              <button class="btn" onclick="addAccount()">Add Account</button>
+            </div>
+          </div>
+
+          <div class="card" style="grid-column: 1/-1">
+            <div style="font-size: 12px; font-weight: 600; margin-bottom: 14px">
+              Current Structure
+            </div>
+            <div class="table-wrap" id="structureTable">
+              <div class="skeleton"></div>
+            </div>
+            <div id="structurePager"></div>
+          </div>
         </div>
       </div>
+    </main>
 
-      <div class="card" style="grid-column:1/-1">
-        <div style="font-size:12px;font-weight:600;margin-bottom:14px">Current Structure</div>
-        <div class="table-wrap" id="structureTable"><div class="skeleton"></div></div>
-        <div id="structurePager"></div>
-      </div>
-    </div>
-  </div>
-</main>
+    <footer>
+      SubTracker · Posting Intelligence · synced with Reddit API + Supabase
+    </footer>
 
-<footer>SubTracker · Posting Intelligence · synced with Reddit API + Supabase</footer>
+    <script>
+      const API =
+        window.location.hostname === "localhost"
+          ? "http://localhost:3001/api"
+          : "https://reddittracker-y65h.onrender.com/api";
 
-<script>
-const API = window.location.hostname === 'localhost'
-  ? 'http://localhost:3001/api'
-  : 'https://reddittracker-y65h.onrender.com/api';
+      const PER = 10;
 
-const PER = 10;
+      // ── State ─────────────────────────────────────────────────────────────────────
+      let currentVA = null,
+        isAdmin = false;
+      let allVAs = [],
+        allModels = [],
+        allRatings = [];
+      let pinBuffer = "";
+      let dashData = null,
+        overviewData = null,
+        topSubsData = null;
+      let topSubsChart = null;
+      let nsfwMode = false;
+      let intelFilter = "all"; // 'all', 'sfw', 'nsfw'
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let currentVA = null, isAdmin = false;
-let allVAs = [], allModels = [], allRatings = [];
-let pinBuffer = '';
-let dashData = null, overviewData = null, topSubsData = null;
-let topSubsChart = null;
-let nsfwMode = false;
-let intelFilter = 'all'; // 'all', 'sfw', 'nsfw'
+      // Pagination
+      let modelsPage = 1,
+        acctPage = 1,
+        reusePage = 1,
+        allSubsPage = 1,
+        structurePage = 1;
+      let modelsCache = {},
+        acctCache = {},
+        reuseCache = [],
+        allSubsCache = [],
+        structureCache = [];
 
-// Pagination
-let modelsPage=1, acctPage=1, reusePage=1, allSubsPage=1, structurePage=1;
-let modelsCache={}, acctCache={}, reuseCache=[], allSubsCache=[], structureCache=[];
+      // ── SFW/NSFW toggle (same as rest of site) ────────────────────────────────────
+      function toggleMode() {
+        nsfwMode = !nsfwMode;
+        document.documentElement.setAttribute(
+          "data-mode",
+          nsfwMode ? "nsfw" : "sfw",
+        );
+        localStorage.setItem("subtracker-mode", nsfwMode ? "nsfw" : "sfw");
+        // Reload intel tab if active
+        if (document.getElementById("tab-intel").style.display !== "none")
+          loadAutoEval();
+      }
 
-// ── SFW/NSFW toggle (same as rest of site) ────────────────────────────────────
-function toggleMode() {
-  nsfwMode = !nsfwMode;
-  document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
-  localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
-  // Reload intel tab if active
-  if (document.getElementById('tab-intel').style.display !== 'none') loadAutoEval();
-}
+      // ── PIN ───────────────────────────────────────────────────────────────────────
+      function pinPress(d) {
+        if (pinBuffer.length >= 4) return;
+        pinBuffer += d;
+        updateDots();
+        if (pinBuffer.length === 4) setTimeout(pinEnter, 200);
+      }
+      function pinClear() {
+        pinBuffer = pinBuffer.slice(0, -1);
+        updateDots();
+      }
+      function updateDots() {
+        for (let i = 0; i < 4; i++)
+          document
+            .getElementById(`d${i}`)
+            .classList.toggle("filled", i < pinBuffer.length);
+      }
+      async function pinEnter() {
+        if (!pinBuffer.length) return;
+        document.getElementById("pinError").textContent = "";
+        try {
+          const res = await fetch(`${API}/intel/auth`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin: pinBuffer }),
+          });
+          const j = await res.json();
+          if (j.error) {
+            document.getElementById("pinError").textContent = "Incorrect PIN.";
+            pinBuffer = "";
+            updateDots();
+            return;
+          }
+          currentVA = j.va;
+          isAdmin = currentVA.name === "Admin";
+          sessionStorage.setItem("va", JSON.stringify(currentVA));
+          onLogin();
+        } catch {
+          document.getElementById("pinError").textContent = "Connection error.";
+          pinBuffer = "";
+          updateDots();
+        }
+      }
+      function logout() {
+        sessionStorage.removeItem("va");
+        currentVA = null;
+        isAdmin = false;
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("pinModal").style.display = "flex";
+        document.getElementById("headerExtras").style.display = "none";
+        pinBuffer = "";
+        updateDots();
+        window.location.href = "index.html";
+      }
+      async function onLogin() {
+        document.getElementById("pinModal").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+        const ex = document.getElementById("headerExtras");
+        ex.style.display = "flex";
+        const chip = document.getElementById("vaChip");
+        if (isAdmin) chip.classList.add("admin-chip");
+        document.getElementById("vaNameDisplay").textContent = isAdmin
+          ? "⭐ Admin"
+          : currentVA.name;
+        await loadBaseData();
+        loadDashboard();
+      }
 
-// ── PIN ───────────────────────────────────────────────────────────────────────
-function pinPress(d){if(pinBuffer.length>=4)return;pinBuffer+=d;updateDots();if(pinBuffer.length===4)setTimeout(pinEnter,200);}
-function pinClear(){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
-function updateDots(){for(let i=0;i<4;i++)document.getElementById(`d${i}`).classList.toggle('filled',i<pinBuffer.length);}
-async function pinEnter(){
-  if(!pinBuffer.length)return;
-  document.getElementById('pinError').textContent='';
-  try{
-    const res=await fetch(`${API}/intel/auth`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pinBuffer})});
-    const j=await res.json();
-    if(j.error){document.getElementById('pinError').textContent='Incorrect PIN.';pinBuffer='';updateDots();return;}
-    currentVA=j.va;isAdmin=(currentVA.name==='Admin');
-    sessionStorage.setItem('va',JSON.stringify(currentVA));
-    onLogin();
-  }catch{document.getElementById('pinError').textContent='Connection error.';pinBuffer='';updateDots();}
-}
-function logout(){
-  sessionStorage.removeItem('va');
-  currentVA=null;isAdmin=false;
-  document.getElementById('mainContent').style.display='none';
-  document.getElementById('pinModal').style.display='flex';
-  document.getElementById('headerExtras').style.display='none';
-  pinBuffer='';updateDots();
-  window.location.href='index.html';
-}
-async function onLogin(){
-  document.getElementById('pinModal').style.display='none';
-  document.getElementById('mainContent').style.display='block';
-  const ex=document.getElementById('headerExtras');ex.style.display='flex';
-  const chip=document.getElementById('vaChip');
-  if(isAdmin)chip.classList.add('admin-chip');
-  document.getElementById('vaNameDisplay').textContent=isAdmin?'⭐ Admin':currentVA.name;
-  await loadBaseData();loadDashboard();
-}
+      // ── Tab ───────────────────────────────────────────────────────────────────────
+      function switchCtab(tab, btn) {
+        document
+          .querySelectorAll(".ctab")
+          .forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        ["dashboard", "topsubs", "intel", "setup"].forEach(
+          (t) =>
+            (document.getElementById(`tab-${t}`).style.display =
+              t === tab ? "block" : "none"),
+        );
+        if (tab === "topsubs") loadTopSubs();
+        if (tab === "intel") loadAutoEval();
+        if (tab === "setup") loadSetup();
+      }
 
-// ── Tab ───────────────────────────────────────────────────────────────────────
-function switchCtab(tab,btn){
-  document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  ['dashboard','topsubs','intel','setup'].forEach(t=>document.getElementById(`tab-${t}`).style.display=t===tab?'block':'none');
-  if(tab==='topsubs')loadTopSubs();
-  if(tab==='intel')loadAutoEval();
-  if(tab==='setup')loadSetup();
-}
+      // ── Base data ─────────────────────────────────────────────────────────────────
+      async function loadBaseData() {
+        const [vr, mr] = await Promise.all([
+          fetch(`${API}/intel/vas`),
+          fetch(`${API}/intel/models`),
+        ]);
+        allVAs = (await vr.json()).data || [];
+        allModels = (await mr.json()).data || [];
+      }
 
-// ── Base data ─────────────────────────────────────────────────────────────────
-async function loadBaseData(){
-  const[vr,mr]=await Promise.all([fetch(`${API}/intel/vas`),fetch(`${API}/intel/models`)]);
-  allVAs=(await vr.json()).data||[];
-  allModels=(await mr.json()).data||[];
-}
+      // ── Sync ──────────────────────────────────────────────────────────────────────
+      async function syncAllAccounts() {
+        const btn = document.getElementById("syncBtn");
+        btn.disabled = true;
+        btn.textContent = "⟳ Syncing...";
+        const alertEl = document.getElementById("syncAlert");
+        alertEl.innerHTML = `<div class="alert al-b">Fetching Reddit data for all accounts... may take a moment.</div>`;
+        const myModels = isAdmin
+          ? allModels
+          : allModels.filter((m) => m.va_id === currentVA.id);
+        const accounts = myModels.flatMap((m) =>
+          (m.reddit_accounts || [])
+            .filter((a) => !a.banned)
+            .map((a) => ({ ...a })),
+        );
+        let synced = 0,
+          banned = 0,
+          errors = 0;
+        for (const acct of accounts) {
+          try {
+            const res = await fetch(`${API}/intel/sync-account`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                account_id: acct.id,
+                username: acct.username,
+              }),
+            });
+            const j = await res.json();
+            if (j.banned) banned++;
+            else synced += j.synced || 0;
+          } catch {
+            errors++;
+          }
+        }
+        alertEl.innerHTML = `<div class="alert al-g">Sync done — ${synced} new posts, ${banned} accounts detected as banned, ${errors} errors.</div>`;
+        btn.disabled = false;
+        btn.textContent = "⟳ Sync";
+        setTimeout(() => (alertEl.innerHTML = ""), 6000);
+        await loadBaseData();
+        loadDashboard();
+      }
 
-// ── Sync ──────────────────────────────────────────────────────────────────────
-async function syncAllAccounts(){
-  const btn=document.getElementById('syncBtn');
-  btn.disabled=true;btn.textContent='⟳ Syncing...';
-  const alertEl=document.getElementById('syncAlert');
-  alertEl.innerHTML=`<div class="alert al-b">Fetching Reddit data for all accounts... may take a moment.</div>`;
-  const myModels=isAdmin?allModels:allModels.filter(m=>m.va_id===currentVA.id);
-  const accounts=myModels.flatMap(m=>(m.reddit_accounts||[]).filter(a=>!a.banned).map(a=>({...a})));
-  let synced=0,banned=0,errors=0;
-  for(const acct of accounts){
-    try{
-      const res=await fetch(`${API}/intel/sync-account`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:acct.id,username:acct.username})});
-      const j=await res.json();
-      if(j.banned)banned++;else synced+=j.synced||0;
-    }catch{errors++;}
-  }
-  alertEl.innerHTML=`<div class="alert al-g">Sync done — ${synced} new posts, ${banned} accounts detected as banned, ${errors} errors.</div>`;
-  btn.disabled=false;btn.textContent='⟳ Sync';
-  setTimeout(()=>alertEl.innerHTML='',6000);
-  await loadBaseData();loadDashboard();
-}
+      // ── Dashboard ─────────────────────────────────────────────────────────────────
+      async function loadDashboard() {
+        const adminParam = isAdmin ? "&admin=true" : "";
+        const [dashRes, overviewRes, schedRes] = await Promise.all([
+          fetch(`${API}/intel/dashboard?va_id=${currentVA.id}${adminParam}`),
+          fetch(`${API}/intel/all-overview`),
+          fetch(`${API}/intel/scheduler?va_id=${currentVA.id}`),
+        ]);
+        dashData = await dashRes.json();
+        overviewData = await overviewRes.json();
+        const schedData = await schedRes.json();
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-async function loadDashboard(){
-  const adminParam=isAdmin?'&admin=true':'';
-  const[dashRes,overviewRes,schedRes]=await Promise.all([
-    fetch(`${API}/intel/dashboard?va_id=${currentVA.id}${adminParam}`),
-    fetch(`${API}/intel/all-overview`),
-    fetch(`${API}/intel/scheduler?va_id=${currentVA.id}`),
-  ]);
-  dashData=await dashRes.json();
-  overviewData=await overviewRes.json();
-  const schedData=await schedRes.json();
+        const myModels = isAdmin
+          ? allModels
+          : allModels.filter((m) => m.va_id === currentVA.id);
+        renderMetrics(dashData);
+        renderMyModels(myModels, dashData, 1);
+        renderAcctTable(myModels, dashData, 1);
+        renderPerfCards(dashData);
+        renderReuseLocks(dashData.reuse_locks || [], 1);
+        renderComparison(overviewData.vas || []);
+        renderSidebar(overviewData);
+        renderScheduler(schedData);
+      }
 
-  const myModels=isAdmin?allModels:allModels.filter(m=>m.va_id===currentVA.id);
-  renderMetrics(dashData);
-  renderMyModels(myModels,dashData,1);
-  renderAcctTable(myModels,dashData,1);
-  renderPerfCards(dashData);
-  renderReuseLocks(dashData.reuse_locks||[],1);
-  renderComparison(overviewData.vas||[]);
-  renderSidebar(overviewData);
-  renderScheduler(schedData);
-}
-
-// ── Pager helper ──────────────────────────────────────────────────────────────
-function makePager(elId,total,page,setFn){
-  const el=document.getElementById(elId);if(!el)return;
-  const totalPages=Math.ceil(total/PER)||1;
-  if(total<=PER){el.innerHTML='';return;}
-  const pages=Array.from({length:totalPages},(_,i)=>i+1).filter(p=>Math.abs(p-page)<=2);
-  el.innerHTML=`<div class="pager">
-    <span class="pager-info">${(page-1)*PER+1}–${Math.min(page*PER,total)} of ${total}</span>
+      // ── Pager helper ──────────────────────────────────────────────────────────────
+      function makePager(elId, total, page, setFn) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const totalPages = Math.ceil(total / PER) || 1;
+        if (total <= PER) {
+          el.innerHTML = "";
+          return;
+        }
+        const pages = Array.from(
+          { length: totalPages },
+          (_, i) => i + 1,
+        ).filter((p) => Math.abs(p - page) <= 2);
+        el.innerHTML = `<div class="pager">
+    <span class="pager-info">${(page - 1) * PER + 1}–${Math.min(page * PER, total)} of ${total}</span>
     <div class="pager-btns">
-      <button class="pager-btn" ${page<=1?'disabled':''} onclick="${setFn}(${page-1})">←</button>
-      ${pages.map(p=>`<button class="pager-btn${p===page?' cur':''}" onclick="${setFn}(${p})">${p}</button>`).join('')}
-      <button class="pager-btn" ${page>=totalPages?'disabled':''} onclick="${setFn}(${page+1})">→</button>
+      <button class="pager-btn" ${page <= 1 ? "disabled" : ""} onclick="${setFn}(${page - 1})">←</button>
+      ${pages.map((p) => `<button class="pager-btn${p === page ? " cur" : ""}" onclick="${setFn}(${p})">${p}</button>`).join("")}
+      <button class="pager-btn" ${page >= totalPages ? "disabled" : ""} onclick="${setFn}(${page + 1})">→</button>
     </div>
   </div>`;
-}
+      }
 
-function setModelPage(p){modelsPage=p;renderMyModels(modelsCache.models,modelsCache.dash,p);}
-function setAcctPage(p){acctPage=p;renderAcctTable(acctCache.models,acctCache.dash,p);}
-function setReusePage(p){reusePage=p;renderReuseLocks(reuseCache,p);}
-function setAllSubsPage(p){allSubsPage=p;renderAllSubsTable(allSubsCache,p);}
-function setStructurePage(p){structurePage=p;renderStructureRows(structureCache,p);}
+      function setModelPage(p) {
+        modelsPage = p;
+        renderMyModels(modelsCache.models, modelsCache.dash, p);
+      }
+      function setAcctPage(p) {
+        acctPage = p;
+        renderAcctTable(acctCache.models, acctCache.dash, p);
+      }
+      function setReusePage(p) {
+        reusePage = p;
+        renderReuseLocks(reuseCache, p);
+      }
+      function setAllSubsPage(p) {
+        allSubsPage = p;
+        renderAllSubsTable(allSubsCache, p);
+      }
+      function setStructurePage(p) {
+        structurePage = p;
+        renderStructureRows(structureCache, p);
+      }
 
-// ── Metrics ───────────────────────────────────────────────────────────────────
-function renderMetrics(dash){
-  const posts=dash.all_posts||[],tp=dash.today_posts||[];
-  const avgUp=posts.length?Math.round(posts.reduce((s,p)=>s+(p.upvotes||0),0)/posts.length):0;
-  const avgCmt=posts.length?Math.round(posts.reduce((s,p)=>s+(p.comments||0),0)/posts.length):0;
-  const sub={};for(const p of tp){if(!sub[p.subreddit])sub[p.subreddit]=0;sub[p.subreddit]+=(p.upvotes||0)+(p.comments||0);}
-  const top=Object.entries(sub).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('dm-today').textContent=tp.length;
-  document.getElementById('dm-avg-up').textContent=avgUp;
-  document.getElementById('dm-avg-cmt').textContent=avgCmt;
-  const topText=top?`r/${top[0]}`:'—';
-  document.getElementById('dm-top-sub').textContent=topText.length>18?topText.slice(0,16)+'…':topText;
-  document.getElementById('dm-top-sub').title=topText;
-}
+      // ── Metrics ───────────────────────────────────────────────────────────────────
+      function renderMetrics(dash) {
+        const posts = dash.all_posts || [],
+          tp = dash.today_posts || [];
+        const avgUp = posts.length
+          ? Math.round(
+              posts.reduce((s, p) => s + (p.upvotes || 0), 0) / posts.length,
+            )
+          : 0;
+        const avgCmt = posts.length
+          ? Math.round(
+              posts.reduce((s, p) => s + (p.comments || 0), 0) / posts.length,
+            )
+          : 0;
+        const sub = {};
+        for (const p of tp) {
+          if (!sub[p.subreddit]) sub[p.subreddit] = 0;
+          sub[p.subreddit] += (p.upvotes || 0) + (p.comments || 0);
+        }
+        const top = Object.entries(sub).sort((a, b) => b[1] - a[1])[0];
+        document.getElementById("dm-today").textContent = tp.length;
+        document.getElementById("dm-avg-up").textContent = avgUp;
+        document.getElementById("dm-avg-cmt").textContent = avgCmt;
+        const topText = top ? `r/${top[0]}` : "—";
+        document.getElementById("dm-top-sub").textContent =
+          topText.length > 18 ? topText.slice(0, 16) + "…" : topText;
+        document.getElementById("dm-top-sub").title = topText;
+      }
 
-// ── My Models ─────────────────────────────────────────────────────────────────
-function renderMyModels(models,dash,page){
-  modelsCache={models,dash};modelsPage=page;
-  const area=document.getElementById('myModelsArea');
-  const stats=dash.account_stats||{},tp=dash.today_posts||[];
-  if(!models.length){area.innerHTML=`<div class="empty">No models. Go to Setup.</div>`;return;}
-  const start=(page-1)*PER,slice=models.slice(start,start+PER);
-  area.innerHTML=slice.map(m=>{
-    const allAccts=m.reddit_accounts||[];
-    const active=allAccts.filter(a=>!a.banned);
-    const banned=allAccts.filter(a=>a.banned);
-    const rows=active.map(a=>{
-      const s=stats[a.id]||{};
-      const postedToday=tp.some(p=>p.account_id===a.id);
-      const avgUp=s.posts?Math.round(s.totalUpvotes/s.posts):0;
-      return `<div class="account-row">
-        <div class="account-avatar">${a.username.slice(0,2).toUpperCase()}</div>
-        <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts||0} posts · avg ${avgUp} upvotes</div></div>
-        <span class="acct-status ${postedToday?'s-active':'s-idle'}">${postedToday?'✓ Posted':'Pending'}</span>
+      // ── My Models ─────────────────────────────────────────────────────────────────
+      function renderMyModels(models, dash, page) {
+        modelsCache = { models, dash };
+        modelsPage = page;
+        const area = document.getElementById("myModelsArea");
+        const stats = dash.account_stats || {},
+          tp = dash.today_posts || [];
+        if (!models.length) {
+          area.innerHTML = `<div class="empty">No models. Go to Setup.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = models.slice(start, start + PER);
+        area.innerHTML = slice
+          .map((m) => {
+            const allAccts = m.reddit_accounts || [];
+            const active = allAccts.filter((a) => !a.banned);
+            const banned = allAccts.filter((a) => a.banned);
+            const rows = active
+              .map((a) => {
+                const s = stats[a.id] || {};
+                const postedToday = tp.some((p) => p.account_id === a.id);
+                const avgUp = s.posts
+                  ? Math.round(s.totalUpvotes / s.posts)
+                  : 0;
+                return `<div class="account-row">
+        <div class="account-avatar">${a.username.slice(0, 2).toUpperCase()}</div>
+        <div class="account-info"><div class="account-name">@${a.username}</div><div class="account-meta">${s.posts || 0} posts · avg ${avgUp} upvotes</div></div>
+        <span class="acct-status ${postedToday ? "s-active" : "s-idle"}">${postedToday ? "✓ Posted" : "Pending"}</span>
       </div>`;
-    }).join('');
-    const postedIds=new Set(tp.filter(p=>active.some(a=>a.id===p.account_id)).map(p=>p.account_id));
-    return `<div class="model-card">
+              })
+              .join("");
+            const postedIds = new Set(
+              tp
+                .filter((p) => active.some((a) => a.id === p.account_id))
+                .map((p) => p.account_id),
+            );
+            return `<div class="model-card">
       <div class="model-card-header">
         <span class="model-card-name">${m.model_name}</span>
-        <span class="${postedIds.size>=active.length&&active.length>0?'posted-today':'not-posted'}">${postedIds.size}/${active.length} posted today</span>
+        <span class="${postedIds.size >= active.length && active.length > 0 ? "posted-today" : "not-posted"}">${postedIds.size}/${active.length} posted today</span>
       </div>
-      ${rows||'<div style="font-size:12px;color:var(--muted)">No active accounts.</div>'}
-      ${banned.length?`<div style="font-size:11px;color:var(--red);font-family:var(--mono);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">🚫 Banned: ${banned.map(a=>'@'+a.username).join(', ')}</div>`:''}
+      ${rows || '<div style="font-size:12px;color:var(--muted)">No active accounts.</div>'}
+      ${banned.length ? `<div style="font-size:11px;color:var(--red);font-family:var(--mono);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">🚫 Banned: ${banned.map((a) => "@" + a.username).join(", ")}</div>` : ""}
     </div>`;
-  }).join('');
-  makePager('modelsPager',models.length,page,'setModelPage');
-}
+          })
+          .join("");
+        makePager("modelsPager", models.length, page, "setModelPage");
+      }
 
-// ── Account Overview Table ────────────────────────────────────────────────────
-function renderAcctTable(models,dash,page){
-  acctCache={models,dash};acctPage=page;
-  const el=document.getElementById('accountOverviewTable');
-  const allP=dash.all_posts||[],stats=dash.account_stats||{};
-  const rows=[];
-  for(const m of models){
-    for(const a of(m.reddit_accounts||[])){
-      const s=stats[a.id]||{posts:0,totalUpvotes:0,totalComments:0};
-      const eng=s.posts?((s.totalUpvotes+s.totalComments)/s.posts).toFixed(1):'0';
-      const lastP=allP.find(p=>p.account_id===a.id);
-      const lastSub=lastP?`r/${lastP.subreddit}`:'—';
-      const isBanned=a.banned===true;
-      const isActive=!isBanned&&s.posts>0;
-      const sc=isBanned?'chip-r':isActive?'chip-g':'chip-m';
-      const sl=isBanned?'🚫 Banned':isActive?'Active':'Idle';
-      const vaName=m.vas?.name||'—';
-      rows.push({a,m,s,eng,lastSub,sc,sl,vaName});
-    }
-  }
-  if(!rows.length){el.innerHTML=`<div class="empty">No data. Sync first.</div>`;return;}
-  const start=(page-1)*PER,slice=rows.slice(start,start+PER);
-  const vaCol=isAdmin?'<th>VA</th>':'';
-  el.innerHTML=`<table><thead><tr>${vaCol}<th>Account</th><th>Model</th><th>Last Sub</th><th>Upvotes</th><th>Comments</th><th>Avg Eng</th><th>Status</th></tr></thead>
-    <tbody>${slice.map(r=>`<tr>
-      ${isAdmin?`<td style="color:var(--muted);font-family:var(--mono)">${r.vaName||'—'}</td>`:''}
+      // ── Account Overview Table ────────────────────────────────────────────────────
+      function renderAcctTable(models, dash, page) {
+        acctCache = { models, dash };
+        acctPage = page;
+        const el = document.getElementById("accountOverviewTable");
+        const allP = dash.all_posts || [],
+          stats = dash.account_stats || {};
+        const rows = [];
+        for (const m of models) {
+          for (const a of m.reddit_accounts || []) {
+            const s = stats[a.id] || {
+              posts: 0,
+              totalUpvotes: 0,
+              totalComments: 0,
+            };
+            const eng = s.posts
+              ? ((s.totalUpvotes + s.totalComments) / s.posts).toFixed(1)
+              : "0";
+            const lastP = allP.find((p) => p.account_id === a.id);
+            const lastSub = lastP ? `r/${lastP.subreddit}` : "—";
+            const isBanned = a.banned === true;
+            const isActive = !isBanned && s.posts > 0;
+            const sc = isBanned ? "chip-r" : isActive ? "chip-g" : "chip-m";
+            const sl = isBanned ? "🚫 Banned" : isActive ? "Active" : "Idle";
+            const vaName = m.vas?.name || "—";
+            rows.push({ a, m, s, eng, lastSub, sc, sl, vaName });
+          }
+        }
+        if (!rows.length) {
+          el.innerHTML = `<div class="empty">No data. Sync first.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = rows.slice(start, start + PER);
+        const vaCol = isAdmin ? "<th>VA</th>" : "";
+        el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Model</th><th>Last Sub</th><th>Upvotes</th><th>Comments</th><th>Avg Eng</th><th>Status</th></tr></thead>
+    <tbody>${slice
+      .map(
+        (r) => `<tr>
+      ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName || "—"}</td>` : ""}
       <td><b>@${r.a.username}</b></td>
       <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
       <td style="font-family:var(--mono)">${r.lastSub}</td>
-      <td style="font-family:var(--mono)">${r.s.totalUpvotes||0}</td>
-      <td style="font-family:var(--mono)">${r.s.totalComments||0}</td>
+      <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
+      <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
       <td style="font-family:var(--mono)">${r.eng}</td>
       <td><span class="chip ${r.sc}">${r.sl}</span></td>
-    </tr>`).join('')}</tbody></table>`;
-  makePager('acctPager',rows.length,page,'setAcctPage');
-}
+    </tr>`,
+      )
+      .join("")}</tbody></table>`;
+        makePager("acctPager", rows.length, page, "setAcctPage");
+      }
 
-// ── Performance cards ─────────────────────────────────────────────────────────
-function renderPerfCards(dash){
-  const top=dash.top_sub;
-  const el=document.getElementById('topSubCard');
-  if(top)el.innerHTML=`<div style="font-size:20px;font-weight:700;margin-bottom:4px">r/${top.sub}</div><div style="font-size:12px;color:var(--muted);font-family:var(--mono)">${top.count} posts · avg ${top.avg.toFixed(0)} eng</div><div style="margin-top:8px"><span class="chip chip-g">Best Performer</span></div>`;
-  else el.innerHTML=`<div class="empty" style="padding:8px 0">No data yet</div>`;
-  fetch(`${API}/intel/ratings`).then(r=>r.json()).then(j=>{
-    const bad=(j.data||[]).filter(r=>r.rating==='bad').slice(0,3);
-    const el2=document.getElementById('riskySubsCard');
-    if(!bad.length){el2.innerHTML=`<div class="empty" style="padding:8px 0">No risky subs flagged</div>`;return;}
-    el2.innerHTML=bad.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit}</span><span class="rb rb-b">bad</span></div>`).join('');
-  });
-}
+      // ── Performance cards ─────────────────────────────────────────────────────────
+      function renderPerfCards(dash) {
+        const top = dash.top_sub;
+        const el = document.getElementById("topSubCard");
+        if (top)
+          el.innerHTML = `<div style="font-size:20px;font-weight:700;margin-bottom:4px">r/${top.sub}</div><div style="font-size:12px;color:var(--muted);font-family:var(--mono)">${top.count} posts · avg ${top.avg.toFixed(0)} eng</div><div style="margin-top:8px"><span class="chip chip-g">Best Performer</span></div>`;
+        else
+          el.innerHTML = `<div class="empty" style="padding:8px 0">No data yet</div>`;
+        fetch(`${API}/intel/ratings`)
+          .then((r) => r.json())
+          .then((j) => {
+            const bad = (j.data || [])
+              .filter((r) => r.rating === "bad")
+              .slice(0, 3);
+            const el2 = document.getElementById("riskySubsCard");
+            if (!bad.length) {
+              el2.innerHTML = `<div class="empty" style="padding:8px 0">No risky subs flagged</div>`;
+              return;
+            }
+            el2.innerHTML = bad
+              .map(
+                (r) =>
+                  `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit}</span><span class="rb rb-b">bad</span></div>`,
+              )
+              .join("");
+          });
+      }
 
-// ── Reuse locks ───────────────────────────────────────────────────────────────
-function renderReuseLocks(locks,page){
-  reuseCache=locks;reusePage=page;
-  const el=document.getElementById('reuseLocks');
-  if(!locks.length){el.innerHTML=`<div class="empty">No reuse data. Sync first.</div>`;return;}
-  const DAYS=3,start=(page-1)*PER,slice=locks.slice(start,start+PER);
-  el.innerHTML=slice.map(l=>{
-    const dl=Math.min(DAYS,l.days_left||0);
-    const pct=Math.min(100,(dl/DAYS)*100);
-    const bc=l.locked?(dl>1.5?'var(--red)':'var(--amber)'):'var(--green)';
-    return `<div class="reuse-row">
+      // ── Reuse locks ───────────────────────────────────────────────────────────────
+      function renderReuseLocks(locks, page) {
+        reuseCache = locks;
+        reusePage = page;
+        const el = document.getElementById("reuseLocks");
+        if (!locks.length) {
+          el.innerHTML = `<div class="empty">No reuse data. Sync first.</div>`;
+          return;
+        }
+        const DAYS = 3,
+          start = (page - 1) * PER,
+          slice = locks.slice(start, start + PER);
+        el.innerHTML = slice
+          .map((l) => {
+            const dl = Math.min(DAYS, l.days_left || 0);
+            const pct = Math.min(100, (dl / DAYS) * 100);
+            const bc = l.locked
+              ? dl > 1.5
+                ? "var(--red)"
+                : "var(--amber)"
+              : "var(--green)";
+            return `<div class="reuse-row">
       <span class="reuse-sub">r/${l.subreddit}</span>
       <div class="reuse-bar"><div class="reuse-fill" style="width:${pct}%;background:${bc}"></div></div>
-      <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked?'var(--red)':'var(--green)'};flex-shrink:0">${l.locked?'🔒 '+dl.toFixed(1)+'d':'✅ Available'}</span>
+      <span style="font-size:11px;font-family:var(--mono);width:90px;text-align:right;color:${l.locked ? "var(--red)" : "var(--green)"};flex-shrink:0">${l.locked ? "🔒 " + dl.toFixed(1) + "d" : "✅ Available"}</span>
     </div>`;
-  }).join('');
-  makePager('reusePager',locks.length,page,'setReusePage');
-}
+          })
+          .join("");
+        makePager("reusePager", locks.length, page, "setReusePage");
+      }
 
-// ── Comparison (exclude Admin) ────────────────────────────────────────────────
-function renderComparison(vaList){
-  const el=document.getElementById('compareArea');
-  const filtered=vaList.filter(v=>v.name!=='Admin');
-  if(filtered.length<2){el.innerHTML=`<div class="empty">Need 2+ VAs for comparison.</div>`;return;}
-  const sorted=[...filtered].sort((a,b)=>b.avgEng-a.avgEng);
-  const myVA=sorted.find(v=>v.id===currentVA.id);
-  const myRank=sorted.indexOf(myVA)+1;
-  el.innerHTML=`<div style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:10px">Your rank: <span style="color:${myRank===1?'var(--amber)':'var(--text)'};font-weight:700">#${myRank} of ${sorted.length}</span></div>
-    ${sorted.map((va,i)=>{
-      const mine=va.id===currentVA.id;
-      const diff=myVA&&!mine?((myVA.avgEng-va.avgEng)/Math.max(va.avgEng,1)*100).toFixed(0):null;
-      return `<div class="compare-row">
+      // ── Comparison (exclude Admin) ────────────────────────────────────────────────
+      function renderComparison(vaList) {
+        const el = document.getElementById("compareArea");
+        const filtered = vaList.filter((v) => v.name !== "Admin");
+        if (filtered.length < 2) {
+          el.innerHTML = `<div class="empty">Need 2+ VAs for comparison.</div>`;
+          return;
+        }
+        const sorted = [...filtered].sort((a, b) => b.avgEng - a.avgEng);
+        const myVA = sorted.find((v) => v.id === currentVA.id);
+        const myRank = sorted.indexOf(myVA) + 1;
+        el.innerHTML = `<div style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:10px">Your rank: <span style="color:${myRank === 1 ? "var(--amber)" : "var(--text)"};font-weight:700">#${myRank} of ${sorted.length}</span></div>
+    ${sorted
+      .map((va, i) => {
+        const mine = va.id === currentVA.id;
+        const diff =
+          myVA && !mine
+            ? (
+                ((myVA.avgEng - va.avgEng) / Math.max(va.avgEng, 1)) *
+                100
+              ).toFixed(0)
+            : null;
+        return `<div class="compare-row">
         <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <span style="font-size:14px;font-weight:700;color:${i===0?'var(--amber)':'var(--muted)'};width:20px;flex-shrink:0">#${i+1}</span>
-          <span class="compare-va" style="${mine?'color:var(--accent)':''}">${va.name}${mine?' (you)':''}</span>
+          <span style="font-size:14px;font-weight:700;color:${i === 0 ? "var(--amber)" : "var(--muted)"};width:20px;flex-shrink:0">#${i + 1}</span>
+          <span class="compare-va" style="${mine ? "color:var(--accent)" : ""}">${va.name}${mine ? " (you)" : ""}</span>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${va.avgEng} avg eng</div>
-          ${diff!==null?`<div style="font-size:10px;font-family:var(--mono);color:${diff>0?'var(--green)':'var(--red)'}">${diff>0?'+':''}${diff}% vs you</div>`:''}
+          ${diff !== null ? `<div style="font-size:10px;font-family:var(--mono);color:${diff > 0 ? "var(--green)" : "var(--red)"}">${diff > 0 ? "+" : ""}${diff}% vs you</div>` : ""}
         </div>
       </div>`;
-    }).join('')}`;
-}
+      })
+      .join("")}`;
+      }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-function renderSidebar(ov){
-  const se=document.getElementById('allVAsSidebar');
-  const usage=ov.sub_usage_today||{};
-  if(!Object.keys(usage).length){se.innerHTML=`<div class="empty" style="padding:8px 0">No posts today yet.</div>`;}
-  else se.innerHTML=Object.entries(usage).slice(0,15).map(([sub,users])=>`<div class="flag-row">
-    <span style="flex-shrink:0">${users.length>1?'🚩':'✓'}</span>
-    <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map(u=>`@${u.username}`).join(', ')}</div></div>
-  </div>`).join('');
-  const fe=document.getElementById('flaggedArea');
-  const flagged=ov.flagged_today||[];
-  if(!flagged.length)fe.innerHTML=`<div class="empty" style="padding:8px 0">No overlaps today ✓</div>`;
-  else fe.innerHTML=flagged.map(f=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      // ── Sidebar ───────────────────────────────────────────────────────────────────
+      function renderSidebar(ov) {
+        const se = document.getElementById("allVAsSidebar");
+        const usage = ov.sub_usage_today || {};
+        if (!Object.keys(usage).length) {
+          se.innerHTML = `<div class="empty" style="padding:8px 0">No posts today yet.</div>`;
+        } else
+          se.innerHTML = Object.entries(usage)
+            .slice(0, 15)
+            .map(
+              ([sub, users]) => `<div class="flag-row">
+    <span style="flex-shrink:0">${users.length > 1 ? "🚩" : "✓"}</span>
+    <div style="min-width:0"><div class="flag-sub">r/${sub}</div><div class="flag-users">${users.map((u) => `@${u.username}`).join(", ")}</div></div>
+  </div>`,
+            )
+            .join("");
+        const fe = document.getElementById("flaggedArea");
+        const flagged = ov.flagged_today || [];
+        if (!flagged.length)
+          fe.innerHTML = `<div class="empty" style="padding:8px 0">No overlaps today ✓</div>`;
+        else
+          fe.innerHTML = flagged
+            .map(
+              (
+                f,
+              ) => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
     <div style="font-size:12px;font-weight:600;color:var(--red);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${f.subreddit}</div>
-    <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map(u=>`@${u.username}`).join(' · ')}</div>
-  </div>`).join('');
-}
+    <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">${f.used_by.map((u) => `@${u.username}`).join(" · ")}</div>
+  </div>`,
+            )
+            .join("");
+      }
 
-// ── Scheduler ────────────────────────────────────────────────────────────────
-function renderScheduler(data){
-  const el=document.getElementById('schedulerArea');
-  const dayEl=document.getElementById('schedulerDay');
-  const recs=data.recommendations||[];
-  const day=data.day||'';
+      // ── Scheduler ────────────────────────────────────────────────────────────────
+      function renderScheduler(data) {
+        const el = document.getElementById("schedulerArea");
+        const dayEl = document.getElementById("schedulerDay");
+        const recs = data.recommendations || [];
+        const day = data.day || "";
 
-  dayEl.textContent=`${day} — top 5 picks based on your post history`;
+        dayEl.textContent = `${day} — top 5 picks based on your post history`;
 
-  if(!recs.length){
-    el.innerHTML=`<div class="empty" style="padding:8px 0;font-size:11px">No historical data yet. Post and sync more to unlock recommendations.</div>`;
-    return;
-  }
+        if (!recs.length) {
+          el.innerHTML = `<div class="empty" style="padding:8px 0;font-size:11px">No historical data yet. Post and sync more to unlock recommendations.</div>`;
+          return;
+        }
 
-  el.innerHTML=recs.map((r,i)=>`<div class="sched-row">
-    <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:16px;flex-shrink:0">#${i+1}</span>
+        el.innerHTML = recs
+          .map(
+            (r, i) => `<div class="sched-row">
+    <span style="font-family:var(--mono);font-size:11px;color:var(--amber);width:16px;flex-shrink:0">#${i + 1}</span>
     <span class="sched-sub">r/${r.sub}</span>
     <span class="sched-eng">${r.avg_engagement} avg</span>
-    <span class="${r.already_posted_today?'sched-done':'sched-open'}">${r.already_posted_today?'✅ Done':'○ Open'}</span>
-  </div>`).join('');
-}
+    <span class="${r.already_posted_today ? "sched-done" : "sched-open"}">${r.already_posted_today ? "✅ Done" : "○ Open"}</span>
+  </div>`,
+          )
+          .join("");
+      }
 
-// ── Top Subs ──────────────────────────────────────────────────────────────────
-function clearTSFilter(){document.getElementById('ts-from').value='';document.getElementById('ts-to').value='';loadTopSubs();}
+      // ── Top Subs ──────────────────────────────────────────────────────────────────
+      function clearTSFilter() {
+        document.getElementById("ts-from").value = "";
+        document.getElementById("ts-to").value = "";
+        loadTopSubs();
+      }
 
-async function loadTopSubs(){
-  const from=document.getElementById('ts-from').value;
-  const to=document.getElementById('ts-to').value;
-  let url=`${API}/intel/top-subs`;
-  const params=[];
-  if(from)params.push(`from=${encodeURIComponent(from)}`);
-  if(to)params.push(`to=${encodeURIComponent(to)}`);
-  if(params.length)url+='?'+params.join('&');
+      async function loadTopSubs() {
+        const from = document.getElementById("ts-from").value;
+        const to = document.getElementById("ts-to").value;
+        let url = `${API}/intel/top-subs`;
+        const params = [];
+        if (from) params.push(`from=${encodeURIComponent(from)}`);
+        if (to) params.push(`to=${encodeURIComponent(to)}`);
+        if (params.length) url += "?" + params.join("&");
 
-  const res=await fetch(url);
-  const raw=await res.json();
-  const top=raw.top||[];
-  const consistent=raw.consistent||[];
+        const res = await fetch(url);
+        const raw = await res.json();
+        const top = raw.top || [];
+        const consistent = raw.consistent || [];
 
-  // Consistent
-  const ce=document.getElementById('consistentSubs');
-  ce.innerHTML=consistent.slice(0,5).length
-    ?consistent.slice(0,5).map((s,i)=>`<div class="reuse-row"><span style="font-family:var(--mono);font-size:12px;width:20px;color:var(--amber)">#${i+1}</span><span class="reuse-sub">r/${s.sub}</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0">${s.post_count} posts</span></div>`).join('')
-    :`<div class="empty">Post more to see data.</div>`;
+        // Consistent
+        const ce = document.getElementById("consistentSubs");
+        ce.innerHTML = consistent.slice(0, 5).length
+          ? consistent
+              .slice(0, 5)
+              .map(
+                (s, i) =>
+                  `<div class="reuse-row"><span style="font-family:var(--mono);font-size:12px;width:20px;color:var(--amber)">#${i + 1}</span><span class="reuse-sub">r/${s.sub}</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0">${s.post_count} posts</span></div>`,
+              )
+              .join("")
+          : `<div class="empty">Post more to see data.</div>`;
 
-  // High engagement
-  const he=document.getElementById('highEngSubs');
-  he.innerHTML=top.slice(0,5).length
-    ?top.slice(0,5).map((s,i)=>`<div style="display:grid;grid-template-columns:20px 1fr 70px 60px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
-        <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i+1}</span>
+        // High engagement
+        const he = document.getElementById("highEngSubs");
+        he.innerHTML = top.slice(0, 5).length
+          ? top
+              .slice(0, 5)
+              .map(
+                (
+                  s,
+                  i,
+                ) => `<div style="display:grid;grid-template-columns:20px 1fr 70px 60px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">#${i + 1}</span>
         <span style="font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${s.sub}</span>
         <span style="font-family:var(--mono);font-size:12px;color:var(--green);text-align:right">${s.avg_engagement}</span>
         <span style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right">${s.post_count}</span>
-      </div>`).join('')
-    :`<div class="empty">No engagement data yet.</div>`;
+      </div>`,
+              )
+              .join("")
+          : `<div class="empty">No engagement data yet.</div>`;
 
-  // Chart
-  if(topSubsChart)topSubsChart.destroy();
-  const cd=top.slice(0,8);
-  const tickColor=nsfwMode?'#7a6a55':'#888899';
-  const gridColor=nsfwMode?'rgba(0,0,0,0.05)':'rgba(255,255,255,0.05)';
-  if(cd.length)topSubsChart=new Chart(document.getElementById('topSubsChart'),{
-    type:'bar',
-    data:{labels:cd.map(s=>'r/'+s.sub),datasets:[
-      {label:'Avg Eng',data:cd.map(s=>s.avg_engagement),backgroundColor:'rgba(255,69,0,0.7)',borderRadius:4,borderWidth:0},
-      {label:'Peak',data:cd.map(s=>s.peak_engagement),backgroundColor:'rgba(59,130,246,0.4)',borderRadius:4,borderWidth:0},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tickColor,font:{size:10},boxWidth:10}}},scales:{x:{grid:{display:false},ticks:{color:tickColor,font:{size:10},maxRotation:35}},y:{grid:{color:gridColor},border:{display:false},ticks:{color:tickColor,font:{size:10}}}}}
-  });
+        // Chart
+        if (topSubsChart) topSubsChart.destroy();
+        const cd = top.slice(0, 8);
+        const tickColor = nsfwMode ? "#7a6a55" : "#888899";
+        const gridColor = nsfwMode
+          ? "rgba(0,0,0,0.05)"
+          : "rgba(255,255,255,0.05)";
+        if (cd.length)
+          topSubsChart = new Chart(document.getElementById("topSubsChart"), {
+            type: "bar",
+            data: {
+              labels: cd.map((s) => "r/" + s.sub),
+              datasets: [
+                {
+                  label: "Avg Eng",
+                  data: cd.map((s) => s.avg_engagement),
+                  backgroundColor: "rgba(255,69,0,0.7)",
+                  borderRadius: 4,
+                  borderWidth: 0,
+                },
+                {
+                  label: "Peak",
+                  data: cd.map((s) => s.peak_engagement),
+                  backgroundColor: "rgba(59,130,246,0.4)",
+                  borderRadius: 4,
+                  borderWidth: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: {
+                    color: tickColor,
+                    font: { size: 10 },
+                    boxWidth: 10,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: {
+                    color: tickColor,
+                    font: { size: 10 },
+                    maxRotation: 35,
+                  },
+                },
+                y: {
+                  grid: { color: gridColor },
+                  border: { display: false },
+                  ticks: { color: tickColor, font: { size: 10 } },
+                },
+              },
+            },
+          });
 
-  // Banned accounts — show last sub
-  const be=document.getElementById('bannedSubsList');
-  const banned=raw.banned_accounts||[];
-  be.innerHTML=banned.length
-    ?banned.map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        // Banned accounts — show last sub
+        const be = document.getElementById("bannedSubsList");
+        const banned = raw.banned_accounts || [];
+        be.innerHTML = banned.length
+          ? banned
+              .map(
+                (
+                  a,
+                ) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
         <span class="chip chip-r">🚫 Banned</span>
         <div style="flex:1;min-width:0">
           <div style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${a.username}</div>
-          ${a.last_sub?`<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>`:''}
+          ${a.last_sub ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Last posted: r/${a.last_sub}</div>` : ""}
         </div>
-        ${a.va?`<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>`:''}
-      </div>`).join('')
-    :`<div class="empty">No banned accounts.</div>`;
+        ${a.va ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0">${a.va}</span>` : ""}
+      </div>`,
+              )
+              .join("")
+          : `<div class="empty">No banned accounts.</div>`;
 
-  // All subs table (no nsfw filter — show everything)
-  allSubsCache=top;
-  renderAllSubsTable(top,1);
-}
+        // All subs table (no nsfw filter — show everything)
+        allSubsCache = top;
+        renderAllSubsTable(top, 1);
+      }
 
-function renderAllSubsTable(subs,page){
-  allSubsPage=page;
-  const el=document.getElementById('allSubsTable');
-  if(!subs.length){el.innerHTML=`<div class="empty">No data. Sync accounts.</div>`;return;}
-  const start=(page-1)*PER,slice=subs.slice(start,start+PER);
-  el.innerHTML=`<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
-    <tbody>${slice.map((s,i)=>`<tr>
-      <td style="color:var(--muted);font-family:var(--mono)">${start+i+1}</td>
+      function renderAllSubsTable(subs, page) {
+        allSubsPage = page;
+        const el = document.getElementById("allSubsTable");
+        if (!subs.length) {
+          el.innerHTML = `<div class="empty">No data. Sync accounts.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = subs.slice(start, start + PER);
+        el.innerHTML = `<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
+    <tbody>${slice
+      .map(
+        (s, i) => `<tr>
+      <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
       <td><b>r/${s.sub}</b></td>
       <td style="font-family:var(--mono)">${s.avg_engagement}</td>
       <td style="font-family:var(--mono)">${s.peak_engagement}</td>
       <td style="font-family:var(--mono)">${s.post_count}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(', ')||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
       <td><span class="chip chip-b">${s.score}</span></td>
-    </tr>`).join('')}</tbody></table>`;
-  makePager('allSubsPager',subs.length,page,'setAllSubsPage');
-}
+    </tr>`,
+      )
+      .join("")}</tbody></table>`;
+        makePager("allSubsPager", subs.length, page, "setAllSubsPage");
+      }
 
-// ── Subreddit Intel ───────────────────────────────────────────────────────────
-function clearIntelFilter(){document.getElementById('in-from').value='';document.getElementById('in-to').value='';loadAutoEval();}
+      // ── Subreddit Intel ───────────────────────────────────────────────────────────
+      function clearIntelFilter() {
+        document.getElementById("in-from").value = "";
+        document.getElementById("in-to").value = "";
+        loadAutoEval();
+      }
 
-function cycleIntelFilter(){
-  const cycle=['all','sfw','nsfw'];
-  intelFilter=cycle[(cycle.indexOf(intelFilter)+1)%cycle.length];
-  document.getElementById('intelFilterLabel').textContent=`Showing: ${intelFilter.toUpperCase()}`;
-  loadAutoEval();
-}
+      function cycleIntelFilter() {
+        const cycle = ["all", "sfw", "nsfw"];
+        intelFilter = cycle[(cycle.indexOf(intelFilter) + 1) % cycle.length];
+        document.getElementById("intelFilterLabel").textContent =
+          `Showing: ${intelFilter.toUpperCase()}`;
+        loadAutoEval();
+      }
 
-async function loadAutoEval(){
-  const res=await fetch(`${API}/intel/ratings`);
-  const j=await res.json();
-  let ratings=j.data||[];
+      async function loadAutoEval() {
+        const res = await fetch(`${API}/intel/ratings`);
+        const j = await res.json();
+        let ratings = j.data || [];
 
-  // Apply type filter
-  if(intelFilter==='nsfw') ratings=ratings.filter(r=>r.is_nsfw===true);
-  else if(intelFilter==='sfw') ratings=ratings.filter(r=>r.is_nsfw!==true);
-  // 'all' = no filter
+        // Apply type filter
+        if (intelFilter === "nsfw")
+          ratings = ratings.filter((r) => r.is_nsfw === true);
+        else if (intelFilter === "sfw")
+          ratings = ratings.filter((r) => r.is_nsfw !== true);
+        // 'all' = no filter
 
-  // Also respect page-level nsfw mode
-  if(nsfwMode) ratings=ratings.filter(r=>r.is_nsfw===true);
-  else if(!nsfwMode && intelFilter==='all') ratings=ratings.filter(r=>r.is_nsfw!==true);
+        // Also respect page-level nsfw mode
+        if (nsfwMode) ratings = ratings.filter((r) => r.is_nsfw === true);
+        else if (!nsfwMode && intelFilter === "all")
+          ratings = ratings.filter((r) => r.is_nsfw !== true);
 
-  // Date filter
-  const from=document.getElementById('in-from').value;
-  const to=document.getElementById('in-to').value;
-  if(from)ratings=ratings.filter(r=>new Date(r.updated_at)>=new Date(from));
-  if(to)ratings=ratings.filter(r=>new Date(r.updated_at)<=new Date(to+'T23:59:59'));
+        // Date filter
+        const from = document.getElementById("in-from").value;
+        const to = document.getElementById("in-to").value;
+        if (from)
+          ratings = ratings.filter(
+            (r) => new Date(r.updated_at) >= new Date(from),
+          );
+        if (to)
+          ratings = ratings.filter(
+            (r) => new Date(r.updated_at) <= new Date(to + "T23:59:59"),
+          );
 
-  allRatings=ratings;
-  const el=document.getElementById('autoEvalList');
-  if(!ratings.length){el.innerHTML=`<div class="empty">No evaluations for this filter.<br>Sync accounts to auto-evaluate, or change filter.</div>`;return;}
+        allRatings = ratings;
+        const el = document.getElementById("autoEvalList");
+        if (!ratings.length) {
+          el.innerHTML = `<div class="empty">No evaluations for this filter.<br>Sync accounts to auto-evaluate, or change filter.</div>`;
+          return;
+        }
 
-  const grouped={good:[],bad:[],neutral:[]};
-  ratings.forEach(r=>{if(grouped[r.rating])grouped[r.rating].push(r);});
-  const sections=[{key:'good',label:'Good — Post Here',color:'var(--green)'},{key:'bad',label:'Bad — Avoid',color:'var(--red)'},{key:'neutral',label:'Neutral',color:'var(--muted)'}];
+        const grouped = { good: [], bad: [], neutral: [] };
+        ratings.forEach((r) => {
+          if (grouped[r.rating]) grouped[r.rating].push(r);
+        });
+        const sections = [
+          { key: "good", label: "Good — Post Here", color: "var(--green)" },
+          { key: "bad", label: "Bad — Avoid", color: "var(--red)" },
+          { key: "neutral", label: "Neutral", color: "var(--muted)" },
+        ];
 
-  el.innerHTML=sections.filter(s=>grouped[s.key].length).map(s=>`
+        el.innerHTML = sections
+          .filter((s) => grouped[s.key].length)
+          .map(
+            (s) => `
     <div style="margin-bottom:18px">
       <div class="section-label" style="color:${s.color}">${s.label} (${grouped[s.key].length})</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${grouped[s.key].map(r=>`<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+        ${grouped[s.key]
+          .map(
+            (
+              r,
+            ) => `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw?'<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>':''}</div>
-            ${r.reason?`<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>`:''}
+            <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">r/${r.subreddit} ${r.is_nsfw ? '<span style="font-size:9px;font-family:var(--mono);color:var(--red);border:1px solid rgba(192,57,43,0.3);border-radius:3px;padding:1px 5px">nsfw</span>' : ""}</div>
+            ${r.reason ? `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.reason}</div>` : ""}
           </div>
-          <span class="rb rb-${r.rating==='good'?'g':r.rating==='bad'?'b':'n'}">${r.rating}${r.reason?.startsWith('Auto:')?'&nbsp;(auto)':''}</span>
+          <span class="rb rb-${r.rating === "good" ? "g" : r.rating === "bad" ? "b" : "n"}">${r.rating}${r.reason?.startsWith("Auto:") ? "&nbsp;(auto)" : ""}</span>
           <button class="btn btn-sm btn-ro" onclick="deleteRating('${r.subreddit}')">Remove</button>
-        </div>`).join('')}
+        </div>`,
+          )
+          .join("")}
       </div>
-    </div>`).join('');
-}
+    </div>`,
+          )
+          .join("");
+      }
 
-async function saveRating(){
-  const sub=document.getElementById('ri-sub').value.trim().replace(/^r\//,'');
-  const rating=document.getElementById('ri-rating').value;
-  const reason=document.getElementById('ri-reason').value.trim();
-  const isNsfw=document.getElementById('ri-nsfw').value==='true';
-  const ae=document.getElementById('intelAlert');
-  if(!sub){ae.innerHTML=`<div class="alert al-a">Enter a subreddit name.</div>`;return;}
-  const res=await fetch(`${API}/intel/ratings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subreddit:sub,rating,reason:reason||null,va_id:currentVA?.id,is_nsfw:isNsfw})});
-  const j=await res.json();
-  if(j.error){ae.innerHTML=`<div class="alert al-r">${j.error}</div>`;return;}
-  ae.innerHTML=`<div class="alert al-g">r/${sub} saved as ${rating}.</div>`;
-  document.getElementById('ri-sub').value='';document.getElementById('ri-reason').value='';
-  loadAutoEval();setTimeout(()=>ae.innerHTML='',3000);
-}
+      async function saveRating() {
+        const sub = document
+          .getElementById("ri-sub")
+          .value.trim()
+          .replace(/^r\//, "");
+        const rating = document.getElementById("ri-rating").value;
+        const reason = document.getElementById("ri-reason").value.trim();
+        const isNsfw = document.getElementById("ri-nsfw").value === "true";
+        const ae = document.getElementById("intelAlert");
+        if (!sub) {
+          ae.innerHTML = `<div class="alert al-a">Enter a subreddit name.</div>`;
+          return;
+        }
+        const res = await fetch(`${API}/intel/ratings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subreddit: sub,
+            rating,
+            reason: reason || null,
+            va_id: currentVA?.id,
+            is_nsfw: isNsfw,
+          }),
+        });
+        const j = await res.json();
+        if (j.error) {
+          ae.innerHTML = `<div class="alert al-r">${j.error}</div>`;
+          return;
+        }
+        ae.innerHTML = `<div class="alert al-g">r/${sub} saved as ${rating}.</div>`;
+        document.getElementById("ri-sub").value = "";
+        document.getElementById("ri-reason").value = "";
+        loadAutoEval();
+        setTimeout(() => (ae.innerHTML = ""), 3000);
+      }
 
-async function deleteRating(sub){
-  if(!confirm(`Remove rating for r/${sub}?`))return;
-  await fetch(`${API}/intel/ratings/${encodeURIComponent(sub)}`,{method:'DELETE'});
-  loadAutoEval();
-}
+      async function deleteRating(sub) {
+        if (!confirm(`Remove rating for r/${sub}?`)) return;
+        await fetch(`${API}/intel/ratings/${encodeURIComponent(sub)}`, {
+          method: "DELETE",
+        });
+        loadAutoEval();
+      }
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
-function loadSetup(){
-  const vaList=isAdmin?allVAs:allVAs.filter(v=>v.id===currentVA.id);
-  document.getElementById('new-model-va').innerHTML=vaList.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
-  const myModels=isAdmin?allModels:allModels.filter(m=>m.va_id===currentVA.id);
-  document.getElementById('new-acc-model').innerHTML=myModels.map(m=>`<option value="${m.id}">${m.model_name} (${m.vas?.name||''})</option>`).join('');
-  document.getElementById('addVACard').style.display=isAdmin?'block':'none';
-  if(!isAdmin){const f=document.getElementById('modelVAField');if(f)f.style.display='none';}
-  renderStructureTable();
-}
+      // ── Setup ─────────────────────────────────────────────────────────────────────
+      function loadSetup() {
+        const vaList = isAdmin
+          ? allVAs
+          : allVAs.filter((v) => v.id === currentVA.id);
+        document.getElementById("new-model-va").innerHTML = vaList
+          .map((v) => `<option value="${v.id}">${v.name}</option>`)
+          .join("");
+        const myModels = isAdmin
+          ? allModels
+          : allModels.filter((m) => m.va_id === currentVA.id);
+        document.getElementById("new-acc-model").innerHTML = myModels
+          .map(
+            (m) =>
+              `<option value="${m.id}">${m.model_name} (${m.vas?.name || ""})</option>`,
+          )
+          .join("");
+        document.getElementById("addVACard").style.display = isAdmin
+          ? "block"
+          : "none";
+        if (!isAdmin) {
+          const f = document.getElementById("modelVAField");
+          if (f) f.style.display = "none";
+        }
+        renderStructureTable();
+      }
 
-function renderStructureTable(){
-  const models=isAdmin?allModels:allModels.filter(m=>m.va_id===currentVA.id);
-  const rows=[];
-  for(const m of models){
-    const va=m.vas?.name||'—';
-    if(!(m.reddit_accounts||[]).length){rows.push({va,model:m.model_name,username:'(no accounts)',sc:'chip-m',sl:'—',id:null});continue;}
-    for(const a of m.reddit_accounts){
-      const isBanned=a.banned===true;
-      const sc=isBanned?'chip-r':a.is_active?'chip-g':'chip-m';
-      const sl=isBanned?'🚫 Banned':a.is_active?'Active':'Inactive';
-      rows.push({va,model:m.model_name,username:a.username,sc,sl,id:a.id});
-    }
-  }
-  structureCache=rows;
-  renderStructureRows(rows,1);
-}
+      function renderStructureTable() {
+        const models = isAdmin
+          ? allModels
+          : allModels.filter((m) => m.va_id === currentVA.id);
+        const rows = [];
+        for (const m of models) {
+          const va = m.vas?.name || "—";
+          if (!(m.reddit_accounts || []).length) {
+            rows.push({
+              va,
+              model: m.model_name,
+              username: "(no accounts)",
+              sc: "chip-m",
+              sl: "—",
+              id: null,
+            });
+            continue;
+          }
+          for (const a of m.reddit_accounts) {
+            const isBanned = a.banned === true;
+            const sc = isBanned ? "chip-r" : a.is_active ? "chip-g" : "chip-m";
+            const sl = isBanned
+              ? "🚫 Banned"
+              : a.is_active
+                ? "Active"
+                : "Inactive";
+            rows.push({
+              va,
+              model: m.model_name,
+              username: a.username,
+              sc,
+              sl,
+              id: a.id,
+            });
+          }
+        }
+        structureCache = rows;
+        renderStructureRows(rows, 1);
+      }
 
-function renderStructureRows(rows,page){
-  structurePage=page;
-  const el=document.getElementById('structureTable');
-  if(!rows.length){el.innerHTML=`<div class="empty">No models yet.</div>`;return;}
-  const start=(page-1)*PER,slice=rows.slice(start,start+PER);
-  el.innerHTML=`<table><thead><tr><th>VA</th><th>Model</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
-    <tbody>${slice.map(r=>`<tr>
+      function renderStructureRows(rows, page) {
+        structurePage = page;
+        const el = document.getElementById("structureTable");
+        if (!rows.length) {
+          el.innerHTML = `<div class="empty">No models yet.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = rows.slice(start, start + PER);
+        el.innerHTML = `<table><thead><tr><th>VA</th><th>Model</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>${slice
+      .map(
+        (r) => `<tr>
       <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
       <td style="font-family:var(--mono);font-weight:600;overflow:hidden;text-overflow:ellipsis">${r.model}</td>
-      <td style="font-family:var(--mono);overflow:hidden;text-overflow:ellipsis">${r.id?'@'+r.username:r.username}</td>
-      <td>${r.id?`<span class="chip ${r.sc}">${r.sl}</span>`:''}</td>
-      <td>${r.id?`<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>`:''}</td>
-    </tr>`).join('')}</tbody></table>`;
-  makePager('structurePager',rows.length,page,'setStructurePage');
-}
+      <td style="font-family:var(--mono);overflow:hidden;text-overflow:ellipsis">${r.id ? "@" + r.username : r.username}</td>
+      <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
+      <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
+    </tr>`,
+      )
+      .join("")}</tbody></table>`;
+        makePager("structurePager", rows.length, page, "setStructurePage");
+      }
 
-async function removeAccount(id){
-  if(!confirm('Remove this account? Post logs will also be deleted.'))return;
-  await fetch(`${API}/intel/accounts/${id}`,{method:'DELETE'});
-  await loadBaseData();loadSetup();
-  showSetupAlert('Account removed.','al-g');
-}
+      async function removeAccount(id) {
+        if (!confirm("Remove this account? Post logs will also be deleted."))
+          return;
+        await fetch(`${API}/intel/accounts/${id}`, { method: "DELETE" });
+        await loadBaseData();
+        loadSetup();
+        showSetupAlert("Account removed.", "al-g");
+      }
 
-async function addVA(){
-  if(!isAdmin){alert('Only admin can add VAs.');return;}
-  const name=document.getElementById('new-va-name').value.trim();
-  const pin=document.getElementById('new-va-pin').value.trim();
-  if(!name||pin.length!==4){alert('Name and 4-digit PIN required.');return;}
-  const res=await fetch(`${API}/intel/vas`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,pin})});
-  const j=await res.json();
-  if(j.error){showSetupAlert(j.error,'al-r');return;}
-  document.getElementById('new-va-name').value='';document.getElementById('new-va-pin').value='';
-  await loadBaseData();loadSetup();
-  showSetupAlert(`VA "${name}" added. PIN: ${pin}`,'al-g');
-}
+      async function addVA() {
+        if (!isAdmin) {
+          alert("Only admin can add VAs.");
+          return;
+        }
+        const name = document.getElementById("new-va-name").value.trim();
+        const pin = document.getElementById("new-va-pin").value.trim();
+        if (!name || pin.length !== 4) {
+          alert("Name and 4-digit PIN required.");
+          return;
+        }
+        const res = await fetch(`${API}/intel/vas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, pin }),
+        });
+        const j = await res.json();
+        if (j.error) {
+          showSetupAlert(j.error, "al-r");
+          return;
+        }
+        document.getElementById("new-va-name").value = "";
+        document.getElementById("new-va-pin").value = "";
+        await loadBaseData();
+        loadSetup();
+        showSetupAlert(`VA "${name}" added. PIN: ${pin}`, "al-g");
+      }
 
-async function addModel(){
-  const vaId=isAdmin?document.getElementById('new-model-va').value:currentVA.id;
-  const name=document.getElementById('new-model-name').value.trim();
-  if(!vaId||!name){alert('Enter a model name.');return;}
-  const res=await fetch(`${API}/intel/models`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({va_id:vaId,model_name:name})});
-  const j=await res.json();
-  if(j.error){showSetupAlert(j.error,'al-r');return;}
-  document.getElementById('new-model-name').value='';
-  await loadBaseData();loadSetup();
-  showSetupAlert(`Model "${name}" added!`,'al-g');
-}
+      async function addModel() {
+        const vaId = isAdmin
+          ? document.getElementById("new-model-va").value
+          : currentVA.id;
+        const name = document.getElementById("new-model-name").value.trim();
+        if (!vaId || !name) {
+          alert("Enter a model name.");
+          return;
+        }
+        const res = await fetch(`${API}/intel/models`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ va_id: vaId, model_name: name }),
+        });
+        const j = await res.json();
+        if (j.error) {
+          showSetupAlert(j.error, "al-r");
+          return;
+        }
+        document.getElementById("new-model-name").value = "";
+        await loadBaseData();
+        loadSetup();
+        showSetupAlert(`Model "${name}" added!`, "al-g");
+      }
 
-async function addAccount(){
-  const modelId=document.getElementById('new-acc-model').value;
-  const username=document.getElementById('new-acc-username').value.trim().replace(/^@/,'');
-  if(!modelId||!username){alert('Select a model and enter a username.');return;}
-  const chk=await(await fetch(`${API}/intel/check-username?username=${encodeURIComponent(username)}`)).json();
-  if(chk.exists){showSetupAlert(`@${username} is already registered.`,'al-r');return;}
-  const res=await fetch(`${API}/intel/accounts`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model_id:modelId,username})});
-  const j=await res.json();
-  if(j.error){showSetupAlert(j.error,'al-r');return;}
-  document.getElementById('new-acc-username').value='';document.getElementById('usernameCheckMsg').textContent='';
-  await loadBaseData();loadSetup();
-  showSetupAlert(`@${username} added!`,'al-g');
-}
+      async function addAccount() {
+        const modelId = document.getElementById("new-acc-model").value;
+        const username = document
+          .getElementById("new-acc-username")
+          .value.trim()
+          .replace(/^@/, "");
+        if (!modelId || !username) {
+          alert("Select a model and enter a username.");
+          return;
+        }
+        const chk = await (
+          await fetch(
+            `${API}/intel/check-username?username=${encodeURIComponent(username)}`,
+          )
+        ).json();
+        if (chk.exists) {
+          showSetupAlert(`@${username} is already registered.`, "al-r");
+          return;
+        }
+        const res = await fetch(`${API}/intel/accounts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model_id: modelId, username }),
+        });
+        const j = await res.json();
+        if (j.error) {
+          showSetupAlert(j.error, "al-r");
+          return;
+        }
+        document.getElementById("new-acc-username").value = "";
+        document.getElementById("usernameCheckMsg").textContent = "";
+        await loadBaseData();
+        loadSetup();
+        showSetupAlert(`@${username} added!`, "al-g");
+      }
 
-document.getElementById('new-acc-username').addEventListener('input',async e=>{
-  const u=e.target.value.trim().replace(/^@/,'');
-  const msg=document.getElementById('usernameCheckMsg');
-  if(!u){msg.textContent='';return;}
-  const j=await(await fetch(`${API}/intel/check-username?username=${encodeURIComponent(u)}`)).json();
-  msg.textContent=j.exists?`⚠ @${u} already exists`:`✓ @${u} is available`;
-  msg.style.color=j.exists?'var(--red)':'var(--green)';
-});
+      document
+        .getElementById("new-acc-username")
+        .addEventListener("input", async (e) => {
+          const u = e.target.value.trim().replace(/^@/, "");
+          const msg = document.getElementById("usernameCheckMsg");
+          if (!u) {
+            msg.textContent = "";
+            return;
+          }
+          const j = await (
+            await fetch(
+              `${API}/intel/check-username?username=${encodeURIComponent(u)}`,
+            )
+          ).json();
+          msg.textContent = j.exists
+            ? `⚠ @${u} already exists`
+            : `✓ @${u} is available`;
+          msg.style.color = j.exists ? "var(--red)" : "var(--green)";
+        });
 
-function showSetupAlert(msg,cls){
-  const el=document.getElementById('setupAlert');
-  el.innerHTML=`<div class="alert ${cls}">${msg}</div>`;
-  setTimeout(()=>el.innerHTML='',4000);
-}
+      function showSetupAlert(msg, cls) {
+        const el = document.getElementById("setupAlert");
+        el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+        setTimeout(() => (el.innerHTML = ""), 4000);
+      }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-const savedMode=localStorage.getItem('subtracker-mode');
-if(savedMode==='nsfw'){
-  nsfwMode=true;
-  document.documentElement.setAttribute('data-mode','nsfw');
-}
+      // ── Init ──────────────────────────────────────────────────────────────────────
+      const savedMode = localStorage.getItem("subtracker-mode");
+      if (savedMode === "nsfw") {
+        nsfwMode = true;
+        document.documentElement.setAttribute("data-mode", "nsfw");
+      }
 
-const savedVA=sessionStorage.getItem('va');
-if(savedVA){try{currentVA=JSON.parse(savedVA);isAdmin=(currentVA.name==='Admin');onLogin();}catch{sessionStorage.removeItem('va');}}
+      const savedVA = sessionStorage.getItem("va");
+      if (savedVA) {
+        try {
+          currentVA = JSON.parse(savedVA);
+          isAdmin = currentVA.name === "Admin";
+          onLogin();
+        } catch {
+          sessionStorage.removeItem("va");
+        }
+      }
 
-document.addEventListener('keydown',e=>{
-  if(document.getElementById('pinModal').style.display==='none')return;
-  if(e.key>='0'&&e.key<='9')pinPress(e.key);
-  if(e.key==='Enter')pinEnter();
-  if(e.key==='Backspace')pinClear();
-});
-</script>
-</body>
+      document.addEventListener("keydown", (e) => {
+        if (document.getElementById("pinModal").style.display === "none")
+          return;
+        if (e.key >= "0" && e.key <= "9") pinPress(e.key);
+        if (e.key === "Enter") pinEnter();
+        if (e.key === "Backspace") pinClear();
+      });
+    </script>
+  </body>
 </html>
