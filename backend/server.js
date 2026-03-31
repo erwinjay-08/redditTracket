@@ -268,12 +268,10 @@ app.get("/api/user-ranking", async (req, res) => {
   } catch (err) {
     const status = err.response?.status;
     if (status === 403 || status === 404)
-      return res
-        .status(200)
-        .json({
-          banned: true,
-          error: `The account u/${username} appears to be banned, suspended, or does not exist.`,
-        });
+      return res.status(200).json({
+        banned: true,
+        error: `The account u/${username} appears to be banned, suspended, or does not exist.`,
+      });
     res.status(500).json({ error: err.message });
   }
 });
@@ -334,12 +332,10 @@ app.get("/api/user-monthly", async (req, res) => {
   } catch (err) {
     const status = err.response?.status;
     if (status === 403 || status === 404)
-      return res
-        .status(200)
-        .json({
-          banned: true,
-          error: `The account u/${username} appears to be banned, suspended, or does not exist.`,
-        });
+      return res.status(200).json({
+        banned: true,
+        error: `The account u/${username} appears to be banned, suspended, or does not exist.`,
+      });
     res.status(500).json({ error: err.message });
   }
 });
@@ -404,22 +400,18 @@ app.get("/api/sub-post-timing", async (req, res) => {
   } catch (err) {
     const status = err.response?.status;
     if (status === 403 || status === 404)
-      return res
-        .status(200)
-        .json({
-          data: { week: {}, month: {} },
-          meta: { sub: subName, tz: tzName, posts_scanned: 0 },
-          warning: "This subreddit is private, quarantined, or age-restricted.",
-        });
+      return res.status(200).json({
+        data: { week: {}, month: {} },
+        meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+        warning: "This subreddit is private, quarantined, or age-restricted.",
+      });
     if (status === 429)
-      return res
-        .status(200)
-        .json({
-          data: { week: {}, month: {} },
-          meta: { sub: subName, tz: tzName, posts_scanned: 0 },
-          warning:
-            "Reddit rate limit hit — please wait a few seconds and try again.",
-        });
+      return res.status(200).json({
+        data: { week: {}, month: {} },
+        meta: { sub: subName, tz: tzName, posts_scanned: 0 },
+        warning:
+          "Reddit rate limit hit — please wait a few seconds and try again.",
+      });
     res.status(500).json({ error: err.message });
   }
 });
@@ -806,16 +798,79 @@ app.post("/api/intel/sync-account", async (req, res) => {
   const { account_id, username } = req.body;
   if (!account_id || !username)
     return res.status(400).json({ error: "account_id and username required" });
+
   try {
-    const data = await reddit.redditGet(
-      `/user/${encodeURIComponent(username)}/submitted`,
-      { sort: "new", limit: 100, t: "month" },
-    );
-    const posts = data.data.children.map((c) => c.data);
+    // ── Strategy: fetch from BOTH endpoints then deduplicate ──────────────────
+    // 1. /user/{username}/submitted — public profile posts (curated posts MISSING here)
+    // 2. /search?q=author:{username} — finds ALL posts including curated/hidden ones
+    //    because the post still exists in the subreddit even if hidden from profile
+
+    const [profileData, searchData] = await Promise.allSettled([
+      reddit.redditGet(`/user/${encodeURIComponent(username)}/submitted`, {
+        sort: "new",
+        limit: 100,
+        t: "month",
+      }),
+      reddit.redditGet("/search", {
+        q: `author:${username}`,
+        sort: "new",
+        type: "link",
+        limit: 100,
+        t: "month",
+      }),
+    ]);
+
+    const posts = [];
+    const seenIds = new Set();
+
+    // Collect from profile listing
+    if (profileData.status === "fulfilled") {
+      for (const child of profileData.value?.data?.children || []) {
+        const p = child.data;
+        if (p.id && !seenIds.has(p.id)) {
+          seenIds.add(p.id);
+          posts.push(p);
+        }
+      }
+    }
+
+    // Collect from search — catches curated posts
+    if (searchData.status === "fulfilled") {
+      for (const child of searchData.value?.data?.children || []) {
+        const p = child.data;
+        // Only include posts actually by this user (search can be fuzzy)
+        if (
+          p.id &&
+          !seenIds.has(p.id) &&
+          p.author?.toLowerCase() === username.toLowerCase()
+        ) {
+          seenIds.add(p.id);
+          posts.push(p);
+        }
+      }
+    }
+
+    // If BOTH failed with 403/404 → account is banned
+    if (profileData.status === "rejected" && searchData.status === "rejected") {
+      const status = profileData.reason?.response?.status;
+      if (status === 403 || status === 404) {
+        await supabase
+          .from("reddit_accounts")
+          .update({ is_active: false, banned: true })
+          .eq("id", account_id);
+        return res.json({
+          banned: true,
+          error: `u/${username} appears to be banned or suspended.`,
+        });
+      }
+      throw profileData.reason;
+    }
+
     let synced = 0;
     for (const p of posts) {
       const sub = p.subreddit.toLowerCase();
       const postedAt = new Date(p.created_utc * 1000).toISOString();
+
       const { data: existing } = await supabase
         .from("post_logs")
         .select("id")
@@ -823,6 +878,7 @@ app.post("/api/intel/sync-account", async (req, res) => {
         .eq("subreddit", sub)
         .eq("posted_at", postedAt)
         .maybeSingle();
+
       if (existing) {
         await supabase
           .from("post_logs")
@@ -834,22 +890,35 @@ app.post("/api/intel/sync-account", async (req, res) => {
           })
           .eq("id", existing.id);
       } else {
-        await supabase
-          .from("post_logs")
-          .insert({
-            account_id,
-            subreddit: sub,
-            post_url: `https://reddit.com${p.permalink}`,
-            post_title: p.title,
-            posted_at: postedAt,
-            upvotes: p.score || 0,
-            comments: p.num_comments || 0,
-          });
+        await supabase.from("post_logs").insert({
+          account_id,
+          subreddit: sub,
+          post_url: `https://reddit.com${p.permalink}`,
+          post_title: p.title,
+          posted_at: postedAt,
+          upvotes: p.score || 0,
+          comments: p.num_comments || 0,
+        });
         synced++;
       }
     }
+
     await autoEvalSubreddits(posts);
-    res.json({ success: true, synced, total: posts.length });
+
+    res.json({
+      success: true,
+      synced,
+      total: posts.length,
+      // helpful debug info
+      from_profile:
+        profileData.status === "fulfilled"
+          ? profileData.value?.data?.children?.length || 0
+          : 0,
+      from_search:
+        searchData.status === "fulfilled"
+          ? searchData.value?.data?.children?.length || 0
+          : 0,
+    });
   } catch (err) {
     const status = err.response?.status;
     if (status === 403 || status === 404) {
@@ -891,18 +960,16 @@ async function autoEvalSubreddits(posts) {
     }
     if (rating !== "neutral") {
       const isNsfw = subPosts.some((p) => p.over_18 === true);
-      await supabase
-        .from("subreddit_ratings")
-        .upsert(
-          {
-            subreddit: sub,
-            rating,
-            reason,
-            is_nsfw: isNsfw,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "subreddit", ignoreDuplicates: false },
-        );
+      await supabase.from("subreddit_ratings").upsert(
+        {
+          subreddit: sub,
+          rating,
+          reason,
+          is_nsfw: isNsfw,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "subreddit", ignoreDuplicates: false },
+      );
     }
   }
 }
@@ -1262,6 +1329,7 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
       .from("models")
       .select("id, reddit_accounts(id)")
       .eq("va_id", va_id);
+
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).map((a) => a.id),
     );
@@ -1275,49 +1343,106 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
         alreadyPostedSubs.add(p.subreddit.toLowerCase()),
       );
     }
+
     // Exclude bad-rated subs
     const { data: badRatings } = await supabase
       .from("subreddit_ratings")
       .select("subreddit")
       .eq("rating", "bad");
     const badSubs = new Set((badRatings || []).map((r) => r.subreddit));
+
     const wantNsfw = nsfw === "1";
-    // Pull from SQLite — trending + rising = best quality signal
-    const cached = stmts.getTrending.all(300);
-    const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
-    const combined = [...cached, ...risingRows];
-    const seen = new Set();
-    const suggestions = combined
-      .filter((r) => {
-        const name = (r.display_name || r.name || "").toLowerCase();
-        if (seen.has(name)) return false;
-        seen.add(name);
-        const isNsfw = r.over18 === 1 || r.over18 === true;
-        if (alreadyPostedSubs.has(name)) return false;
-        if (badSubs.has(name)) return false;
-        if (wantNsfw && !isNsfw) return false;
-        if (!wantNsfw && isNsfw) return false;
-        if ((r.subscribers || 0) < 5000) return false;
-        return true;
-      })
-      .map((r) => {
-        const subs = r.subscribers || 0;
-        const active = r.active_users || 0;
-        const engRate =
-          subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
-        const qualityScore = subs * (1 + engRate * 2);
-        return {
-          name: r.display_name || r.name,
-          subscribers: subs,
-          active_users: active,
-          engagement_rate: engRate,
-          over18: r.over18 === 1 || r.over18 === true,
-          description: r.description || "",
-          quality_score: qualityScore,
-        };
-      })
-      .sort((a, b) => b.quality_score - a.quality_score)
-      .slice(0, 40);
+    let suggestions = [];
+
+    if (wantNsfw) {
+      // ── NSFW: use subreddit_ratings table (is_nsfw=true, not bad) ──
+      // These are subs that got rated during syncs via over_18 flag
+      const { data: nsfwRated } = await supabase
+        .from("subreddit_ratings")
+        .select("subreddit, rating")
+        .eq("is_nsfw", true)
+        .neq("rating", "bad")
+        .order("updated_at", { ascending: false });
+
+      // Also look at all NSFW subs the VA team has posted in (from post history)
+      const { data: allPosts } = await supabase
+        .from("post_logs")
+        .select("subreddit, upvotes, comments")
+        .order("posted_at", { ascending: false })
+        .limit(2000);
+
+      // Cross-reference: find NSFW subs from ratings, compute avg engagement from all posts
+      const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
+      const subEngMap = {};
+      for (const p of allPosts || []) {
+        const sub = p.subreddit.toLowerCase();
+        if (!nsfwSubNames.has(sub)) continue;
+        if (!subEngMap[sub]) subEngMap[sub] = { total: 0, count: 0 };
+        subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
+        subEngMap[sub].count++;
+      }
+
+      suggestions = (nsfwRated || [])
+        .filter((r) => {
+          const name = r.subreddit.toLowerCase();
+          return !alreadyPostedSubs.has(name) && !badSubs.has(name);
+        })
+        .map((r) => {
+          const eng = subEngMap[r.subreddit];
+          const avgEng = eng ? eng.total / eng.count : 0;
+          return {
+            name: r.subreddit,
+            subscribers: 0, // not available from ratings table
+            active_users: 0,
+            engagement_rate: parseFloat(avgEng.toFixed(1)),
+            over18: true,
+            description: `${r.rating} rated NSFW sub`,
+            quality_score: avgEng,
+          };
+        })
+        .sort((a, b) => b.quality_score - a.quality_score)
+        .slice(0, 40);
+    } else {
+      // ── SFW: SQLite cache, capped at 5K–500K subscribers (low risk) ──
+      const cached = stmts.getTrending.all(300);
+      const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
+      const combined = [...cached, ...risingRows];
+      const seen = new Set();
+
+      suggestions = combined
+        .filter((r) => {
+          const name = (r.display_name || r.name || "").toLowerCase();
+          if (seen.has(name)) return false;
+          seen.add(name);
+          const isNsfw = r.over18 === 1 || r.over18 === true;
+          if (isNsfw) return false; // SFW mode: skip NSFW
+          if (alreadyPostedSubs.has(name)) return false;
+          if (badSubs.has(name)) return false;
+          const subs = r.subscribers || 0;
+          // ── Low risk: 5K–500K subscribers ──
+          if (subs < 5000 || subs > 500000) return false;
+          return true;
+        })
+        .map((r) => {
+          const subs = r.subscribers || 0;
+          const active = r.active_users || 0;
+          const engRate =
+            subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
+          const qualityScore = subs * (1 + engRate * 2);
+          return {
+            name: r.display_name || r.name,
+            subscribers: subs,
+            active_users: active,
+            engagement_rate: engRate,
+            over18: false,
+            description: r.description || "",
+            quality_score: qualityScore,
+          };
+        })
+        .sort((a, b) => b.quality_score - a.quality_score)
+        .slice(0, 40);
+    }
+
     res.json({ data: suggestions, excluded_count: alreadyPostedSubs.size });
   } catch (err) {
     res.status(500).json({ error: err.message });

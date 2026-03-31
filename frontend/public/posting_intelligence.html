@@ -2100,13 +2100,17 @@
       // ── Trend chart ────────────────────────────────────────────────────────────
       function renderTrendChart(data) {
         if (trendChart) trendChart.destroy();
-        const labels = Array.from({ length: 24 }, (_, i) =>
-          i % 4 === 0 ? `${i}h` : "",
-        );
+        // ── FIX: hardcode colors — Chart.js cannot resolve CSS var() ──
+        const todayColor = nsfwMode ? "#c0392b" : "#ff4500";
+        const yestColor = nsfwMode ? "#2980b9" : "#3b82f6";
+        const todayFill = nsfwMode
+          ? "rgba(192,57,43,0.08)"
+          : "rgba(255,69,0,0.08)";
         const tickColor = nsfwMode ? "#7a6a55" : "#888899";
         const gridColor = nsfwMode
-          ? "rgba(0,0,0,0.05)"
+          ? "rgba(0,0,0,0.04)"
           : "rgba(255,255,255,0.04)";
+
         trendChart = new Chart(document.getElementById("trendChart"), {
           type: "line",
           data: {
@@ -2115,8 +2119,8 @@
               {
                 label: "Today",
                 data: data.today || Array(24).fill(0),
-                borderColor: "var(--accent)",
-                backgroundColor: "rgba(255,69,0,0.08)",
+                borderColor: todayColor,
+                backgroundColor: todayFill,
                 borderWidth: 2,
                 pointRadius: 0,
                 tension: 0.4,
@@ -2125,8 +2129,8 @@
               {
                 label: "Yesterday",
                 data: data.yesterday || Array(24).fill(0),
-                borderColor: "var(--blue)",
-                backgroundColor: "rgba(59,130,246,0.06)",
+                borderColor: yestColor,
+                backgroundColor: "transparent",
                 borderWidth: 1.5,
                 pointRadius: 0,
                 tension: 0.4,
