@@ -809,14 +809,14 @@ app.post("/api/intel/sync-account", async (req, res) => {
       reddit.redditGet(`/user/${encodeURIComponent(username)}/submitted`, {
         sort: "new",
         limit: 100,
-        t: "month",
+        t: "day",
       }),
       reddit.redditGet("/search", {
         q: `author:${username}`,
         sort: "new",
         type: "link",
-        limit: 100,
-        t: "month",
+        limit: 500,
+        t: "day",
       }),
     ]);
 
