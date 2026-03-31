@@ -27,6 +27,18 @@ function bustCache() {
   Object.keys(cache).forEach((k) => delete cache[k]);
 }
 
+// ─── FIX #1 & #4: Manila midnight helper ─────────────────────────────────────
+// All "today" cutoffs must use Manila time (UTC+8) so posts from e.g.
+// 2026-03-30 22:39 UTC (= 2026-03-31 06:39 PHT) count as today, not yesterday.
+function getManilaMidnight() {
+  // Get today's date string in Manila timezone (YYYY-MM-DD)
+  const manilaDateStr = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Manila",
+  });
+  // Return a Date object for Manila midnight expressed as UTC
+  return new Date(manilaDateStr + "T00:00:00+08:00");
+}
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function formatSub(d) {
   const subscribers = d.subscribers || 0;
@@ -710,13 +722,13 @@ app.delete("/api/intel/posts/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+// ─── FIX #4: check-overlap uses Manila midnight ───────────────────────────────
 app.get("/api/intel/check-overlap", async (req, res) => {
   const { subreddit, model_id } = req.query;
   if (!subreddit || !model_id)
     return res.status(400).json({ error: "subreddit and model_id required" });
   const sub = subreddit.toLowerCase().replace(/^r\//, "");
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = getManilaMidnight(); // FIX
   const { data: accounts } = await supabase
     .from("reddit_accounts")
     .select("id, username")
@@ -800,30 +812,24 @@ app.post("/api/intel/sync-account", async (req, res) => {
     return res.status(400).json({ error: "account_id and username required" });
 
   try {
-    // ── Strategy: fetch from BOTH endpoints then deduplicate ──────────────────
-    // 1. /user/{username}/submitted — public profile posts (curated posts MISSING here)
-    // 2. /search?q=author:{username} — finds ALL posts including curated/hidden ones
-    //    because the post still exists in the subreddit even if hidden from profile
-
     const [profileData, searchData] = await Promise.allSettled([
       reddit.redditGet(`/user/${encodeURIComponent(username)}/submitted`, {
         sort: "new",
         limit: 100,
-        t: "day",
+        t: "month",
       }),
       reddit.redditGet("/search", {
         q: `author:${username}`,
         sort: "new",
         type: "link",
         limit: 100,
-        t: "all",
+        t: "month",
       }),
     ]);
 
     const posts = [];
     const seenIds = new Set();
 
-    // Collect from profile listing
     if (profileData.status === "fulfilled") {
       for (const child of profileData.value?.data?.children || []) {
         const p = child.data;
@@ -834,11 +840,9 @@ app.post("/api/intel/sync-account", async (req, res) => {
       }
     }
 
-    // Collect from search — catches curated posts
     if (searchData.status === "fulfilled") {
       for (const child of searchData.value?.data?.children || []) {
         const p = child.data;
-        // Only include posts actually by this user (search can be fuzzy)
         if (
           p.id &&
           !seenIds.has(p.id) &&
@@ -850,7 +854,6 @@ app.post("/api/intel/sync-account", async (req, res) => {
       }
     }
 
-    // If BOTH failed with 403/404 → account is banned
     if (profileData.status === "rejected" && searchData.status === "rejected") {
       const status = profileData.reason?.response?.status;
       if (status === 403 || status === 404) {
@@ -866,8 +869,15 @@ app.post("/api/intel/sync-account", async (req, res) => {
       throw profileData.reason;
     }
 
+    // ── FIX #3: Filter out user-profile subreddits (u_username) ──────────────
+    // Reddit lets users post to their own profile sub (r/u_Username).
+    // These are NOT real community subreddits — filter them from post logs.
+    const realPosts = posts.filter(
+      (p) => !p.subreddit.toLowerCase().startsWith("u_"),
+    );
+
     let synced = 0;
-    for (const p of posts) {
+    for (const p of realPosts) {
       const sub = p.subreddit.toLowerCase();
       const postedAt = new Date(p.created_utc * 1000).toISOString();
 
@@ -903,13 +913,12 @@ app.post("/api/intel/sync-account", async (req, res) => {
       }
     }
 
-    await autoEvalSubreddits(posts);
+    await autoEvalSubreddits(realPosts);
 
     res.json({
       success: true,
       synced,
-      total: posts.length,
-      // helpful debug info
+      total: realPosts.length,
       from_profile:
         profileData.status === "fulfilled"
           ? profileData.value?.data?.children?.length || 0
@@ -935,7 +944,7 @@ app.post("/api/intel/sync-account", async (req, res) => {
   }
 });
 
-// ─── Auto-eval (uses over_18 flag, not regex) ─────────────────────────────────
+// ─── Auto-eval ────────────────────────────────────────────────────────────────
 async function autoEvalSubreddits(posts) {
   const bySubreddit = {};
   for (const p of posts) {
@@ -960,21 +969,23 @@ async function autoEvalSubreddits(posts) {
     }
     if (rating !== "neutral") {
       const isNsfw = subPosts.some((p) => p.over_18 === true);
-      await supabase.from("subreddit_ratings").upsert(
-        {
-          subreddit: sub,
-          rating,
-          reason,
-          is_nsfw: isNsfw,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "subreddit", ignoreDuplicates: false },
-      );
+      await supabase
+        .from("subreddit_ratings")
+        .upsert(
+          {
+            subreddit: sub,
+            rating,
+            reason,
+            is_nsfw: isNsfw,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "subreddit", ignoreDuplicates: false },
+        );
     }
   }
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── FIX #1 & #4: Dashboard uses Manila midnight ──────────────────────────────
 app.get("/api/intel/dashboard", async (req, res) => {
   const { va_id, admin } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -989,8 +1000,7 @@ app.get("/api/intel/dashboard", async (req, res) => {
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).map((a) => a.id),
     );
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getManilaMidnight(); // FIX: was new Date(); today.setHours(0,0,0,0)
     const { data: posts } =
       accountIds.length > 0
         ? await supabase
@@ -1066,7 +1076,7 @@ app.get("/api/intel/dashboard", async (req, res) => {
   }
 });
 
-// ─── All VAs overview ────────────────────────────────────────────────────────
+// ─── FIX #4: All-overview uses Manila midnight ────────────────────────────────
 app.get("/api/intel/all-overview", async (req, res) => {
   try {
     const { data: vas } = await supabase
@@ -1095,8 +1105,7 @@ app.get("/api/intel/all-overview", async (req, res) => {
         models: [],
       };
     const subUsageToday = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getManilaMidnight(); // FIX
     for (const p of posts || []) {
       const vaId = p.reddit_accounts?.models?.va_id;
       if (vaId && vaStats[vaId]) {
@@ -1245,7 +1254,7 @@ app.get("/api/intel/top-subs", async (req, res) => {
   }
 });
 
-// ─── Scheduler (limit 40) ─────────────────────────────────────────────────────
+// ─── FIX #4: Scheduler uses Manila midnight ───────────────────────────────────
 app.get("/api/intel/scheduler", async (req, res) => {
   const { va_id } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1254,7 +1263,6 @@ app.get("/api/intel/scheduler", async (req, res) => {
       .from("models")
       .select("id, model_name, reddit_accounts(id, username, banned)")
       .eq("va_id", va_id);
-
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).filter((a) => !a.banned).map((a) => a.id),
     );
@@ -1264,23 +1272,17 @@ app.get("/api/intel/scheduler", async (req, res) => {
         day: "",
         already_posted_today: [],
       });
-
     const { data: posts } = await supabase
       .from("post_logs")
       .select("subreddit, upvotes, comments, posted_at, account_id")
       .in("account_id", accountIds)
       .order("posted_at", { ascending: false })
       .limit(2000);
-
-    const todayDate = new Date();
-    const dayName = todayDate.toLocaleDateString("en-US", {
+    const dayName = new Date().toLocaleDateString("en-US", {
       weekday: "long",
       timeZone: "Asia/Manila",
     });
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    // ── CHANGED: score by all-time avg engagement per sub, not day-of-week ──
+    const todayStart = getManilaMidnight(); // FIX
     const subStats = {};
     for (const p of posts || []) {
       const sub = p.subreddit;
@@ -1288,12 +1290,10 @@ app.get("/api/intel/scheduler", async (req, res) => {
       subStats[sub].total += (p.upvotes || 0) + (p.comments || 0);
       subStats[sub].count++;
     }
-
     const todayPosts = (posts || []).filter(
       (p) => new Date(p.posted_at) >= todayStart,
     );
     const postedTodaySubs = new Set(todayPosts.map((p) => p.subreddit));
-
     const recommendations = Object.entries(subStats)
       .map(([sub, s]) => ({
         sub,
@@ -1303,7 +1303,6 @@ app.get("/api/intel/scheduler", async (req, res) => {
       }))
       .sort((a, b) => b.avg_engagement - a.avg_engagement)
       .slice(0, 40);
-
     res.json({
       recommendations,
       day: dayName,
@@ -1314,7 +1313,7 @@ app.get("/api/intel/scheduler", async (req, res) => {
   }
 });
 
-// ─── NEW: Subs to try ─────────────────────────────────────────────────────────
+// ─── FIX #2: Subs to try — NSFW now has SQLite fallback ───────────────────────
 app.get("/api/intel/subs-to-try", async (req, res) => {
   const { va_id, nsfw = "0" } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1323,7 +1322,6 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
       .from("models")
       .select("id, reddit_accounts(id)")
       .eq("va_id", va_id);
-
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).map((a) => a.id),
     );
@@ -1337,37 +1335,73 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
         alreadyPostedSubs.add(p.subreddit.toLowerCase()),
       );
     }
-
-    // Exclude bad-rated subs
     const { data: badRatings } = await supabase
       .from("subreddit_ratings")
       .select("subreddit")
       .eq("rating", "bad");
     const badSubs = new Set((badRatings || []).map((r) => r.subreddit));
-
     const wantNsfw = nsfw === "1";
-    let suggestions = [];
 
-    if (wantNsfw) {
-      // ── NSFW: use subreddit_ratings table (is_nsfw=true, not bad) ──
-      // These are subs that got rated during syncs via over_18 flag
+    // ── Both SFW and NSFW now use the SQLite cache as primary source ──────────
+    // This ensures results are always available regardless of ratings history.
+    // For NSFW: filter to over18=1 subs. For SFW: filter to over18=0 subs.
+    const cached = stmts.getTrending.all(300);
+    const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
+    const combined = [...cached, ...risingRows];
+    const seen = new Set();
+
+    let suggestions = combined
+      .filter((r) => {
+        const name = (r.display_name || r.name || "").toLowerCase();
+        if (seen.has(name)) return false;
+        seen.add(name);
+        const isNsfw = r.over18 === 1 || r.over18 === true;
+        // Match the requested mode
+        if (wantNsfw && !isNsfw) return false;
+        if (!wantNsfw && isNsfw) return false;
+        if (alreadyPostedSubs.has(name)) return false;
+        if (badSubs.has(name)) return false;
+        const subs = r.subscribers || 0;
+        if (subs < 5000) return false;
+        // For SFW: low risk cap at 500K. For NSFW: allow up to 2M.
+        if (!wantNsfw && subs > 500000) return false;
+        return true;
+      })
+      .map((r) => {
+        const subs = r.subscribers || 0;
+        const active = r.active_users || 0;
+        const engRate =
+          subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
+        const qualityScore = subs * (1 + engRate * 2);
+        return {
+          name: r.display_name || r.name,
+          subscribers: subs,
+          active_users: active,
+          engagement_rate: engRate,
+          over18: r.over18 === 1 || r.over18 === true,
+          description: r.description || "",
+          quality_score: qualityScore,
+        };
+      })
+      .sort((a, b) => b.quality_score - a.quality_score)
+      .slice(0, 40);
+
+    // ── NSFW fallback: if SQLite has no NSFW subs, pull from ratings table ────
+    // This happens when the cron hasn't cached any NSFW subs yet.
+    if (wantNsfw && suggestions.length === 0) {
       const { data: nsfwRated } = await supabase
         .from("subreddit_ratings")
         .select("subreddit, rating")
         .eq("is_nsfw", true)
         .neq("rating", "bad")
         .order("updated_at", { ascending: false });
-
-      // Also look at all NSFW subs the VA team has posted in (from post history)
       const { data: allPosts } = await supabase
         .from("post_logs")
         .select("subreddit, upvotes, comments")
         .order("posted_at", { ascending: false })
         .limit(2000);
-
-      // Cross-reference: find NSFW subs from ratings, compute avg engagement from all posts
-      const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
       const subEngMap = {};
+      const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
       for (const p of allPosts || []) {
         const sub = p.subreddit.toLowerCase();
         if (!nsfwSubNames.has(sub)) continue;
@@ -1375,62 +1409,23 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
         subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
         subEngMap[sub].count++;
       }
-
       suggestions = (nsfwRated || [])
-        .filter((r) => {
-          const name = r.subreddit.toLowerCase();
-          return !alreadyPostedSubs.has(name) && !badSubs.has(name);
-        })
+        .filter(
+          (r) =>
+            !alreadyPostedSubs.has(r.subreddit.toLowerCase()) &&
+            !badSubs.has(r.subreddit),
+        )
         .map((r) => {
           const eng = subEngMap[r.subreddit];
           const avgEng = eng ? eng.total / eng.count : 0;
           return {
             name: r.subreddit,
-            subscribers: 0, // not available from ratings table
+            subscribers: 0,
             active_users: 0,
             engagement_rate: parseFloat(avgEng.toFixed(1)),
             over18: true,
             description: `${r.rating} rated NSFW sub`,
             quality_score: avgEng,
-          };
-        })
-        .sort((a, b) => b.quality_score - a.quality_score)
-        .slice(0, 40);
-    } else {
-      // ── SFW: SQLite cache, capped at 5K–500K subscribers (low risk) ──
-      const cached = stmts.getTrending.all(300);
-      const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
-      const combined = [...cached, ...risingRows];
-      const seen = new Set();
-
-      suggestions = combined
-        .filter((r) => {
-          const name = (r.display_name || r.name || "").toLowerCase();
-          if (seen.has(name)) return false;
-          seen.add(name);
-          const isNsfw = r.over18 === 1 || r.over18 === true;
-          if (isNsfw) return false; // SFW mode: skip NSFW
-          if (alreadyPostedSubs.has(name)) return false;
-          if (badSubs.has(name)) return false;
-          const subs = r.subscribers || 0;
-          // ── Low risk: 5K–500K subscribers ──
-          if (subs < 5000 || subs > 500000) return false;
-          return true;
-        })
-        .map((r) => {
-          const subs = r.subscribers || 0;
-          const active = r.active_users || 0;
-          const engRate =
-            subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
-          const qualityScore = subs * (1 + engRate * 2);
-          return {
-            name: r.display_name || r.name,
-            subscribers: subs,
-            active_users: active,
-            engagement_rate: engRate,
-            over18: false,
-            description: r.description || "",
-            quality_score: qualityScore,
           };
         })
         .sort((a, b) => b.quality_score - a.quality_score)
@@ -1443,15 +1438,15 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
   }
 });
 
-// ─── NEW: Post overview ───────────────────────────────────────────────────────
+// ─── FIX #1 & #4: Post overview uses Manila midnight ─────────────────────────
 app.get("/api/intel/post-overview", async (req, res) => {
   const { va_id, admin, days = "1" } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
   try {
     const daysBack = Math.min(parseInt(days) || 1, 30);
-    const since = new Date();
-    since.setDate(since.getDate() - (daysBack - 1));
-    since.setHours(0, 0, 0, 0);
+    // FIX: use Manila midnight, then subtract extra days if daysBack > 1
+    const since = getManilaMidnight();
+    if (daysBack > 1) since.setDate(since.getDate() - (daysBack - 1));
     let modelsQuery = supabase
       .from("models")
       .select(
@@ -1493,7 +1488,7 @@ app.get("/api/intel/post-overview", async (req, res) => {
   }
 });
 
-// ─── NEW: Engagement trend (today vs yesterday hourly) ────────────────────────
+// ─── FIX #4: Engagement trend uses Manila midnight ────────────────────────────
 app.get("/api/intel/engagement-trend", async (req, res) => {
   const { va_id, admin } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1511,8 +1506,7 @@ app.get("/api/intel/engagement-trend", async (req, res) => {
         today: Array(24).fill(0),
         yesterday: Array(24).fill(0),
       });
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = getManilaMidnight(); // FIX
     const yesterdayStart = new Date(todayStart);
     yesterdayStart.setDate(yesterdayStart.getDate() - 1);
     const twoDaysAgo = new Date(yesterdayStart);
@@ -1528,7 +1522,17 @@ app.get("/api/intel/engagement-trend", async (req, res) => {
     for (const p of posts || []) {
       const d = new Date(p.posted_at);
       const eng = (p.upvotes || 0) + (p.comments || 0);
-      const h = d.getHours();
+      // Use Manila hour for bucketing
+      const h =
+        parseInt(
+          d
+            .toLocaleTimeString("en-US", {
+              timeZone: "Asia/Manila",
+              hour: "2-digit",
+              hour12: false,
+            })
+            .split(":")[0],
+        ) % 24;
       if (d >= todayStart) today[h] += eng;
       else if (d >= yesterdayStart) yesterday[h] += eng;
     }
@@ -1607,12 +1611,12 @@ app.get("/api/intel/sub-score/:sub", async (req, res) => {
   }
 });
 
+// ─── FIX #4: check-cross-overlap uses Manila midnight ────────────────────────
 app.get("/api/intel/check-cross-overlap", async (req, res) => {
   const { subreddit } = req.query;
   if (!subreddit) return res.status(400).json({ error: "subreddit required" });
   const sub = subreddit.toLowerCase().replace(/^r\//, "");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getManilaMidnight(); // FIX
   const { data: posts } = await supabase
     .from("post_logs")
     .select(
