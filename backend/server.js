@@ -1273,6 +1273,145 @@ app.get("/api/intel/top-subs", async (req, res) => {
   }
 });
 
+// ─── Manual post logger ───────────────────────────────────────────────────────
+app.post("/api/intel/log-post", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "url required" });
+
+  try {
+    // Parse post ID from any Reddit URL format:
+    //   https://reddit.com/r/cats/comments/abc123/title/
+    //   https://www.reddit.com/r/cats/comments/abc123/
+    const match = url.match(/reddit\.com\/r\/[^/]+\/comments\/([a-z0-9]+)/i);
+    if (!match)
+      return res
+        .status(400)
+        .json({
+          error:
+            "Could not parse Reddit post URL. Make sure it contains /comments/{id}.",
+        });
+    const postId = match[1];
+
+    // Fetch post data from Reddit API
+    const apiData = await reddit.redditGet("/api/info", { id: `t3_${postId}` });
+    const children = apiData?.data?.children || [];
+    if (!children.length)
+      return res.status(404).json({ error: "Post not found or removed." });
+
+    const post = children[0].data;
+    const author = post.author?.toLowerCase();
+    const subreddit = post.subreddit?.toLowerCase();
+    const postedAt = new Date(post.created_utc * 1000).toISOString();
+
+    if (!author || author === "[deleted]")
+      return res
+        .status(400)
+        .json({ error: "Post author is deleted or unavailable." });
+
+    // Skip user-profile subs (r/u_username)
+    if (subreddit?.startsWith("u_"))
+      return res
+        .status(400)
+        .json({ error: "This is a user profile post, not a community post." });
+
+    // Find matching account by author username (case-insensitive)
+    const { data: account } = await supabase
+      .from("reddit_accounts")
+      .select("id, username, model_id, models(model_name, va_id, vas(name))")
+      .ilike("username", author)
+      .maybeSingle();
+
+    if (!account)
+      return res.status(404).json({
+        error: `u/${post.author} is not registered in SubTracker. Add the account in Setup first.`,
+        author: post.author,
+        subreddit: post.subreddit,
+      });
+
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from("post_logs")
+      .select("id, upvotes, comments")
+      .eq("account_id", account.id)
+      .eq("subreddit", subreddit)
+      .eq("posted_at", postedAt)
+      .maybeSingle();
+
+    if (existing) {
+      // Update metrics if already exists
+      await supabase
+        .from("post_logs")
+        .update({
+          upvotes: post.score,
+          comments: post.num_comments,
+          post_url: `https://reddit.com${post.permalink}`,
+          post_title: post.title,
+        })
+        .eq("id", existing.id);
+
+      return res.json({
+        duplicate: true,
+        message: `Already logged. Metrics updated: ${post.score} upvotes, ${post.num_comments} comments.`,
+        post: {
+          subreddit: post.subreddit,
+          title: post.title,
+          upvotes: post.score,
+          comments: post.num_comments,
+          author: post.author,
+          account_id: account.id,
+          posted_at: postedAt,
+        },
+      });
+    }
+
+    // Insert new post log
+    const { data: inserted, error: insertErr } = await supabase
+      .from("post_logs")
+      .insert({
+        account_id: account.id,
+        subreddit,
+        post_url: `https://reddit.com${post.permalink}`,
+        post_title: post.title,
+        posted_at: postedAt,
+        upvotes: post.score || 0,
+        comments: post.num_comments || 0,
+      })
+      .select()
+      .single();
+
+    if (insertErr) return res.status(500).json({ error: insertErr.message });
+
+    // Auto-eval this subreddit based on the new post
+    await autoEvalSubreddits([post]);
+
+    res.json({
+      success: true,
+      message: `Logged r/${post.subreddit} post by @${post.author}`,
+      post: {
+        subreddit: post.subreddit,
+        title: post.title,
+        upvotes: post.score,
+        comments: post.num_comments,
+        author: post.author,
+        account_id: account.id,
+        model: account.models?.model_name,
+        va: account.models?.vas?.name,
+        posted_at: postedAt,
+        post_url: `https://reddit.com${post.permalink}`,
+      },
+    });
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 404)
+      return res.status(404).json({ error: "Post not found." });
+    if (status === 403)
+      return res
+        .status(403)
+        .json({ error: "This post is in a private or restricted subreddit." });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── FIX #4: Scheduler uses Manila midnight ───────────────────────────────────
 app.get("/api/intel/scheduler", async (req, res) => {
   const { va_id } = req.query;
