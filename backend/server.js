@@ -1284,12 +1284,10 @@ app.post("/api/intel/log-post", async (req, res) => {
     //   https://www.reddit.com/r/cats/comments/abc123/
     const match = url.match(/reddit\.com\/r\/[^/]+\/comments\/([a-z0-9]+)/i);
     if (!match)
-      return res
-        .status(400)
-        .json({
-          error:
-            "Could not parse Reddit post URL. Make sure it contains /comments/{id}.",
-        });
+      return res.status(400).json({
+        error:
+          "Could not parse Reddit post URL. Make sure it contains /comments/{id}.",
+      });
     const postId = match[1];
 
     // Fetch post data from Reddit API
@@ -1412,7 +1410,7 @@ app.post("/api/intel/log-post", async (req, res) => {
   }
 });
 
-// ─── FIX #4: Scheduler uses Manila midnight ───────────────────────────────────
+// ─── Scheduler uses Manila midnight ───────────────────────────────────
 app.get("/api/intel/scheduler", async (req, res) => {
   const { va_id } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1422,7 +1420,7 @@ app.get("/api/intel/scheduler", async (req, res) => {
       .select("id, model_name, reddit_accounts(id, username, banned)")
       .eq("va_id", va_id);
     const accountIds = (models || []).flatMap((m) =>
-      (m.reddit_accounts || []).filter((a) => !a.banned).map((a) => a.id),
+      (m.reddit_accounts || []).map((a) => a.id),
     );
     if (!accountIds.length)
       return res.json({
@@ -1471,7 +1469,7 @@ app.get("/api/intel/scheduler", async (req, res) => {
   }
 });
 
-// ─── FIX #2: Subs to try — NSFW now has SQLite fallback ───────────────────────
+// ─── Subs to try — NSFW now has SQLite fallback ───────────────────────
 app.get("/api/intel/subs-to-try", async (req, res) => {
   const { va_id, nsfw = "0" } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1615,12 +1613,11 @@ app.get("/api/intel/post-overview", async (req, res) => {
     const accountMap = {};
     for (const m of models || []) {
       for (const a of m.reddit_accounts || []) {
-        if (!a.banned)
-          accountMap[a.id] = {
-            username: a.username,
-            model: m.model_name,
-            va: m.vas?.name || "—",
-          };
+        accountMap[a.id] = {
+          username: a.username,
+          model: m.model_name,
+          va: m.vas?.name || "—",
+        };
       }
     }
     const accountIds = Object.keys(accountMap);
@@ -1646,7 +1643,7 @@ app.get("/api/intel/post-overview", async (req, res) => {
   }
 });
 
-// ─── FIX #4: Engagement trend uses Manila midnight ────────────────────────────
+// ─── Engagement trend uses Manila midnight ────────────────────────────
 app.get("/api/intel/engagement-trend", async (req, res) => {
   const { va_id, admin } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1657,7 +1654,7 @@ app.get("/api/intel/engagement-trend", async (req, res) => {
     if (admin !== "true") modelsQuery = modelsQuery.eq("va_id", va_id);
     const { data: models } = await modelsQuery;
     const accountIds = (models || []).flatMap((m) =>
-      (m.reddit_accounts || []).filter((a) => !a.banned).map((a) => a.id),
+      (m.reddit_accounts || []).map((a) => a.id),
     );
     if (!accountIds.length)
       return res.json({
