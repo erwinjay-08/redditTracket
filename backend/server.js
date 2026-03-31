@@ -812,51 +812,37 @@ app.post("/api/intel/sync-account", async (req, res) => {
     return res.status(400).json({ error: "account_id and username required" });
 
   try {
-    const [profileData, searchData] = await Promise.allSettled([
-      reddit.redditGet(`/user/${encodeURIComponent(username)}/submitted`, {
-        sort: "new",
-        limit: 100,
-        t: "month",
-      }),
-      reddit.redditGet("/search", {
-        q: `author:${username}`,
-        sort: "new",
-        type: "link",
-        limit: 100,
-        t: "month",
-      }),
-    ]);
-
     const posts = [];
     const seenIds = new Set();
 
-    if (profileData.status === "fulfilled") {
-      for (const child of profileData.value?.data?.children || []) {
-        const p = child.data;
-        if (p.id && !seenIds.has(p.id)) {
-          seenIds.add(p.id);
-          posts.push(p);
+    // ── Source 1: Profile listing (respects curation — may be incomplete) ──
+    // Paginate up to 3 pages × 100 = 300 posts
+    let profileFailed = false;
+    try {
+      let after = null;
+      for (let page = 0; page < 3; page++) {
+        const params = { sort: "new", limit: 100, t: "month" };
+        if (after) params.after = after;
+        const data = await reddit.redditGet(
+          `/user/${encodeURIComponent(username)}/submitted`,
+          params,
+        );
+        const children = data?.data?.children || [];
+        if (!children.length) break;
+        for (const child of children) {
+          const p = child.data;
+          if (p.id && !seenIds.has(p.id)) {
+            seenIds.add(p.id);
+            posts.push(p);
+          }
         }
+        after = data?.data?.after;
+        if (!after) break; // no more pages
       }
-    }
-
-    if (searchData.status === "fulfilled") {
-      for (const child of searchData.value?.data?.children || []) {
-        const p = child.data;
-        if (
-          p.id &&
-          !seenIds.has(p.id) &&
-          p.author?.toLowerCase() === username.toLowerCase()
-        ) {
-          seenIds.add(p.id);
-          posts.push(p);
-        }
-      }
-    }
-
-    if (profileData.status === "rejected" && searchData.status === "rejected") {
-      const status = profileData.reason?.response?.status;
+    } catch (err) {
+      const status = err.response?.status;
       if (status === 403 || status === 404) {
+        // Account is banned/suspended
         await supabase
           .from("reddit_accounts")
           .update({ is_active: false, banned: true })
@@ -866,18 +852,60 @@ app.post("/api/intel/sync-account", async (req, res) => {
           error: `u/${username} appears to be banned or suspended.`,
         });
       }
-      throw profileData.reason;
+      profileFailed = true;
+      console.warn(`[sync] Profile fetch failed for ${username}:`, err.message);
     }
 
-    // ── FIX #3: Filter out user-profile subreddits (u_username) ──────────────
-    // Reddit lets users post to their own profile sub (r/u_Username).
-    // These are NOT real community subreddits — filter them from post logs.
-    const realPosts = posts.filter(
-      (p) => !p.subreddit.toLowerCase().startsWith("u_"),
-    );
+    // ── Source 2: Search by author (catches curated/hidden posts) ──
+    // Paginate up to 5 pages × 100 = 500 posts searched
+    // Reddit search ignores profile curation — posts still appear here
+    // even when hidden from the user's profile page
+    try {
+      let after = null;
+      for (let page = 0; page < 5; page++) {
+        const params = {
+          q: `author:${username}`,
+          sort: "new",
+          type: "link",
+          limit: 100,
+          t: "month",
+        };
+        if (after) params.after = after;
+        const data = await reddit.redditGet("/search", params);
+        const children = data?.data?.children || [];
+        if (!children.length) break;
+        let newOnThisPage = 0;
+        for (const child of children) {
+          const p = child.data;
+          // Verify author matches (search can return fuzzy results)
+          if (
+            p.id &&
+            !seenIds.has(p.id) &&
+            p.author?.toLowerCase() === username.toLowerCase()
+          ) {
+            seenIds.add(p.id);
+            posts.push(p);
+            newOnThisPage++;
+          }
+        }
+        after = data?.data?.after;
+        // Stop if no new posts on this page or no more pages
+        if (!after || newOnThisPage === 0) break;
+      }
+    } catch (err) {
+      console.warn(`[sync] Search fetch failed for ${username}:`, err.message);
+      // Don't fail the whole sync if search fails — profile data is still useful
+    }
 
+    if (!posts.length && profileFailed) {
+      return res
+        .status(500)
+        .json({ error: `Could not fetch posts for u/${username}` });
+    }
+
+    // ── Upsert all collected posts ──
     let synced = 0;
-    for (const p of realPosts) {
+    for (const p of posts) {
       const sub = p.subreddit.toLowerCase();
       const postedAt = new Date(p.created_utc * 1000).toISOString();
 
@@ -890,6 +918,7 @@ app.post("/api/intel/sync-account", async (req, res) => {
         .maybeSingle();
 
       if (existing) {
+        // Update metrics on existing posts (upvotes/comments change over time)
         await supabase
           .from("post_logs")
           .update({
@@ -913,20 +942,12 @@ app.post("/api/intel/sync-account", async (req, res) => {
       }
     }
 
-    await autoEvalSubreddits(realPosts);
+    await autoEvalSubreddits(posts);
 
     res.json({
       success: true,
       synced,
-      total: realPosts.length,
-      from_profile:
-        profileData.status === "fulfilled"
-          ? profileData.value?.data?.children?.length || 0
-          : 0,
-      from_search:
-        searchData.status === "fulfilled"
-          ? searchData.value?.data?.children?.length || 0
-          : 0,
+      total: posts.length,
     });
   } catch (err) {
     const status = err.response?.status;
@@ -969,18 +990,16 @@ async function autoEvalSubreddits(posts) {
     }
     if (rating !== "neutral") {
       const isNsfw = subPosts.some((p) => p.over_18 === true);
-      await supabase
-        .from("subreddit_ratings")
-        .upsert(
-          {
-            subreddit: sub,
-            rating,
-            reason,
-            is_nsfw: isNsfw,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "subreddit", ignoreDuplicates: false },
-        );
+      await supabase.from("subreddit_ratings").upsert(
+        {
+          subreddit: sub,
+          rating,
+          reason,
+          is_nsfw: isNsfw,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "subreddit", ignoreDuplicates: false },
+      );
     }
   }
 }
