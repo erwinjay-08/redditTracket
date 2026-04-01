@@ -1324,8 +1324,19 @@
           .forEach((t) => t.classList.remove("active"));
         btn.classList.add("active");
         clearEngagement();
+        // When switching tabs, reload from backend for that tab — ignore search/filter
+        // unless it's a category filter (not free-text search)
         const q = document.getElementById("searchInput").value.trim();
-        q ? runSearch(q) : load(tab);
+        if (activeCategory !== null && q) {
+          // Re-run the category search on the new tab
+          runSearch(q);
+        } else {
+          // Clear search on tab switch to avoid confusion
+          document.getElementById("searchInput").value = "";
+          activeCategory = null;
+          buildCategoryBar();
+          load(tab);
+        }
       }
 
       let searchTimeout;
@@ -1346,6 +1357,7 @@
           `<div class="skeleton"></div>`;
         document.getElementById("feedPager").style.display = "none";
         try {
+          // q may contain ||| multi-queries from category pills
           const params = new URLSearchParams({
             q,
             nsfw: nsfwMode ? "1" : "0",
@@ -1491,43 +1503,171 @@
       // ── Category bar ──────────────────────────────────────────────────────────────
       const SFW_CATS = [
         { label: "All", icon: "🌐", q: null },
-        { label: "Gaming", icon: "🎮", q: "gaming" },
-        { label: "Tech", icon: "💻", q: "programming technology" },
-        { label: "Science", icon: "🔬", q: "science" },
-        { label: "Sports", icon: "⚽", q: "sports" },
-        { label: "Movies & TV", icon: "🎬", q: "movies television" },
-        { label: "Music", icon: "🎵", q: "music" },
-        { label: "Art", icon: "🎨", q: "art design" },
-        { label: "Finance", icon: "💰", q: "finance investing stocks" },
-        { label: "Crypto", icon: "₿", q: "cryptocurrency bitcoin" },
-        { label: "Fitness", icon: "💪", q: "fitness gym" },
-        { label: "Food", icon: "🍔", q: "food cooking recipes" },
-        { label: "Travel", icon: "✈️", q: "travel" },
-        { label: "Anime", icon: "⛩️", q: "anime manga" },
-        { label: "Memes", icon: "😂", q: "memes funny humor" },
-        { label: "News", icon: "📰", q: "news world politics" },
-        { label: "Books", icon: "📚", q: "books reading literature" },
-        { label: "Pets", icon: "🐾", q: "pets dogs cats animals" },
-        { label: "DIY", icon: "🔧", q: "diy crafts hobbies" },
-        { label: "Mental Health", icon: "🧠", q: "mentalhealth anxiety" },
+        {
+          label: "Gaming",
+          icon: "🎮",
+          q: "gaming|||games|||esports|||rpg|||gaming community",
+        },
+        {
+          label: "Tech",
+          icon: "💻",
+          q: "programming|||technology|||software|||coding|||developer|||computer science",
+        },
+        {
+          label: "Science",
+          icon: "🔬",
+          q: "science|||physics|||biology|||chemistry|||astronomy|||neuroscience",
+        },
+        {
+          label: "Sports",
+          icon: "⚽",
+          q: "sports|||football|||basketball|||soccer|||baseball|||nba|||nfl",
+        },
+        {
+          label: "Movies & TV",
+          icon: "🎬",
+          q: "movies|||television|||tv shows|||film|||cinema|||streaming|||anime series",
+        },
+        {
+          label: "Music",
+          icon: "🎵",
+          q: "music|||hiphop|||rock|||metal|||jazz|||electronic music|||pop",
+        },
+        {
+          label: "Art",
+          icon: "🎨",
+          q: "art|||digital art|||illustration|||painting|||drawing|||design|||photography|||creative",
+        },
+        {
+          label: "Finance",
+          icon: "💰",
+          q: "finance|||investing|||stocks|||personalfinance|||economics|||wallstreet|||trading",
+        },
+        {
+          label: "Crypto",
+          icon: "₿",
+          q: "cryptocurrency|||bitcoin|||ethereum|||defi|||crypto|||blockchain|||altcoin",
+        },
+        {
+          label: "Fitness",
+          icon: "💪",
+          q: "fitness|||gym|||workout|||bodybuilding|||weightlifting|||running|||yoga|||health",
+        },
+        {
+          label: "Food",
+          icon: "🍔",
+          q: "food|||cooking|||recipes|||baking|||nutrition|||mealprep|||foodporn",
+        },
+        {
+          label: "Travel",
+          icon: "✈️",
+          q: "travel|||backpacking|||adventure|||worldtravel|||camping|||hiking|||tourism",
+        },
+        {
+          label: "Anime",
+          icon: "⛩️",
+          q: "anime|||manga|||otaku|||weeb|||jrpg|||japanese culture|||light novel",
+        },
+        {
+          label: "Memes",
+          icon: "😂",
+          q: "memes|||funny|||humor|||dankmemes|||comedy|||jokes|||shitposting",
+        },
+        {
+          label: "News",
+          icon: "📰",
+          q: "news|||worldnews|||politics|||current events|||journalism|||media",
+        },
+        {
+          label: "Books",
+          icon: "📚",
+          q: "books|||reading|||literature|||fantasy|||scifi|||horror|||fiction|||library",
+        },
+        {
+          label: "Pets",
+          icon: "🐾",
+          q: "pets|||dogs|||cats|||animals|||wildlife|||aquarium|||reptiles|||birds",
+        },
+        {
+          label: "DIY",
+          icon: "🔧",
+          q: "diy|||crafts|||hobbies|||woodworking|||maker|||3dprinting|||electronics",
+        },
+        {
+          label: "Mental Health",
+          icon: "🧠",
+          q: "mentalhealth|||anxiety|||depression|||therapy|||mindfulness|||selfcare|||wellness",
+        },
       ];
       const NSFW_CATS = [
         { label: "All", icon: "🔞", q: null },
-        { label: "General", icon: "🔥", q: "nsfw" },
-        { label: "Amateur", icon: "📸", q: "amateur" },
-        { label: "Cosplay", icon: "🎭", q: "cosplay" },
-        { label: "Latina", icon: "🌹", q: "latina" },
-        { label: "Asian", icon: "🌸", q: "asian" },
-        { label: "Ebony", icon: "✨", q: "ebony" },
-        { label: "Redhead", icon: "🦊", q: "redhead" },
-        { label: "Petite", icon: "🌟", q: "petite" },
-        { label: "Curvy", icon: "💫", q: "curvy" },
-        { label: "Mature", icon: "🍷", q: "mature milf" },
-        { label: "Art/Drawn", icon: "🖌️", q: "hentai drawn" },
-        { label: "Couples", icon: "💑", q: "couples" },
-        { label: "Fitness", icon: "💪", q: "fitnessgirls nsfw" },
-        { label: "Stories", icon: "📖", q: "erotic stories" },
-        { label: "Discussion", icon: "💬", q: "sex discussion advice" },
+        { label: "General", icon: "🔥", q: "nsfw|||adult|||explicit|||18plus" },
+        {
+          label: "Amateur",
+          icon: "📸",
+          q: "amateur|||homemade|||realpeople|||gonewild",
+        },
+        {
+          label: "Cosplay",
+          icon: "🎭",
+          q: "cosplay nsfw|||cosplay sexy|||costume adult",
+        },
+        {
+          label: "Latina",
+          icon: "🌹",
+          q: "latina|||hispanic|||spanish nsfw|||colombiana",
+        },
+        {
+          label: "Asian",
+          icon: "🌸",
+          q: "asian nsfw|||japanese adult|||korean nsfw|||asian amateur",
+        },
+        {
+          label: "Ebony",
+          icon: "✨",
+          q: "ebony|||black girls|||melanin nsfw|||bbc",
+        },
+        {
+          label: "Redhead",
+          icon: "🦊",
+          q: "redhead|||ginger nsfw|||redheadgirls",
+        },
+        { label: "Petite", icon: "🌟", q: "petite|||slim nsfw|||small nsfw" },
+        {
+          label: "Curvy",
+          icon: "💫",
+          q: "curvy|||thick|||bbw|||chubby|||plus size nsfw",
+        },
+        {
+          label: "Mature",
+          icon: "🍷",
+          q: "mature milf|||milf|||cougar|||older women nsfw|||gilf",
+        },
+        {
+          label: "Art/Drawn",
+          icon: "🖌️",
+          q: "hentai|||drawn nsfw|||ecchi|||rule34|||anime nsfw",
+        },
+        {
+          label: "Couples",
+          icon: "💑",
+          q: "couples nsfw|||girlfriend|||sharing nsfw|||partner",
+        },
+        {
+          label: "Fitness",
+          icon: "💪",
+          q: "fitnessgirls nsfw|||fit girls|||gym nsfw|||athletic women",
+        },
+        {
+          label: "Stories",
+          icon: "📖",
+          q: "erotic stories|||sex stories|||adult fiction|||erotica",
+        },
+        {
+          label: "Discussion",
+          icon: "💬",
+          q: "sex discussion|||sex advice|||relationship nsfw|||sexual health",
+        },
       ];
 
       function buildCategoryBar() {
@@ -1554,8 +1694,10 @@
           document.getElementById("searchInput").value = "";
           load(currentTab);
         } else {
-          document.getElementById("searchInput").value = q;
-          runSearch(q);
+          // Show first query term as visible text in search bar
+          const displayQ = q.split("|||")[0];
+          document.getElementById("searchInput").value = displayQ;
+          runSearch(q); // full multi-query goes to server
         }
       }
 

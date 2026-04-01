@@ -90,77 +90,53 @@ async function fetchNew(limit = 25) {
   return data.data.children
     .map((c) => c.data)
     .filter(
-      (d) => d.over18 !== true && d.subscribers >= 100 && d.subscribers <= 2500,
+      (d) =>
+        d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 100000,
     )
     .slice(0, limit);
 }
 
 async function fetchUnmoderated(targetCount = 100) {
-  const buckets = {
-    "0-100": [],
-    "100-500": [],
-    "500-1000": [],
-    "1000-2500": [],
-  };
-
-  const bucketLimits = {
-    "0-100": 25,
-    "100-500": 25,
-    "500-1000": 25,
-    "1000-2500": 25,
-  };
-
-  function getBucket(subs) {
-    if (subs < 100) return "0-100";
-    if (subs < 500) return "100-500";
-    if (subs < 1000) return "500-1000";
-    return "1000-2500";
-  }
-
+  const results = [];
   const seen = new Set();
   let after = null;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 20; // more attempts = more subs found
 
-  while (attempts < maxAttempts) {
+  while (results.length < targetCount && attempts < maxAttempts) {
     attempts++;
-
     const params = { limit: 100, sort: "new" };
     if (after) params.after = after;
 
-    const data = await redditGet("/subreddits/new", params);
-    const children = data?.data?.children || [];
-    if (!children.length) break;
+    try {
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
 
-    for (const child of children) {
-      const sub = child.data;
-      const name = sub.display_name?.toLowerCase();
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
+      for (const child of children) {
+        const sub = child.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
 
-      const subs = sub.subscribers || 0;
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
 
-      // ✅ filters
-      if (subs < 20) continue; // remove trash 1-member subs
-      if (subs > 2500) continue;
-      if (sub.over18) continue;
-      if (sub.subreddit_type !== "public") continue;
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
 
-      const bucket = getBucket(subs);
-
-      if (buckets[bucket].length >= bucketLimits[bucket]) continue;
-
-      buckets[bucket].push(sub);
-
-      const total = Object.values(buckets).flat().length;
-      if (total >= targetCount) break;
+      after = data?.data?.after;
+      if (!after) break;
+    } catch (err) {
+      console.warn("[fetchUnmoderated] page error:", err.message);
+      break;
     }
-
-    after = data?.data?.after;
-    if (!after) break;
   }
 
-  return Object.values(buckets).flat();
+  return results;
 }
 // ── NSFW ─────────────────────────────────────────────────────────────────────
 
@@ -190,32 +166,64 @@ async function fetchNsfwRising(limit = 25) {
     .slice(0, limit);
 }
 
-async function fetchNsfwNew(limit = 25) {
-  const queries = ["nsfw", "adult", "xxx", "18plus", "onlyfans"];
-  const seen = new Set();
+async function fetchNsfwNew(limit = 100) {
   const results = [];
+  const seen = new Set();
 
-  for (const q of queries) {
-    if (results.length >= limit) break;
-    try {
-      const data = await redditGet("/subreddits/search", {
-        q,
-        sort: "new",
-        limit: 50,
-        include_over_18: "on",
-      });
-      for (const c of data.data.children) {
-        const d = c.data;
+  // Primary: /subreddits/new with over18
+  try {
+    let after = null;
+    let attempts = 0;
+    while (results.length < limit && attempts < 10) {
+      attempts++;
+      const params = { limit: 100, sort: "new", include_over_18: "1" };
+      if (after) params.after = after;
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
+      for (const child of children) {
+        const d = child.data;
         if (
           !seen.has(d.display_name) &&
+          d.over18 &&
           d.subscribers >= 500 &&
-          d.subscribers <= 100000
+          d.subscribers <= 500000 &&
+          d.subreddit_type === "public"
         ) {
           seen.add(d.display_name);
           results.push(d);
         }
       }
-    } catch {}
+      after = data?.data?.after;
+      if (!after) break;
+    }
+  } catch {}
+
+  // Fallback search queries
+  if (results.length < limit) {
+    const queries = ["nsfw", "adult", "xxx", "18plus", "onlyfans"];
+    for (const q of queries) {
+      if (results.length >= limit) break;
+      try {
+        const data = await redditGet("/subreddits/search", {
+          q,
+          sort: "new",
+          limit: 100,
+          include_over_18: "on",
+        });
+        for (const c of data.data.children) {
+          const d = c.data;
+          if (
+            !seen.has(d.display_name) &&
+            d.subscribers >= 500 &&
+            d.subscribers <= 500000
+          ) {
+            seen.add(d.display_name);
+            results.push(d);
+          }
+        }
+      } catch {}
+    }
   }
 
   results.sort((a, b) => b.created_utc - a.created_utc);
@@ -223,82 +231,90 @@ async function fetchNsfwNew(limit = 25) {
 }
 
 async function fetchNsfwUnmoderated(targetCount = 100) {
-  const buckets = {
-    "0-100": [],
-    "100-500": [],
-    "500-1000": [],
-    "1000-2500": [],
-  };
-
-  const bucketLimits = {
-    "0-100": 25,
-    "100-500": 25,
-    "500-1000": 25,
-    "1000-2500": 25,
-  };
-
-  function getBucket(subs) {
-    if (subs < 100) return "0-100";
-    if (subs < 500) return "100-500";
-    if (subs < 1000) return "500-1000";
-    return "1000-2500";
-  }
-
+  // Strategy: fetch new NSFW subs via /subreddits/new with include_over_18
+  // Reddit's public API often hides NSFW from /subreddits/new even with the flag,
+  // so we also try search-based discovery with nsfw keywords + sort=new
+  const results = [];
   const seen = new Set();
-  let after = null;
-  let attempts = 0;
-  const maxAttempts = 10;
 
-  while (attempts < maxAttempts) {
-    attempts++;
-
-    const params = { limit: 100, sort: "new", include_over_18: "1" };
-    if (after) params.after = after;
-
-    const data = await redditGet("/subreddits/new", params);
-    const children = data?.data?.children || [];
-    if (!children.length) break;
-
-    for (const child of children) {
-      const sub = child.data;
-      const name = sub.display_name?.toLowerCase();
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-
-      const subs = sub.subscribers || 0;
-
-      // ✅ filters
-      if (subs < 20) continue;
-      if (subs > 2500) continue;
-      if (!sub.over18) continue;
-      if (sub.subreddit_type !== "public") continue;
-
-      const bucket = getBucket(subs);
-
-      if (buckets[bucket].length >= bucketLimits[bucket]) continue;
-
-      buckets[bucket].push(sub);
-
-      const total = Object.values(buckets).flat().length;
-      if (total >= targetCount) break;
+  // Attempt 1: /subreddits/new with over18 flag
+  try {
+    let after = null;
+    let attempts = 0;
+    while (results.length < targetCount && attempts < 20) {
+      attempts++;
+      const params = { limit: 100, sort: "new", include_over_18: "1" };
+      if (after) params.after = after;
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
+      for (const child of children) {
+        const sub = child.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (!sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
+      after = data?.data?.after;
+      if (!after) break;
     }
-
-    after = data?.data?.after;
-    if (!after) break;
+  } catch (err) {
+    console.warn("[fetchNsfwUnmoderated] /subreddits/new failed:", err.message);
   }
 
-  return Object.values(buckets).flat();
+  // Attempt 2: search-based fallback if we got fewer than 20
+  if (results.length < 20) {
+    const queries = [
+      "nsfw new",
+      "adult new",
+      "xxx",
+      "18plus",
+      "onlyfans new",
+      "naughty",
+      "sexy",
+    ];
+    for (const q of queries) {
+      if (results.length >= targetCount) break;
+      try {
+        const data = await redditGet("/subreddits/search", {
+          q,
+          sort: "new",
+          limit: 100,
+          include_over_18: "on",
+        });
+        for (const c of data.data.children) {
+          const sub = c.data;
+          const name = sub.display_name?.toLowerCase();
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          const subs = sub.subscribers || 0;
+          if (subs < 20 || subs > 2500) continue;
+          if (!sub.over18) continue;
+          if (sub.subreddit_type !== "public") continue;
+          results.push(sub);
+          if (results.length >= targetCount) break;
+        }
+      } catch {}
+    }
+  }
+
+  return results;
 }
 
 // ── Search & utils ───────────────────────────────────────────────────────────
 
 async function searchSubreddits(
   query,
-  limit = 10,
+  limit = 100,
   includeNsfw = false,
   sort = "relevance",
 ) {
-  const params = { q: query, limit, sort };
+  const params = { q: query, limit: Math.min(limit, 100), sort };
   if (includeNsfw) params.include_over_18 = "on";
   const data = await redditGet("/subreddits/search", params);
   return data.data.children.map((c) => c.data);

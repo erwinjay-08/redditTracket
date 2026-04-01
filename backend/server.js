@@ -227,12 +227,42 @@ app.get("/api/search", async (req, res) => {
     if (!q) return res.status(400).json({ error: "q param required" });
     const nsfw = wantsNsfw(req);
     const tab = req.query.tab || "trending";
-    const sortMap = { trending: "relevance", rising: "activity", new: "new" };
+    const sortMap = {
+      trending: "relevance",
+      rising: "activity",
+      new: "new",
+      unmoderated: "new",
+    };
     const sort = sortMap[tab] || "relevance";
-    const results = await reddit.searchSubreddits(q, 25, nsfw, sort);
-    let filtered = filterNsfw(results.map(formatSub), nsfw);
-    if (tab === "new") filtered = filtered.filter((d) => d.subscribers >= 5000);
-    res.json({ data: sortByQuality(filtered).slice(0, 15) });
+
+    // Split multi-query (queries separated by ||| delimiter from frontend)
+    const queries = q
+      .split("|||")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const seen = new Set();
+    const allResults = [];
+
+    for (const query of queries) {
+      if (allResults.length >= 100) break;
+      try {
+        const params = { q: query, limit: 100, sort };
+        if (nsfw) params.include_over_18 = "on";
+        const results = await reddit.searchSubreddits(query, 100, nsfw, sort);
+        for (const sub of results) {
+          const name = (sub.display_name || "").toLowerCase();
+          if (seen.has(name)) continue;
+          seen.add(name);
+          allResults.push(sub);
+          if (allResults.length >= 100) break;
+        }
+      } catch {}
+    }
+
+    let filtered = filterNsfw(allResults.map(formatSub), nsfw);
+    if (tab === "new") filtered = filtered.filter((d) => d.subscribers >= 500);
+    res.json({ data: sortByQuality(filtered).slice(0, 100) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
