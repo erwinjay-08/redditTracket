@@ -1991,7 +1991,8 @@
       let intelFilter = "all";
 
       // Pagination state
-      ((acctPage = 1), (reusePage = 1));
+      let acctPage = 1,
+        reusePage = 1;
       let allSubsPage = 1,
         structurePage = 1;
       let schedPage = 1,
@@ -2009,7 +2010,8 @@
       let autoSyncTimerId = null;
 
       // Caches
-      let modelsCache = {}((acctCache = {}), (reuseCache = []));
+      let acctCache = {},
+        reuseCache = [];
       let allSubsCache = [],
         structureCache = [];
       let schedCache = [],
@@ -2106,6 +2108,7 @@
         await loadBaseData();
         loadDashboard();
         startAutoSync();
+        startEodSync();
         setInterval(updateLastSyncedDisplay, 60000);
       }
 
@@ -2345,6 +2348,29 @@
         }
         const mins = Math.floor((Date.now() - lastSyncedAt) / 60000);
         el.textContent = mins < 1 ? "synced just now" : `synced ${mins}m ago`;
+      }
+
+      let eodSyncFiredDate = null; // tracks which date we already fired EOD sync
+
+      function startEodSync() {
+        setInterval(() => {
+          const now = new Date();
+          const manilaTime = now.toLocaleTimeString("en-US", {
+            timeZone: "Asia/Manila",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+          const manilaDate = now.toLocaleDateString("en-CA", {
+            timeZone: "Asia/Manila",
+          });
+          // Fire once at 23:55 Manila time, once per day
+          if (manilaTime === "23:55" && eodSyncFiredDate !== manilaDate) {
+            eodSyncFiredDate = manilaDate;
+            console.log("[EOD] Firing end-of-day sync at 23:55 Manila time");
+            syncAllAccounts();
+          }
+        }, 60000); // check every minute
       }
 
       // ── Sort — Account Overview ───────────────────────────────────────────
@@ -3244,30 +3270,6 @@
         </tr>`,
           )
           .join("")}</tbody></table>`;
-        makePager("structurePager", rows.length, page, "setStructurePage");
-      }
-
-      function renderStructureRows(rows, page) {
-        structurePage = page;
-        const el = document.getElementById("structureTable");
-        if (!rows.length) {
-          el.innerHTML = `<div class="empty">No models yet.</div>`;
-          return;
-        }
-        const start = (page - 1) * PER,
-          slice = rows.slice(start, start + PER);
-        el.innerHTML = `<table><thead><tr><th>VA</th><th>Model</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody>${slice
-                .map(
-                  (r) => `<tr>
-                <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
-                <td style="font-family:var(--mono);font-weight:600">${r.model}</td>
-                <td style="font-family:var(--mono)">${r.id ? "@" + r.username : r.username}</td>
-                <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
-                <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
-              </tr>`,
-                )
-                .join("")}</tbody></table>`;
         makePager("structurePager", rows.length, page, "setStructurePage");
       }
 
