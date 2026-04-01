@@ -130,7 +130,7 @@ refreshData();
 
 app.get("/api/trending", async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 100);
     const nsfw = wantsNsfw(req);
     let data, source;
     if (nsfw) {
@@ -156,7 +156,7 @@ app.get("/api/trending", async (req, res) => {
 
 app.get("/api/rising", async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 100);
     const nsfw = wantsNsfw(req);
     if (nsfw) {
       const live = await reddit.fetchNsfwRising(limit);
@@ -187,7 +187,7 @@ app.get("/api/rising", async (req, res) => {
 
 app.get("/api/new", async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 100);
     const nsfw = wantsNsfw(req);
     if (nsfw) {
       const live = await reddit.fetchNsfwNew(limit);
@@ -197,6 +197,24 @@ app.get("/api/new", async (req, res) => {
       });
     }
     const live = await reddit.fetchNew(limit);
+    res.json({ source: "live", data: sortByQuality(live.map(formatSub)) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/unmoderated", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 100);
+    const nsfw = wantsNsfw(req);
+    if (nsfw) {
+      const live = await reddit.fetchNsfwUnmoderated(limit);
+      return res.json({
+        source: "live",
+        data: sortByQuality(live.map(formatSub)),
+      });
+    }
+    const live = await reddit.fetchUnmoderated(limit);
     res.json({ source: "live", data: sortByQuality(live.map(formatSub)) });
   } catch (err) {
     res.status(500).json({ error: err.message });

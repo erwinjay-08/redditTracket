@@ -1,621 +1,1574 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-mode="sfw">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SubTracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    :root {
-      --bg: #0e0e10; --surface: #18181b; --surface2: #222228;
-      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
-      --text: #f0f0f0; --muted: #888899; --accent: #ff4500;
-      --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b; --red: #ef4444;
-      --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
-      --radius: 12px; --header-bg: rgba(14,14,16,0.92);
-      --knob-x: 2px; --knob-color: #555566;
-    }
-    [data-mode="nsfw"] {
-      --bg: #f5f0eb; --surface: #ffffff; --surface2: #ede8e0;
-      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.16);
-      --text: #1a1209; --muted: #7a6a55; --accent: #c0392b;
-      --green: #27ae60; --blue: #2980b9; --amber: #e67e22;
-      --header-bg: rgba(245,240,235,0.94);
-      --knob-x: 22px; --knob-color: #c0392b;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.4s, color 0.3s; }
-    a { color: inherit; text-decoration: none; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SubTracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" sizes="64x64" href="rsc/st_logo.ico" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+      :root {
+        --bg: #0e0e10;
+        --surface: #18181b;
+        --surface2: #222228;
+        --border: rgba(255, 255, 255, 0.08);
+        --border2: rgba(255, 255, 255, 0.14);
+        --text: #f0f0f0;
+        --muted: #888899;
+        --accent: #ff4500;
+        --green: #22c55e;
+        --blue: #3b82f6;
+        --amber: #f59e0b;
+        --red: #ef4444;
+        --font: "Syne", sans-serif;
+        --mono: "DM Mono", monospace;
+        --radius: 12px;
+        --header-bg: rgba(14, 14, 16, 0.92);
+        --knob-x: 2px;
+        --knob-color: #555566;
+      }
+      [data-mode="nsfw"] {
+        --bg: #f5f0eb;
+        --surface: #ffffff;
+        --surface2: #ede8e0;
+        --border: rgba(0, 0, 0, 0.08);
+        --border2: rgba(0, 0, 0, 0.16);
+        --text: #1a1209;
+        --muted: #7a6a55;
+        --accent: #c0392b;
+        --green: #27ae60;
+        --blue: #2980b9;
+        --amber: #e67e22;
+        --header-bg: rgba(245, 240, 235, 0.94);
+        --knob-x: 22px;
+        --knob-color: #c0392b;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        min-height: 100vh;
+        transition:
+          background 0.4s,
+          color 0.3s;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
 
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px; border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; background: var(--header-bg);
-      backdrop-filter: blur(12px); z-index: 10;
-      transition: background 0.4s, border-color 0.3s;
-      flex-wrap: wrap; gap: 10px;
-    }
-    .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-    .logo-img { width: 28px; height: 28px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    .logo-img img { width: 100%; height: 100%; object-fit: contain; }
-    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-tab { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .nav-tab:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-    .nav-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
-    .theme-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-    .theme-label { font-family: var(--mono); font-size: 14px; color: var(--muted); letter-spacing: 0.04em; transition: color 0.3s; min-width: 28px; }
-    .theme-label.right { text-align: left; }
-    .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border2); position: relative; flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
-    [data-mode="nsfw"] .toggle-track { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.25); }
-    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: var(--knob-color); position: absolute; top: 2px; left: var(--knob-x); transition: left 0.3s cubic-bezier(.4,0,.2,1), background 0.3s; }
-    .search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 14px; width: 200px; transition: background 0.3s, border-color 0.3s; }
-    .search-bar input { background: none; border: none; outline: none; color: var(--text); font-family: var(--font); font-size: 13px; width: 100%; }
-    .search-bar input::placeholder { color: var(--muted); }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--header-bg);
+        backdrop-filter: blur(12px);
+        z-index: 10;
+        transition:
+          background 0.4s,
+          border-color 0.3s;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .logo-img {
+        width: 28px;
+        height: 28px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .logo-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .nav-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .nav-tab {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .nav-tab:hover {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .nav-tab.active {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--accent);
+      }
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .theme-label {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        transition: color 0.3s;
+        min-width: 28px;
+      }
+      .theme-label.right {
+        text-align: left;
+      }
+      .toggle-track {
+        width: 44px;
+        height: 24px;
+        border-radius: 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        position: relative;
+        flex-shrink: 0;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      [data-mode="nsfw"] .toggle-track {
+        background: rgba(192, 57, 43, 0.1);
+        border-color: rgba(192, 57, 43, 0.25);
+      }
+      .toggle-knob {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--knob-color);
+        position: absolute;
+        top: 2px;
+        left: var(--knob-x);
+        transition:
+          left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          background 0.3s;
+      }
+      .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 8px 14px;
+        width: 200px;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      .search-bar input {
+        background: none;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        width: 100%;
+      }
+      .search-bar input::placeholder {
+        color: var(--muted);
+      }
 
-    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
 
-    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
-    .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: background 0.3s, border-color 0.2s; }
-    .metric:hover { border-color: var(--border2); }
-    .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
-    .metric-value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
-    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+      #pagerPrev:hover,
+      #pagerNext:hover {
+        border-color: var(--border2);
+        background: var(--surface);
+      }
+      #pagerPrev:disabled,
+      #pagerNext:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
 
-    .category-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
-    .cat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 4px; flex-shrink: 0; padding-top: 1px; }
-    .cat-pill { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 11px; font-family: var(--mono); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-    .cat-pill:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-    .cat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .cat-pill .cat-icon { font-size: 12px; }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .metric {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition:
+          background 0.3s,
+          border-color 0.2s;
+      }
+      .metric:hover {
+        border-color: var(--border2);
+      }
+      .metric-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+      .metric-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
 
-    .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+      .category-bar {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+        align-items: center;
+      }
+      .cat-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-right: 4px;
+        flex-shrink: 0;
+        padding-top: 1px;
+      }
+      .cat-pill {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .cat-pill:hover {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .cat-pill.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .cat-pill .cat-icon {
+        font-size: 12px;
+      }
 
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: background 0.3s, border-color 0.3s; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-    .panel-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
-    .tabs { display: flex; gap: 4px; }
-    .tab { padding: 5px 12px; border-radius: 6px; border: 1px solid transparent; background: none; cursor: pointer; font-family: var(--font); font-size: 12px; color: var(--muted); transition: all 0.15s; }
-    .tab:hover { color: var(--text); background: var(--surface2); }
-    .tab.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+      }
 
-    .feed { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-    .sub-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; color: inherit; }
-    .sub-card:hover { background: var(--surface2); }
-    .rank { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
-    .sub-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-    .sub-body { flex: 1; min-width: 0; }
-    .sub-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-    .sub-desc { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-    .sub-right { text-align: right; flex-shrink: 0; }
-    .sub-members { font-family: var(--mono); font-size: 12px; font-weight: 500; }
-    .sub-meta { font-family: var(--mono); font-size: 10px; margin-top: 2px; color: var(--muted); }
-    .eng-good { color: var(--green); }
-    .eng-ok   { color: var(--blue); }
-    .eng-low  { color: var(--amber); }
-    .up { color: var(--green); }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-title {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+      }
+      .tab {
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: none;
+        cursor: pointer;
+        font-family: var(--font);
+        font-size: 12px;
+        color: var(--muted);
+        transition: all 0.15s;
+      }
+      .tab:hover {
+        color: var(--text);
+        background: var(--surface2);
+      }
+      .tab.active {
+        color: var(--text);
+        background: var(--surface2);
+        border-color: var(--border2);
+      }
 
-    .badge { display: inline-block; font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
-    .badge-hot    { background: rgba(255,69,0,0.15); color: #ff4500; }
-    .badge-new    { background: rgba(34,197,94,0.12); color: #22c55e; }
-    .badge-rising { background: rgba(59,130,246,0.12); color: #3b82f6; }
-    .badge-nsfw   { background: rgba(192,57,43,0.12); color: #c0392b; border: 1px solid rgba(192,57,43,0.2); }
-    .badge-safe   { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+      .feed {
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .sub-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: inherit;
+      }
+      .sub-card:hover {
+        background: var(--surface2);
+      }
+      .rank {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        width: 18px;
+        flex-shrink: 0;
+        text-align: right;
+      }
+      .sub-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+      }
+      .sub-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .sub-name {
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .sub-desc {
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+      }
+      .sub-right {
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .sub-members {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .sub-meta {
+        font-family: var(--mono);
+        font-size: 10px;
+        margin-top: 2px;
+        color: var(--muted);
+      }
+      .eng-good {
+        color: var(--green);
+      }
+      .eng-ok {
+        color: var(--blue);
+      }
+      .eng-low {
+        color: var(--amber);
+      }
+      .up {
+        color: var(--green);
+      }
 
-    .chart-panel { display: flex; flex-direction: column; gap: 12px; }
-    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: background 0.3s, border-color 0.3s; }
-    .chart-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
-    .chart-wrap { position: relative; width: 100%; height: 200px; }
+      .badge {
+        display: inline-block;
+        font-size: 9px;
+        font-family: var(--mono);
+        padding: 2px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.04em;
+      }
+      .badge-hot {
+        background: rgba(255, 69, 0, 0.15);
+        color: #ff4500;
+      }
+      .badge-new {
+        background: rgba(34, 197, 94, 0.12);
+        color: #22c55e;
+      }
+      .badge-rising {
+        background: rgba(59, 130, 246, 0.12);
+        color: #3b82f6;
+      }
+      .badge-nsfw {
+        background: rgba(192, 57, 43, 0.12);
+        color: #c0392b;
+        border: 1px solid rgba(192, 57, 43, 0.2);
+      }
+      .badge-safe {
+        background: rgba(34, 197, 94, 0.12);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
 
-    /* ── Engagement + Hot Analysis panel ── */
-    .engagement-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: background 0.3s, border-color 0.3s; }
-    .engagement-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
-    .engagement-sub-name { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; }
-    .engagement-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); line-height: 1.5; }
-    .engagement-empty { font-size: 11px; color: var(--muted); font-family: var(--mono); text-align: center; padding: 20px 0; }
+      .chart-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .chart-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      .chart-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .chart-wrap {
+        position: relative;
+        width: 100%;
+        height: 200px;
+      }
 
-    .safety-score-wrap { margin-bottom: 14px; }
-    .safety-score-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .safety-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .safety-score-num { font-size: 22px; font-weight: 700; }
-    .safety-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
-    .safety-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
-    .safety-verdict { font-size: 11px; font-family: var(--mono); font-weight: 500; }
+      /* ── Engagement + Hot Analysis panel ── */
+      .engagement-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
+      }
+      .engagement-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .engagement-sub-name {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-bottom: 14px;
+      }
+      .engagement-hint {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        line-height: 1.5;
+      }
+      .engagement-empty {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        text-align: center;
+        padding: 20px 0;
+      }
 
-    /* Hot section analysis */
-    .hot-analysis { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
-    .hot-analysis-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-    .hot-quality-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin: 6px 0; }
-    .hot-quality-fill { height: 100%; border-radius: 3px; }
-    .hot-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 11px; font-family: var(--mono); }
-    .hot-stat-key { color: var(--muted); }
-    .hot-stat-val { font-weight: 500; }
-    .hot-verdict { font-size: 11px; font-family: var(--mono); font-weight: 600; margin-top: 8px; padding: 6px 10px; border-radius: 6px; }
-    .hot-verdict-great   { background: rgba(34,197,94,0.1);  color: var(--green); }
-    .hot-verdict-good    { background: rgba(59,130,246,0.1);  color: var(--blue); }
-    .hot-verdict-avg     { background: rgba(245,158,11,0.1);  color: var(--amber); }
-    .hot-verdict-bad     { background: rgba(239,68,68,0.1);   color: var(--red); }
+      .safety-score-wrap {
+        margin-bottom: 14px;
+      }
+      .safety-score-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .safety-score-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .safety-score-num {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .safety-bar-track {
+        height: 6px;
+        background: var(--surface2);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 6px;
+      }
+      .safety-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.6s ease;
+      }
+      .safety-verdict {
+        font-size: 11px;
+        font-family: var(--mono);
+        font-weight: 500;
+      }
 
-    .eng-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-    .eng-stat { background: var(--surface2); border-radius: 8px; padding: 10px; }
-    .eng-stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-    .eng-stat-value { font-size: 16px; font-weight: 700; }
+      /* Hot section analysis */
+      .hot-analysis {
+        margin-top: 14px;
+        border-top: 1px solid var(--border);
+        padding-top: 14px;
+      }
+      .hot-analysis-title {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 10px;
+      }
+      .hot-quality-bar {
+        height: 6px;
+        background: var(--surface2);
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 6px 0;
+      }
+      .hot-quality-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .hot-stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 11px;
+        font-family: var(--mono);
+      }
+      .hot-stat-key {
+        color: var(--muted);
+      }
+      .hot-stat-val {
+        font-weight: 500;
+      }
+      .hot-verdict {
+        font-size: 11px;
+        font-family: var(--mono);
+        font-weight: 600;
+        margin-top: 8px;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+      .hot-verdict-great {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+      }
+      .hot-verdict-good {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--blue);
+      }
+      .hot-verdict-avg {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--amber);
+      }
+      .hot-verdict-bad {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--red);
+      }
 
-    .eng-tips { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
-    .eng-tips-title { font-size: 11px; font-weight: 600; margin-bottom: 8px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .eng-tip { font-size: 11px; color: var(--muted); padding: 4px 0; display: flex; gap: 8px; line-height: 1.4; align-items: flex-start; }
-    .eng-tip-icon { flex-shrink: 0; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
-    .eng-tip-icon svg { width: 14px; height: 14px; }
+      .eng-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .eng-stat {
+        background: var(--surface2);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .eng-stat-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 4px;
+      }
+      .eng-stat-value {
+        font-size: 16px;
+        font-weight: 700;
+      }
 
-    .eng-cta { margin-top: 14px; display: flex; justify-content: center; }
-    .eng-cta a { background: var(--accent); color: #fff; font-family: var(--mono); font-size: 12px; padding: 6px 20px; border-radius: 8px; text-decoration: none; border: 1px solid var(--accent); transition: all 0.2s; }
-    .eng-cta a:hover { background: transparent; color: var(--accent); }
+      .eng-tips {
+        margin-top: 12px;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+      .eng-tips-title {
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-family: var(--mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .eng-tip {
+        font-size: 11px;
+        color: var(--muted);
+        padding: 4px 0;
+        display: flex;
+        gap: 8px;
+        line-height: 1.4;
+        align-items: flex-start;
+      }
+      .eng-tip-icon {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+      }
+      .eng-tip-icon svg {
+        width: 14px;
+        height: 14px;
+      }
 
-    .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; height: 48px; }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    .empty { padding: 32px; text-align: center; color: var(--muted); font-size: 13px; }
+      .eng-cta {
+        margin-top: 14px;
+        display: flex;
+        justify-content: center;
+      }
+      .eng-cta a {
+        background: var(--accent);
+        color: #fff;
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 6px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        border: 1px solid var(--accent);
+        transition: all 0.2s;
+      }
+      .eng-cta a:hover {
+        background: transparent;
+        color: var(--accent);
+      }
 
-    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 11px; font-family: var(--mono); border-top: 1px solid var(--border); margin-top: 48px; }
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          var(--surface2) 25%,
+          var(--surface) 50%,
+          var(--surface2) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 6px;
+        height: 48px;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .empty {
+        padding: 32px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
 
-    /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-      .chart-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    }
-    @media (max-width: 600px) {
-      header { padding: 12px 16px; }
-      main { padding: 16px 12px; }
-      .search-bar { width: 100%; order: 3; }
-      .nav-tabs { gap: 4px; }
-      .nav-tab { font-size: 10px; padding: 5px 8px; }
-      .metrics { grid-template-columns: repeat(2, 1fr); }
-      .metrics .metric:last-child { display: none; }
-      .chart-panel { grid-template-columns: 1fr; }
-      .chart-wrap { height: 160px; }
-    }
-  </style>
-</head>
-<body>
+      footer {
+        text-align: center;
+        padding: 24px;
+        color: var(--muted);
+        font-size: 11px;
+        font-family: var(--mono);
+        border-top: 1px solid var(--border);
+        margin-top: 48px;
+      }
 
-<header>
-  <div class="logo">
-    <div class="logo-img"><img src="rsc/logo.png" alt="SubTracker Logo"></div>
-    <a href="index.html">SubTracker</a>
-  </div>
-  <div class="search-bar">
-    <svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="text" id="searchInput" placeholder="Search subreddits..." />
-  </div>
-  <div class="header-right">
-    <div class="nav-tabs">
-      <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">Sub Tracker</button>
-      <button class="nav-tab" id="tab-userRanking" onclick="goPage('user_Ranking.html')">User Ranking</button>
-      <button class="nav-tab" id="tab-userMonthly" onclick="goPage('user_monthly_subs_performance.html')">Monthly Performance</button>
-      <button class="nav-tab" id="tab-subPostTiming" onclick="goPage('sub_post_timing.html')">Post Timing</button>
-      <button class="nav-tab" id="tab-intel" onclick="goPage('posting_intelligence.html')">Posting Intelligenc</button>
-    </div>
-    <div class="theme-toggle" onclick="toggleMode()" title="Toggle content filter">
-      <span class="theme-label">sfw</span>
-      <div class="toggle-track"><div class="toggle-knob"></div></div>
-      <span class="theme-label right">nsfw</span>
-    </div>
-    <!-- REMOVED: live pill -->
-  </div>
-</header>
+      /* ── Responsive ── */
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .chart-panel {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+      }
+      @media (max-width: 600px) {
+        header {
+          padding: 12px 16px;
+        }
+        main {
+          padding: 16px 12px;
+        }
+        .search-bar {
+          width: 100%;
+          order: 3;
+        }
+        .nav-tabs {
+          gap: 4px;
+        }
+        .nav-tab {
+          font-size: 10px;
+          padding: 5px 8px;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .metrics .metric:last-child {
+          display: none;
+        }
+        .chart-panel {
+          grid-template-columns: 1fr;
+        }
+        .chart-wrap {
+          height: 160px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <div class="logo-img">
+          <img src="rsc/logo.png" alt="SubTracker Logo" />
+        </div>
+        <a href="index.html">SubTracker</a>
+      </div>
+      <div class="search-bar">
+        <svg
+          width="14"
+          height="14"
+          fill="none"
+          stroke="var(--muted)"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search subreddits..."
+        />
+      </div>
+      <div class="header-right">
+        <div class="nav-tabs">
+          <button class="nav-tab" id="tab-index" onclick="goPage('index.html')">
+            Sub Tracker
+          </button>
+          <button
+            class="nav-tab"
+            id="tab-userRanking"
+            onclick="goPage('user_Ranking.html')"
+          >
+            User Ranking
+          </button>
+          <button
+            class="nav-tab"
+            id="tab-userMonthly"
+            onclick="goPage('user_monthly_subs_performance.html')"
+          >
+            Monthly Performance
+          </button>
+          <button
+            class="nav-tab"
+            id="tab-subPostTiming"
+            onclick="goPage('sub_post_timing.html')"
+          >
+            Post Timing
+          </button>
+          <button
+            class="nav-tab"
+            id="tab-intel"
+            onclick="goPage('posting_intelligence.html')"
+          >
+            Posting Intelligenc
+          </button>
+        </div>
+        <div
+          class="theme-toggle"
+          onclick="toggleMode()"
+          title="Toggle content filter"
+        >
+          <span class="theme-label">sfw</span>
+          <div class="toggle-track"><div class="toggle-knob"></div></div>
+          <span class="theme-label right">nsfw</span>
+        </div>
+        <!-- REMOVED: live pill -->
+      </div>
+    </header>
 
-<main>
-  <div class="metrics">
-    <div class="metric">
-      <div class="metric-label">Tracked</div>
-      <div class="metric-value" id="m-tracked">—</div>
-      <div class="metric-sub">subreddits</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Members</div>
-      <div class="metric-value" id="m-members">—</div>
-      <div class="metric-sub">across top results</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">Mode</div>
-      <div class="metric-value" id="m-mode" style="font-size:16px;padding-top:6px">SFW</div>
-      <div class="metric-sub">content filter</div>
-    </div>
-  </div>
-
-  <div class="category-bar" id="categoryBar">
-    <span class="cat-label">Filter</span>
-  </div>
-
-  <div class="grid">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Subreddits</span>
-        <div class="tabs">
-          <button class="tab active" onclick="switchTab('trending', this)">Trending</button>
-          <button class="tab" onclick="switchTab('rising', this)">Rising</button>
-          <button class="tab" onclick="switchTab('new', this)">New</button>
+    <main>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Tracked</div>
+          <div class="metric-value" id="m-tracked">—</div>
+          <div class="metric-sub">subreddits</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Members</div>
+          <div class="metric-value" id="m-members">—</div>
+          <div class="metric-sub">across top results</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Mode</div>
+          <div
+            class="metric-value"
+            id="m-mode"
+            style="font-size: 16px; padding-top: 6px"
+          >
+            SFW
+          </div>
+          <div class="metric-sub">content filter</div>
         </div>
       </div>
-      <div class="feed" id="feed">
-        <div class="skeleton"></div>
-        <div class="skeleton" style="opacity:0.7;margin-top:4px"></div>
-        <div class="skeleton" style="opacity:0.4;margin-top:4px"></div>
-      </div>
-    </div>
 
-    <div class="chart-panel">
-      <div class="engagement-panel" id="engagementPanel">
-        <div class="engagement-title">Newcomer Safety Check</div>
-        <div id="engagementBody">
-          <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
-          <div class="engagement-empty">No subreddit selected</div>
+      <div class="category-bar" id="categoryBar">
+        <span class="cat-label">Filter</span>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Subreddits</span>
+            <div class="tabs">
+              <button class="tab active" onclick="switchTab('trending', this)">
+                Trending
+              </button>
+              <button class="tab" onclick="switchTab('rising', this)">
+                Rising
+              </button>
+              <button class="tab" onclick="switchTab('new', this)">New</button>
+              <button class="tab" onclick="switchTab('unmoderated', this)">
+                Unmoderated
+              </button>
+            </div>
+          </div>
+          <div class="feed" id="feed">
+            <div class="skeleton"></div>
+            <div class="skeleton" style="opacity: 0.7; margin-top: 4px"></div>
+            <div class="skeleton" style="opacity: 0.4; margin-top: 4px"></div>
+          </div>
+          <div
+            id="feedPager"
+            style="
+              display: none;
+              align-items: center;
+              justify-content: space-between;
+              padding: 12px 16px;
+              border-top: 1px solid var(--border);
+              font-family: var(--mono);
+              font-size: 11px;
+            "
+          >
+            <span id="pagerInfo" style="color: var(--muted)"></span>
+            <div style="display: flex; gap: 6px">
+              <button
+                id="pagerPrev"
+                onclick="changePage(-1)"
+                style="
+                  padding: 5px 12px;
+                  border-radius: 6px;
+                  border: 1px solid var(--border);
+                  background: var(--surface2);
+                  color: var(--text);
+                  font-family: var(--mono);
+                  font-size: 11px;
+                  cursor: pointer;
+                "
+              >
+                ← Prev
+              </button>
+              <button
+                id="pagerNext"
+                onclick="changePage(1)"
+                style="
+                  padding: 5px 12px;
+                  border-radius: 6px;
+                  border: 1px solid var(--border);
+                  background: var(--surface2);
+                  color: var(--text);
+                  font-family: var(--mono);
+                  font-size: 11px;
+                  cursor: pointer;
+                "
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="engagement-panel" id="engagementPanel">
+            <div class="engagement-title">Newcomer Safety Check</div>
+            <div id="engagementBody">
+              <div class="engagement-hint">
+                Click any subreddit card to see engagement stats, hot section
+                quality, and whether it's safe for new accounts.
+              </div>
+              <div class="engagement-empty">No subreddit selected</div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-label">Member distribution</div>
+            <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-label">Activity ratio</div>
+            <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+          </div>
         </div>
       </div>
-      <div class="chart-card">
-        <div class="chart-label">Member distribution</div>
-        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-label">Activity ratio</div>
-        <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
-      </div>
-    </div>
-  </div>
-</main>
+    </main>
 
-<footer>SubTracker · data from Reddit API · refreshes every 30 minutes</footer>
+    <footer>
+      SubTracker · data from Reddit API · refreshes every 30 minutes
+    </footer>
 
-<script>
-const rawPath = window.location.pathname.split('/').pop();
-const currentPath = rawPath === '' ? 'index.html' : rawPath;
-const pageTabMap = { 'index.html':'tab-index','user_Ranking.html':'tab-userRanking','user_monthly_subs_performance.html':'tab-userMonthly','sub_post_timing.html':'tab-subPostTiming','posting_intelligence.html':'tab-intel' };
-document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-const navEl = document.getElementById(pageTabMap[currentPath] || 'tab-index');
-if (navEl) navEl.classList.add('active');
-</script>
+    <script>
+      const rawPath = window.location.pathname.split("/").pop();
+      const currentPath = rawPath === "" ? "index.html" : rawPath;
+      const pageTabMap = {
+        "index.html": "tab-index",
+        "user_Ranking.html": "tab-userRanking",
+        "user_monthly_subs_performance.html": "tab-userMonthly",
+        "sub_post_timing.html": "tab-subPostTiming",
+        "posting_intelligence.html": "tab-intel",
+      };
+      document
+        .querySelectorAll(".nav-tab")
+        .forEach((t) => t.classList.remove("active"));
+      const navEl = document.getElementById(
+        pageTabMap[currentPath] || "tab-index",
+      );
+      if (navEl) navEl.classList.add("active");
+    </script>
 
-<script>
-const API = window.location.hostname === 'localhost'
-  ? 'http://localhost:3001/api'
-  : 'https://reddittracker-y65h.onrender.com/api';
+    <script>
+      const API =
+        window.location.hostname === "localhost"
+          ? "http://localhost:3001/api"
+          : "https://reddittracker-y65h.onrender.com/api";
 
-let barChart, donutChart;
-let currentTab = 'trending';
-let nsfwMode = false;
-let activeCategory = null;
+      let barChart, donutChart;
+      let currentTab = "trending";
+      let nsfwMode = false;
+      let activeCategory = null;
 
-const ICONS = { gaming:'🎮', programming:'💻', science:'🔬', movies:'🎬', fitness:'💪', music:'🎵', art:'🎨', books:'📚', food:'🍔', travel:'✈️', sports:'⚽', technology:'📱', crypto:'₿', default:'📌' };
-const ICON_BG_SFW  = ['rgba(255,69,0,0.12)','rgba(59,130,246,0.12)','rgba(34,197,94,0.12)','rgba(245,158,11,0.12)','rgba(168,85,247,0.12)'];
-const ICON_BG_NSFW = ['rgba(192,57,43,0.10)','rgba(120,40,31,0.10)','rgba(169,50,38,0.10)','rgba(146,43,33,0.10)','rgba(100,30,22,0.10)'];
+      // ── Pagination state ─────────────────────────────────────────────────────────
+      const PER_PAGE = 20;
+      let allResults = []; // full 100-item dataset for current tab
+      let currentPage = 1;
 
-const SVGICONS = {
-  check: `<svg viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,8 6,12 14,4"/></svg>`,
-  warn:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L14 13H2L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/></svg>`,
-  block: `<svg viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="4.5" y1="4.5" x2="11.5" y2="11.5"/></svg>`,
-  fire:  `<svg viewBox="0 0 16 16" fill="none" stroke="#ff4500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13c-2.5 0-4.5-1.8-4.5-4.5 0-1.8 1-2.8 1.8-3.8 0 1.5 1 2.3 1.7 2.3C7 5.2 8 3 10 2c-1 2 0 3.5 1.5 4.5.8.7 1 1.5 1 2.5C12.5 11.2 10.5 13 8 13z"/></svg>`,
-  thumb: `<svg viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h2.5V14H2z"/><path d="M4.5 9l2-5.5c.8 0 1.5.7 1.5 1.5v2.5h3.5l-1 6H4.5z"/></svg>`,
-  sleep: `<svg viewBox="0 0 16 16" fill="none" stroke="#888899" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="9" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="3" y1="11" x2="9" y2="11"/></svg>`,
-  bulb:  `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h4M7 14h2M8 2a4 4 0 0 1 3 6.7V10H5V8.7A4 4 0 0 1 8 2z"/></svg>`,
-};
+      const ICONS = {
+        gaming: "🎮",
+        programming: "💻",
+        science: "🔬",
+        movies: "🎬",
+        fitness: "💪",
+        music: "🎵",
+        art: "🎨",
+        books: "📚",
+        food: "🍔",
+        travel: "✈️",
+        sports: "⚽",
+        technology: "📱",
+        crypto: "₿",
+        default: "📌",
+      };
+      const ICON_BG_SFW = [
+        "rgba(255,69,0,0.12)",
+        "rgba(59,130,246,0.12)",
+        "rgba(34,197,94,0.12)",
+        "rgba(245,158,11,0.12)",
+        "rgba(168,85,247,0.12)",
+      ];
+      const ICON_BG_NSFW = [
+        "rgba(192,57,43,0.10)",
+        "rgba(120,40,31,0.10)",
+        "rgba(169,50,38,0.10)",
+        "rgba(146,43,33,0.10)",
+        "rgba(100,30,22,0.10)",
+      ];
 
-function getIcon(name) { const n = name.toLowerCase(); for (const k of Object.keys(ICONS)) { if (n.includes(k)) return ICONS[k]; } return ICONS.default; }
-function fmt(n) { if (n >= 1e6) return (n/1e6).toFixed(1)+'M'; if (n >= 1e3) return (n/1e3).toFixed(1)+'K'; return String(n||0); }
+      const SVGICONS = {
+        check: `<svg viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,8 6,12 14,4"/></svg>`,
+        warn: `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L14 13H2L8 2z"/><line x1="8" y1="7" x2="8" y2="10"/></svg>`,
+        block: `<svg viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><line x1="4.5" y1="4.5" x2="11.5" y2="11.5"/></svg>`,
+        fire: `<svg viewBox="0 0 16 16" fill="none" stroke="#ff4500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13c-2.5 0-4.5-1.8-4.5-4.5 0-1.8 1-2.8 1.8-3.8 0 1.5 1 2.3 1.7 2.3C7 5.2 8 3 10 2c-1 2 0 3.5 1.5 4.5.8.7 1 1.5 1 2.5C12.5 11.2 10.5 13 8 13z"/></svg>`,
+        thumb: `<svg viewBox="0 0 16 16" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h2.5V14H2z"/><path d="M4.5 9l2-5.5c.8 0 1.5.7 1.5 1.5v2.5h3.5l-1 6H4.5z"/></svg>`,
+        sleep: `<svg viewBox="0 0 16 16" fill="none" stroke="#888899" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="9" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="3" y1="11" x2="9" y2="11"/></svg>`,
+        bulb: `<svg viewBox="0 0 16 16" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h4M7 14h2M8 2a4 4 0 0 1 3 6.7V10H5V8.7A4 4 0 0 1 8 2z"/></svg>`,
+      };
 
-function getBadge(tab, i, isOver18, subscribers) {
-  const parts = [];
-  if (isOver18) parts.push('<span class="badge badge-nsfw">nsfw</span>');
-  if (tab === 'trending' && i < 3) parts.push('<span class="badge badge-hot">hot</span>');
-  else if (tab === 'rising') parts.push('<span class="badge badge-rising">rising</span>');
-  else if (tab === 'new') parts.push('<span class="badge badge-new">new</span>');
-  if (subscribers < 50000 && !isOver18) parts.push('<span class="badge badge-safe">new-acc ok</span>');
-  return parts.join('');
-}
+      function getIcon(name) {
+        const n = name.toLowerCase();
+        for (const k of Object.keys(ICONS)) {
+          if (n.includes(k)) return ICONS[k];
+        }
+        return ICONS.default;
+      }
+      function fmt(n) {
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+        return String(n || 0);
+      }
 
-// Engagement label shown on sub card (uses quality_score from server)
-function engLabel(sub) {
-  const rate = sub.engagement_rate || 0;
-  if (rate > 2)    return `<span class="eng-good">▲ ${rate.toFixed(2)}% eng</span>`;
-  if (rate > 0.5)  return `<span class="eng-ok">~ ${rate.toFixed(2)}% eng</span>`;
-  if (rate > 0)    return `<span class="eng-low">▼ ${rate.toFixed(2)}% eng</span>`;
-  return '';
-}
+      function getBadge(tab, i, isOver18, subscribers) {
+        const parts = [];
+        if (isOver18) parts.push('<span class="badge badge-nsfw">nsfw</span>');
+        if (tab === "trending" && i < 3)
+          parts.push('<span class="badge badge-hot">hot</span>');
+        else if (tab === "rising")
+          parts.push('<span class="badge badge-rising">rising</span>');
+        else if (tab === "new")
+          parts.push('<span class="badge badge-new">new</span>');
+        else if (tab === "unmoderated")
+          parts.push(
+            '<span class="badge" style="background:rgba(168,85,247,0.12);color:#a855f7">unmod</span>',
+          );
+        if ((tab === "unmoderated" || subscribers < 2500) && !isOver18)
+          parts.push('<span class="badge badge-safe">low mod risk</span>');
+        else if (subscribers < 50000 && !isOver18)
+          parts.push('<span class="badge badge-safe">new-acc ok</span>');
+        return parts.join("");
+      }
 
-function growthEl(sub, tab) {
-  if (tab === 'rising' && sub.growth_pct) return `<div class="sub-meta up">+${sub.growth_pct.toFixed(1)}%</div>`;
-  const el = engLabel(sub);
-  return el ? `<div class="sub-meta">${el}</div>` : '';
-}
+      function engLabel(sub) {
+        const rate = sub.engagement_rate || 0;
+        if (rate > 2)
+          return `<span class="eng-good">▲ ${rate.toFixed(2)}% eng</span>`;
+        if (rate > 0.5)
+          return `<span class="eng-ok">~ ${rate.toFixed(2)}% eng</span>`;
+        if (rate > 0)
+          return `<span class="eng-low">▼ ${rate.toFixed(2)}% eng</span>`;
+        return "";
+      }
 
-function clearEngagement() {
-  document.getElementById('engagementBody').innerHTML = `
+      function growthEl(sub, tab) {
+        if (tab === "rising" && sub.growth_pct)
+          return `<div class="sub-meta up">+${sub.growth_pct.toFixed(1)}%</div>`;
+        const el = engLabel(sub);
+        return el ? `<div class="sub-meta">${el}</div>` : "";
+      }
+
+      function clearEngagement() {
+        document.getElementById("engagementBody").innerHTML = `
     <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
     <div class="engagement-empty">No subreddit selected</div>`;
-}
+      }
 
-// ── Engagement + Hot Analysis panel ──────────────────────────────────────────
-async function loadEngagement(subName) {
-  const body = document.getElementById('engagementBody');
-  body.innerHTML = `<div class="skeleton" style="height:70px;margin-bottom:8px"></div><div class="skeleton" style="height:50px;margin-bottom:8px"></div><div class="skeleton" style="height:80px"></div>`;
+      // ── Pagination helpers ────────────────────────────────────────────────────────
+      function renderPage(data, tab, page) {
+        const feedEl = document.getElementById("feed");
+        const pagerEl = document.getElementById("feedPager");
+        const total = data.length;
+        const totalPages = Math.ceil(total / PER_PAGE);
+        const start = (page - 1) * PER_PAGE;
+        const slice = data.slice(start, start + PER_PAGE);
+        const iconBg = nsfwMode ? ICON_BG_NSFW : ICON_BG_SFW;
 
-  try {
-    // Fetch both in parallel
-    const [engRes, hotRes] = await Promise.all([
-      fetch(`${API}/sub-engagement?sub=${encodeURIComponent(subName)}`),
-      fetch(`${API}/hot-analysis?sub=${encodeURIComponent(subName)}`),
-    ]);
-    const d    = await engRes.json();
-    const hot  = await hotRes.json();
-    if (d.error) throw new Error(d.error);
+        // Update metrics from full dataset
+        const totalMembers = data.reduce((s, d) => s + (d.subscribers || 0), 0);
+        document.getElementById("m-tracked").textContent = total;
+        document.getElementById("m-members").textContent = fmt(totalMembers);
 
-    const colorMap = { green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444' };
-    const scoreColor = colorMap[d.newcomer_safety.color] || '#888899';
-
-    // Safety tips
-    const tips = [];
-    if (d.subscribers < 10000)
-      tips.push({ icon: SVGICONS.check, text: 'Small community — low automod strictness, great for new accounts' });
-    else if (d.subscribers < 100000)
-      tips.push({ icon: SVGICONS.check, text: 'Mid-size sub — generally welcoming to newer accounts' });
-    else if (d.subscribers < 500000)
-      tips.push({ icon: SVGICONS.warn,  text: 'Large sub — some karma requirements may apply' });
-    else
-      tips.push({ icon: SVGICONS.block, text: 'Very large sub — strict automod, karma threshold likely' });
-
-    if ((d.avg_score || 0) > 500)
-      tips.push({ icon: SVGICONS.fire,  text: 'Hot posts get high scores — very active community' });
-    else if ((d.avg_score || 0) > 50)
-      tips.push({ icon: SVGICONS.thumb, text: 'Decent post performance — solid engagement' });
-    else
-      tips.push({ icon: SVGICONS.sleep, text: 'Low avg post scores — may be bot-heavy or inactive' });
-
-    if (d.newcomer_safety.score >= 70)
-      tips.push({ icon: SVGICONS.bulb, text: 'Tip: Post quality content and follow sub rules — you should be fine here' });
-    else
-      tips.push({ icon: SVGICONS.bulb, text: 'Tip: Build some karma in smaller subs first before posting here' });
-
-    // Hot section quality verdict
-    const hotColorMap = { green:'hot-verdict-great', blue:'hot-verdict-good', amber:'hot-verdict-avg', red:'hot-verdict-bad' };
-    const hotClass = hotColorMap[hot.quality_color] || 'hot-verdict-avg';
-    const hotBarPct = Math.min(100, (hot.engagement_ratio || 0) * 20);
-
-    body.innerHTML = `
-      <div class="engagement-sub-name">r/${subName} · ${fmt(d.subscribers)} members</div>
-
-      <div class="safety-score-wrap">
-        <div class="safety-score-header">
-          <span class="safety-score-label">Newcomer Safety</span>
-          <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
-        </div>
-        <div class="safety-bar-track">
-          <div class="safety-bar-fill" style="width:${d.newcomer_safety.score}%;background:${scoreColor}"></div>
-        </div>
-        <div class="safety-verdict" style="color:${scoreColor}">${d.newcomer_safety.label}</div>
-      </div>
-
-      <div class="eng-stats">
-        <div class="eng-stat">
-          <div class="eng-stat-label">Avg Post Score</div>
-          <div class="eng-stat-value">${fmt(d.avg_score || 0)}</div>
-        </div>
-        <div class="eng-stat">
-          <div class="eng-stat-label">Avg Comments</div>
-          <div class="eng-stat-value">${fmt(d.avg_comments || 0)}</div>
-        </div>
-      </div>
-
-      <div class="hot-analysis">
-        <div class="hot-analysis-title">Hot Section Analysis</div>
-        <div class="hot-stat-row">
-          <span class="hot-stat-key">Engagement ratio</span>
-          <span class="hot-stat-val">${(hot.engagement_ratio || 0).toFixed(3)}</span>
-        </div>
-        <div class="hot-quality-bar">
-          <div class="hot-quality-fill" style="width:${hotBarPct}%;background:${colorMap[hot.quality_color] || '#888899'}"></div>
-        </div>
-        <div class="hot-stat-row">
-          <span class="hot-stat-key">Posts analyzed</span>
-          <span class="hot-stat-val">${hot.posts_analyzed || '—'}</span>
-        </div>
-        <div class="hot-stat-row">
-          <span class="hot-stat-key">Recommended</span>
-          <span class="hot-stat-val" style="color:${hot.recommended ? 'var(--green)' : 'var(--red)'}">${hot.recommended ? 'Yes' : 'No'}</span>
-        </div>
-        <div class="hot-verdict ${hotClass}">${hot.quality || '—'}</div>
-      </div>
-
-      <div class="eng-tips">
-        <div class="eng-tips-title">Insights</div>
-        ${tips.map(t => `<div class="eng-tip"><span class="eng-tip-icon">${t.icon}</span><span>${t.text}</span></div>`).join('')}
-      </div>
-
-      <div class="eng-cta">
-        <a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">Open r/${subName}</a>
-      </div>`;
-
-  } catch(e) {
-    body.innerHTML = `<div class="engagement-empty">Could not load data for r/${subName}</div>`;
-  }
-}
-
-function toggleMode() {
-  nsfwMode = !nsfwMode;
-  document.documentElement.setAttribute('data-mode', nsfwMode ? 'nsfw' : 'sfw');
-  document.getElementById('m-mode').textContent = nsfwMode ? 'NSFW' : 'SFW';
-  document.getElementById('m-mode').style.color = nsfwMode ? '#c0392b' : '';
-  document.getElementById('searchInput').value = '';
-  activeCategory = null;
-  clearEngagement();
-  localStorage.setItem('subtracker-mode', nsfwMode ? 'nsfw' : 'sfw');
-  buildCategoryBar();
-  load(currentTab);
-}
-
-async function load(tab) {
-  const feedEl = document.getElementById('feed');
-  feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
-  try {
-    const res = await fetch(`${API}/${tab}?limit=20&nsfw=${nsfwMode?1:0}`);
-    const json = await res.json();
-    render(json.data || [], tab);
-  } catch {
-    feedEl.innerHTML = `<div class="empty">Could not reach the backend.</div>`;
-  }
-}
-
-function render(data, tab) {
-  const feedEl = document.getElementById('feed');
-  const iconBg = nsfwMode ? ICON_BG_NSFW : ICON_BG_SFW;
-  const total = data.reduce((s,d) => s + (d.subscribers||0), 0);
-  document.getElementById('m-tracked').textContent = data.length;
-  document.getElementById('m-members').textContent = fmt(total);
-
-  feedEl.innerHTML = data.map((sub, i) => `
+        feedEl.innerHTML = slice
+          .map((sub, i) => {
+            const globalI = start + i; // global rank across all pages
+            return `
     <div class="sub-card" onclick="loadEngagement('${sub.name}')">
-      <span class="rank">${i+1}</span>
-      <div class="sub-icon" style="background:${iconBg[i%5]}">${getIcon(sub.name)}</div>
+      <span class="rank">${globalI + 1}</span>
+      <div class="sub-icon" style="background:${iconBg[globalI % 5]}">${getIcon(sub.name)}</div>
       <div class="sub-body">
-        <div class="sub-name">r/${sub.name} ${getBadge(tab, i, sub.over18, sub.subscribers)}</div>
-        <div class="sub-desc">${sub.description || sub.title || 'No description'}</div>
+        <div class="sub-name">r/${sub.name} ${getBadge(tab, globalI, sub.over18, sub.subscribers)}</div>
+        <div class="sub-desc">${sub.description || sub.title || "No description"}</div>
       </div>
       <div class="sub-right">
         <div class="sub-members">${fmt(sub.subscribers)}</div>
         ${growthEl(sub, tab)}
       </div>
-    </div>`).join('');
+    </div>`;
+          })
+          .join("");
 
-  renderBarChart(data.slice(0,8));
-  renderDonutChart(data.slice(0,5));
-}
+        // Update pager
+        if (total > PER_PAGE) {
+          pagerEl.style.display = "flex";
+          document.getElementById("pagerInfo").textContent =
+            `${start + 1}–${Math.min(start + PER_PAGE, total)} of ${total}`;
+          document.getElementById("pagerPrev").disabled = page <= 1;
+          document.getElementById("pagerNext").disabled = page >= totalPages;
+        } else {
+          pagerEl.style.display = "none";
+        }
 
-function renderBarChart(data) {
-  if (barChart) barChart.destroy();
-  const fill  = nsfwMode ? 'rgba(192,57,43,0.7)' : 'rgba(255,69,0,0.7)';
-  const hover = nsfwMode ? 'rgba(169,50,38,0.9)' : 'rgba(255,107,53,0.9)';
-  const tick  = nsfwMode ? '#7a6a55' : '#888899';
-  const grid  = nsfwMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-  barChart = new Chart(document.getElementById('barChart'), {
-    type: 'bar',
-    data: { labels: data.map(d => 'r/'+d.name), datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: fill, hoverBackgroundColor: hover, borderWidth: 0, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } }, scales: { x: { grid: { display: false }, ticks: { color: tick, font: { size: 10 }, maxRotation: 35 } }, y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { size: 10 }, callback: v => fmt(v) } } } }
-  });
-}
+        // Charts use first 8 / 5 of the current page slice
+        renderBarChart(slice.slice(0, 8));
+        renderDonutChart(slice.slice(0, 5));
+      }
 
-function renderDonutChart(data) {
-  if (donutChart) donutChart.destroy();
-  const colors = nsfwMode ? ['#c0392b','#922b21','#e74c3c','#7b241c','#a93226'] : ['#ff4500','#3b82f6','#22c55e','#f59e0b','#a855f7'];
-  const legendColor = nsfwMode ? '#7a6a55' : '#888899';
-  donutChart = new Chart(document.getElementById('donutChart'), {
-    type: 'doughnut',
-    data: { labels: data.map(d => 'r/'+d.name), datasets: [{ data: data.map(d => d.subscribers||0), backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { color: legendColor, font: { size: 10 }, boxWidth: 10, padding: 10 } }, tooltip: { callbacks: { label: ctx => ' '+fmt(ctx.raw)+' members' } } } }
-  });
-}
+      function changePage(delta) {
+        const totalPages = Math.ceil(allResults.length / PER_PAGE);
+        currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
+        renderPage(allResults, currentTab, currentPage);
+        document
+          .querySelector(".panel")
+          .scrollIntoView({ behavior: "smooth", block: "start" });
+      }
 
-function goPage(page) { window.location.href = page; }
+      // ── Load ──────────────────────────────────────────────────────────────────────
+      async function load(tab) {
+        const feedEl = document.getElementById("feed");
+        document.getElementById("feedPager").style.display = "none";
+        feedEl.innerHTML = `<div class="skeleton"></div><div class="skeleton" style="opacity:.6;margin-top:4px"></div>`;
+        currentPage = 1;
+        try {
+          const endpoint = tab === "unmoderated" ? "unmoderated" : tab;
+          const res = await fetch(
+            `${API}/${endpoint}?limit=100&nsfw=${nsfwMode ? 1 : 0}`,
+          );
+          const json = await res.json();
+          allResults = json.data || [];
+          renderPage(allResults, tab, 1);
+        } catch {
+          feedEl.innerHTML = `<div class="empty">Could not reach the backend.</div>`;
+        }
+      }
 
-function switchTab(tab, btn) {
-  currentTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  clearEngagement();
-  const q = document.getElementById('searchInput').value.trim();
-  q ? runSearch(q) : load(tab);
-}
+      function render(data, tab) {
+        allResults = data;
+        currentPage = 1;
+        renderPage(data, tab, 1);
+      }
 
-let searchTimeout;
-document.getElementById('searchInput').addEventListener('input', e => {
-  clearTimeout(searchTimeout);
-  const q = e.target.value.trim();
-  if (!q) { activeCategory = null; buildCategoryBar(); load(currentTab); return; }
-  searchTimeout = setTimeout(() => runSearch(q), 400);
-});
+      function renderBarChart(data) {
+        if (barChart) barChart.destroy();
+        const fill = nsfwMode ? "rgba(192,57,43,0.7)" : "rgba(255,69,0,0.7)";
+        const hover = nsfwMode ? "rgba(169,50,38,0.9)" : "rgba(255,107,53,0.9)";
+        const tick = nsfwMode ? "#7a6a55" : "#888899";
+        const grid = nsfwMode ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)";
+        barChart = new Chart(document.getElementById("barChart"), {
+          type: "bar",
+          data: {
+            labels: data.map((d) => "r/" + d.name),
+            datasets: [
+              {
+                data: data.map((d) => d.subscribers || 0),
+                backgroundColor: fill,
+                hoverBackgroundColor: hover,
+                borderWidth: 0,
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: { label: (ctx) => " " + fmt(ctx.raw) + " members" },
+              },
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: tick, font: { size: 10 }, maxRotation: 35 },
+              },
+              y: {
+                grid: { color: grid },
+                border: { display: false },
+                ticks: {
+                  color: tick,
+                  font: { size: 10 },
+                  callback: (v) => fmt(v),
+                },
+              },
+            },
+          },
+        });
+      }
 
-async function runSearch(q) {
-  document.getElementById('feed').innerHTML = `<div class="skeleton"></div>`;
-  try {
-    const params = new URLSearchParams({ q, nsfw: nsfwMode ? '1' : '0', tab: currentTab });
-    const res = await fetch(`${API}/search?${params}`);
-    const json = await res.json();
-    render(json.data || [], currentTab);
-  } catch {
-    document.getElementById('feed').innerHTML = `<div class="empty">Search failed.</div>`;
-  }
-}
+      function renderDonutChart(data) {
+        if (donutChart) donutChart.destroy();
+        const colors = nsfwMode
+          ? ["#c0392b", "#922b21", "#e74c3c", "#7b241c", "#a93226"]
+          : ["#ff4500", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7"];
+        const legendColor = nsfwMode ? "#7a6a55" : "#888899";
+        donutChart = new Chart(document.getElementById("donutChart"), {
+          type: "doughnut",
+          data: {
+            labels: data.map((d) => "r/" + d.name),
+            datasets: [
+              {
+                data: data.map((d) => d.subscribers || 0),
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "65%",
+            plugins: {
+              legend: {
+                position: "right",
+                labels: {
+                  color: legendColor,
+                  font: { size: 10 },
+                  boxWidth: 10,
+                  padding: 10,
+                },
+              },
+              tooltip: {
+                callbacks: { label: (ctx) => " " + fmt(ctx.raw) + " members" },
+              },
+            },
+          },
+        });
+      }
 
-const SFW_CATS = [
-  { label: 'All', icon: '🌐', q: null },
-  { label: 'Gaming', icon: '🎮', q: 'gaming' },
-  { label: 'Tech', icon: '💻', q: 'programming technology' },
-  { label: 'Science', icon: '🔬', q: 'science' },
-  { label: 'Sports', icon: '⚽', q: 'sports' },
-  { label: 'Movies & TV', icon: '🎬', q: 'movies television' },
-  { label: 'Music', icon: '🎵', q: 'music' },
-  { label: 'Art', icon: '🎨', q: 'art design' },
-  { label: 'Finance', icon: '💰', q: 'finance investing stocks' },
-  { label: 'Crypto', icon: '₿', q: 'cryptocurrency bitcoin' },
-  { label: 'Fitness', icon: '💪', q: 'fitness gym' },
-  { label: 'Food', icon: '🍔', q: 'food cooking recipes' },
-  { label: 'Travel', icon: '✈️', q: 'travel' },
-  { label: 'Anime', icon: '⛩️', q: 'anime manga' },
-  { label: 'Memes', icon: '😂', q: 'memes funny humor' },
-  { label: 'News', icon: '📰', q: 'news world politics' },
-  { label: 'Books', icon: '📚', q: 'books reading literature' },
-  { label: 'Pets', icon: '🐾', q: 'pets dogs cats animals' },
-  { label: 'DIY', icon: '🔧', q: 'diy crafts hobbies' },
-  { label: 'Mental Health', icon: '🧠', q: 'mentalhealth anxiety' },
-];
-const NSFW_CATS = [
-  { label: 'All', icon: '🔞', q: null },
-  { label: 'General', icon: '🔥', q: 'nsfw' },
-  { label: 'Amateur', icon: '📸', q: 'amateur' },
-  { label: 'Cosplay', icon: '🎭', q: 'cosplay' },
-  { label: 'Latina', icon: '🌹', q: 'latina' },
-  { label: 'Asian', icon: '🌸', q: 'asian' },
-  { label: 'Ebony', icon: '✨', q: 'ebony' },
-  { label: 'Redhead', icon: '🦊', q: 'redhead' },
-  { label: 'Petite', icon: '🌟', q: 'petite' },
-  { label: 'Curvy', icon: '💫', q: 'curvy' },
-  { label: 'Mature', icon: '🍷', q: 'mature milf' },
-  { label: 'Art/Drawn', icon: '🖌️', q: 'hentai drawn' },
-  { label: 'Couples', icon: '💑', q: 'couples' },
-  { label: 'Fitness', icon: '💪', q: 'fitnessgirls nsfw' },
-  { label: 'Stories', icon: '📖', q: 'erotic stories' },
-  { label: 'Discussion', icon: '💬', q: 'sex discussion advice' },
-];
+      function goPage(page) {
+        window.location.href = page;
+      }
 
-function buildCategoryBar() {
-  const bar = document.getElementById('categoryBar');
-  const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
-  bar.innerHTML = '<span class="cat-label">Filter</span>';
-  cats.forEach(cat => {
-    const pill = document.createElement('button');
-    pill.className = 'cat-pill' + (activeCategory === cat.q ? ' active' : '');
-    pill.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.label}`;
-    pill.onclick = () => selectCategory(cat.q, pill);
-    bar.appendChild(pill);
-  });
-}
+      function switchTab(tab, btn) {
+        currentTab = tab;
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        clearEngagement();
+        const q = document.getElementById("searchInput").value.trim();
+        q ? runSearch(q) : load(tab);
+      }
 
-function selectCategory(q, pill) {
-  activeCategory = q;
-  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-  pill.classList.add('active');
-  if (q === null) { document.getElementById('searchInput').value = ''; load(currentTab); }
-  else { document.getElementById('searchInput').value = q; runSearch(q); }
-}
+      let searchTimeout;
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        const q = e.target.value.trim();
+        if (!q) {
+          activeCategory = null;
+          buildCategoryBar();
+          load(currentTab);
+          return;
+        }
+        searchTimeout = setTimeout(() => runSearch(q), 400);
+      });
 
-const saved = localStorage.getItem('subtracker-mode');
-if (saved === 'nsfw') {
-  nsfwMode = true;
-  document.documentElement.setAttribute('data-mode', 'nsfw');
-  document.getElementById('m-mode').textContent = 'NSFW';
-  document.getElementById('m-mode').style.color = '#c0392b';
-}
-buildCategoryBar();
-load('trending');
-</script>
-</body>
+      async function runSearch(q) {
+        document.getElementById("feed").innerHTML =
+          `<div class="skeleton"></div>`;
+        document.getElementById("feedPager").style.display = "none";
+        try {
+          const params = new URLSearchParams({
+            q,
+            nsfw: nsfwMode ? "1" : "0",
+            tab: currentTab,
+          });
+          const res = await fetch(`${API}/search?${params}`);
+          const json = await res.json();
+          allResults = json.data || [];
+          currentPage = 1;
+          renderPage(allResults, currentTab, 1);
+        } catch {
+          document.getElementById("feed").innerHTML =
+            `<div class="empty">Search failed.</div>`;
+        }
+      }
+
+      // ── Engagement panel ──────────────────────────────────────────────────────────
+      async function loadEngagement(subName) {
+        const body = document.getElementById("engagementBody");
+        body.innerHTML = `<div class="skeleton" style="height:70px;margin-bottom:8px"></div><div class="skeleton" style="height:50px;margin-bottom:8px"></div><div class="skeleton" style="height:80px"></div>`;
+        try {
+          const [engRes, hotRes] = await Promise.all([
+            fetch(`${API}/sub-engagement?sub=${encodeURIComponent(subName)}`),
+            fetch(`${API}/hot-analysis?sub=${encodeURIComponent(subName)}`),
+          ]);
+          const d = await engRes.json();
+          const hot = await hotRes.json();
+          if (d.error) throw new Error(d.error);
+          const colorMap = {
+            green: "#22c55e",
+            blue: "#3b82f6",
+            amber: "#f59e0b",
+            red: "#ef4444",
+          };
+          const scoreColor = colorMap[d.newcomer_safety.color] || "#888899";
+          const tips = [];
+          if (d.subscribers < 10000)
+            tips.push({
+              icon: SVGICONS.check,
+              text: "Small community — low automod strictness, great for new accounts",
+            });
+          else if (d.subscribers < 100000)
+            tips.push({
+              icon: SVGICONS.check,
+              text: "Mid-size sub — generally welcoming to newer accounts",
+            });
+          else if (d.subscribers < 500000)
+            tips.push({
+              icon: SVGICONS.warn,
+              text: "Large sub — some karma requirements may apply",
+            });
+          else
+            tips.push({
+              icon: SVGICONS.block,
+              text: "Very large sub — strict automod, karma threshold likely",
+            });
+          if ((d.avg_score || 0) > 500)
+            tips.push({
+              icon: SVGICONS.fire,
+              text: "Hot posts get high scores — very active community",
+            });
+          else if ((d.avg_score || 0) > 50)
+            tips.push({
+              icon: SVGICONS.thumb,
+              text: "Decent post performance — solid engagement",
+            });
+          else
+            tips.push({
+              icon: SVGICONS.sleep,
+              text: "Low avg post scores — may be bot-heavy or inactive",
+            });
+          if (d.newcomer_safety.score >= 70)
+            tips.push({
+              icon: SVGICONS.bulb,
+              text: "Tip: Post quality content and follow sub rules — you should be fine here",
+            });
+          else
+            tips.push({
+              icon: SVGICONS.bulb,
+              text: "Tip: Build some karma in smaller subs first before posting here",
+            });
+          const hotColorMap = {
+            green: "hot-verdict-great",
+            blue: "hot-verdict-good",
+            amber: "hot-verdict-avg",
+            red: "hot-verdict-bad",
+          };
+          const hotClass = hotColorMap[hot.quality_color] || "hot-verdict-avg";
+          const hotBarPct = Math.min(100, (hot.engagement_ratio || 0) * 20);
+          body.innerHTML = `
+      <div class="engagement-sub-name">r/${subName} · ${fmt(d.subscribers)} members</div>
+      <div class="safety-score-wrap">
+        <div class="safety-score-header">
+          <span class="safety-score-label">Newcomer Safety</span>
+          <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
+        </div>
+        <div class="safety-bar-track"><div class="safety-bar-fill" style="width:${d.newcomer_safety.score}%;background:${scoreColor}"></div></div>
+        <div class="safety-verdict" style="color:${scoreColor}">${d.newcomer_safety.label}</div>
+      </div>
+      <div class="eng-stats">
+        <div class="eng-stat"><div class="eng-stat-label">Avg Post Score</div><div class="eng-stat-value">${fmt(d.avg_score || 0)}</div></div>
+        <div class="eng-stat"><div class="eng-stat-label">Avg Comments</div><div class="eng-stat-value">${fmt(d.avg_comments || 0)}</div></div>
+      </div>
+      <div class="hot-analysis">
+        <div class="hot-analysis-title">Hot Section Analysis</div>
+        <div class="hot-stat-row"><span class="hot-stat-key">Engagement ratio</span><span class="hot-stat-val">${(hot.engagement_ratio || 0).toFixed(3)}</span></div>
+        <div class="hot-quality-bar"><div class="hot-quality-fill" style="width:${hotBarPct}%;background:${colorMap[hot.quality_color] || "#888899"}"></div></div>
+        <div class="hot-stat-row"><span class="hot-stat-key">Posts analyzed</span><span class="hot-stat-val">${hot.posts_analyzed || "—"}</span></div>
+        <div class="hot-stat-row"><span class="hot-stat-key">Recommended</span><span class="hot-stat-val" style="color:${hot.recommended ? "var(--green)" : "var(--red)"}">${hot.recommended ? "Yes" : "No"}</span></div>
+        <div class="hot-verdict ${hotClass}">${hot.quality || "—"}</div>
+      </div>
+      <div class="eng-tips">
+        <div class="eng-tips-title">Insights</div>
+        ${tips.map((t) => `<div class="eng-tip"><span class="eng-tip-icon">${t.icon}</span><span>${t.text}</span></div>`).join("")}
+      </div>
+      <div class="eng-cta"><a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">Open r/${subName}</a></div>`;
+        } catch (e) {
+          body.innerHTML = `<div class="engagement-empty">Could not load data for r/${subName}</div>`;
+        }
+      }
+
+      // ── SFW/NSFW toggle ───────────────────────────────────────────────────────────
+      function toggleMode() {
+        nsfwMode = !nsfwMode;
+        document.documentElement.setAttribute(
+          "data-mode",
+          nsfwMode ? "nsfw" : "sfw",
+        );
+        document.getElementById("m-mode").textContent = nsfwMode
+          ? "NSFW"
+          : "SFW";
+        document.getElementById("m-mode").style.color = nsfwMode
+          ? "#c0392b"
+          : "";
+        document.getElementById("searchInput").value = "";
+        activeCategory = null;
+        clearEngagement();
+        localStorage.setItem("subtracker-mode", nsfwMode ? "nsfw" : "sfw");
+        buildCategoryBar();
+        load(currentTab);
+      }
+
+      // ── Category bar ──────────────────────────────────────────────────────────────
+      const SFW_CATS = [
+        { label: "All", icon: "🌐", q: null },
+        { label: "Gaming", icon: "🎮", q: "gaming" },
+        { label: "Tech", icon: "💻", q: "programming technology" },
+        { label: "Science", icon: "🔬", q: "science" },
+        { label: "Sports", icon: "⚽", q: "sports" },
+        { label: "Movies & TV", icon: "🎬", q: "movies television" },
+        { label: "Music", icon: "🎵", q: "music" },
+        { label: "Art", icon: "🎨", q: "art design" },
+        { label: "Finance", icon: "💰", q: "finance investing stocks" },
+        { label: "Crypto", icon: "₿", q: "cryptocurrency bitcoin" },
+        { label: "Fitness", icon: "💪", q: "fitness gym" },
+        { label: "Food", icon: "🍔", q: "food cooking recipes" },
+        { label: "Travel", icon: "✈️", q: "travel" },
+        { label: "Anime", icon: "⛩️", q: "anime manga" },
+        { label: "Memes", icon: "😂", q: "memes funny humor" },
+        { label: "News", icon: "📰", q: "news world politics" },
+        { label: "Books", icon: "📚", q: "books reading literature" },
+        { label: "Pets", icon: "🐾", q: "pets dogs cats animals" },
+        { label: "DIY", icon: "🔧", q: "diy crafts hobbies" },
+        { label: "Mental Health", icon: "🧠", q: "mentalhealth anxiety" },
+      ];
+      const NSFW_CATS = [
+        { label: "All", icon: "🔞", q: null },
+        { label: "General", icon: "🔥", q: "nsfw" },
+        { label: "Amateur", icon: "📸", q: "amateur" },
+        { label: "Cosplay", icon: "🎭", q: "cosplay" },
+        { label: "Latina", icon: "🌹", q: "latina" },
+        { label: "Asian", icon: "🌸", q: "asian" },
+        { label: "Ebony", icon: "✨", q: "ebony" },
+        { label: "Redhead", icon: "🦊", q: "redhead" },
+        { label: "Petite", icon: "🌟", q: "petite" },
+        { label: "Curvy", icon: "💫", q: "curvy" },
+        { label: "Mature", icon: "🍷", q: "mature milf" },
+        { label: "Art/Drawn", icon: "🖌️", q: "hentai drawn" },
+        { label: "Couples", icon: "💑", q: "couples" },
+        { label: "Fitness", icon: "💪", q: "fitnessgirls nsfw" },
+        { label: "Stories", icon: "📖", q: "erotic stories" },
+        { label: "Discussion", icon: "💬", q: "sex discussion advice" },
+      ];
+
+      function buildCategoryBar() {
+        const bar = document.getElementById("categoryBar");
+        const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
+        bar.innerHTML = '<span class="cat-label">Filter</span>';
+        cats.forEach((cat) => {
+          const pill = document.createElement("button");
+          pill.className =
+            "cat-pill" + (activeCategory === cat.q ? " active" : "");
+          pill.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.label}`;
+          pill.onclick = () => selectCategory(cat.q, pill);
+          bar.appendChild(pill);
+        });
+      }
+
+      function selectCategory(q, pill) {
+        activeCategory = q;
+        document
+          .querySelectorAll(".cat-pill")
+          .forEach((p) => p.classList.remove("active"));
+        pill.classList.add("active");
+        if (q === null) {
+          document.getElementById("searchInput").value = "";
+          load(currentTab);
+        } else {
+          document.getElementById("searchInput").value = q;
+          runSearch(q);
+        }
+      }
+
+      // ── Init ──────────────────────────────────────────────────────────────────────
+      const saved = localStorage.getItem("subtracker-mode");
+      if (saved === "nsfw") {
+        nsfwMode = true;
+        document.documentElement.setAttribute("data-mode", "nsfw");
+        document.getElementById("m-mode").textContent = "NSFW";
+        document.getElementById("m-mode").style.color = "#c0392b";
+      }
+      buildCategoryBar();
+      load("trending");
+    </script>
+  </body>
 </html>
