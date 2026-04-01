@@ -926,6 +926,7 @@ app.post("/api/intel/sync-account", async (req, res) => {
             comments: p.num_comments,
             post_url: `https://reddit.com${p.permalink}`,
             post_title: p.title,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id);
       } else {
@@ -937,6 +938,7 @@ app.post("/api/intel/sync-account", async (req, res) => {
           posted_at: postedAt,
           upvotes: p.score || 0,
           comments: p.num_comments || 0,
+          updated_at: new Date().toISOString(),
         });
         synced++;
       }
@@ -1275,7 +1277,7 @@ app.get("/api/intel/top-subs", async (req, res) => {
 
 // ─── Manual post logger ───────────────────────────────────────────────────────
 app.post("/api/intel/log-post", async (req, res) => {
-  const { url } = req.body;
+  const { url, va_id } = req.body;
   if (!url) return res.status(400).json({ error: "url required" });
 
   try {
@@ -1325,6 +1327,13 @@ app.post("/api/intel/log-post", async (req, res) => {
         author: post.author,
         subreddit: post.subreddit,
       });
+
+    // VA ownership check — non-admin VAs can only log their own accounts
+    if (va_id && account.models?.va_id !== va_id) {
+      return res.status(403).json({
+        error: `@${post.author} belongs to another VA. You can only log posts from your own accounts.`,
+      });
+    }
 
     // Check for duplicate
     const { data: existing } = await supabase
@@ -1497,91 +1506,113 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
       .eq("rating", "bad");
     const badSubs = new Set((badRatings || []).map((r) => r.subreddit));
     const wantNsfw = nsfw === "1";
+    let suggestions = [];
 
-    // ── Both SFW and NSFW now use the SQLite cache as primary source ──────────
-    // This ensures results are always available regardless of ratings history.
-    // For NSFW: filter to over18=1 subs. For SFW: filter to over18=0 subs.
-    const cached = stmts.getTrending.all(300);
-    const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
-    const combined = [...cached, ...risingRows];
-    const seen = new Set();
-
-    let suggestions = combined
-      .filter((r) => {
-        const name = (r.display_name || r.name || "").toLowerCase();
-        if (seen.has(name)) return false;
-        seen.add(name);
-        const isNsfw = r.over18 === 1 || r.over18 === true;
-        // Match the requested mode
-        if (wantNsfw && !isNsfw) return false;
-        if (!wantNsfw && isNsfw) return false;
-        if (alreadyPostedSubs.has(name)) return false;
-        if (badSubs.has(name)) return false;
-        const subs = r.subscribers || 0;
-        if (subs < 5000) return false;
-        // For SFW: low risk cap at 500K. For NSFW: allow up to 2M.
-        if (!wantNsfw && subs > 500000) return false;
-        return true;
-      })
-      .map((r) => {
-        const subs = r.subscribers || 0;
-        const active = r.active_users || 0;
-        const engRate =
-          subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
-        const qualityScore = subs * (1 + engRate * 2);
-        return {
-          name: r.display_name || r.name,
-          subscribers: subs,
-          active_users: active,
-          engagement_rate: engRate,
-          over18: r.over18 === 1 || r.over18 === true,
-          description: r.description || "",
-          quality_score: qualityScore,
-        };
-      })
-      .sort((a, b) => b.quality_score - a.quality_score)
-      .slice(0, 40);
-
-    // ── NSFW fallback: if SQLite has no NSFW subs, pull from ratings table ────
-    // This happens when the cron hasn't cached any NSFW subs yet.
-    if (wantNsfw && suggestions.length === 0) {
-      const { data: nsfwRated } = await supabase
-        .from("subreddit_ratings")
-        .select("subreddit, rating")
-        .eq("is_nsfw", true)
-        .neq("rating", "bad")
-        .order("updated_at", { ascending: false });
-      const { data: allPosts } = await supabase
-        .from("post_logs")
-        .select("subreddit, upvotes, comments")
-        .order("posted_at", { ascending: false })
-        .limit(2000);
-      const subEngMap = {};
-      const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
-      for (const p of allPosts || []) {
-        const sub = p.subreddit.toLowerCase();
-        if (!nsfwSubNames.has(sub)) continue;
-        if (!subEngMap[sub]) subEngMap[sub] = { total: 0, count: 0 };
-        subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
-        subEngMap[sub].count++;
+    if (wantNsfw) {
+      // ── NSFW primary: live Reddit rising + new (same as main tracker) ──────
+      // Prefer small-to-mid subs (5K–150K) with high engagement rate.
+      // Filter out subs the VA has already posted in and bad-rated ones.
+      try {
+        const [risingRaw, newRaw] = await Promise.all([
+          reddit.fetchNsfwRising(50),
+          reddit.fetchNsfwNew(50),
+        ]);
+        const combined = [...risingRaw, ...newRaw].map(formatSub);
+        const seen = new Set();
+        suggestions = combined
+          .filter((r) => {
+            const name = (r.name || "").toLowerCase();
+            if (seen.has(name)) return false;
+            seen.add(name);
+            const subs = r.subscribers || 0;
+            if (subs < 5000 || subs > 150000) return false;
+            if (alreadyPostedSubs.has(name)) return false;
+            if (badSubs.has(name)) return false;
+            return true;
+          })
+          .sort((a, b) => b.engagement_rate - a.engagement_rate)
+          .slice(0, 40);
+      } catch (err) {
+        console.warn(
+          "[subs-to-try] NSFW Reddit API failed, using ratings fallback:",
+          err.message,
+        );
+        // ── Fallback: subreddit_ratings table ranked by post engagement ──────
+        const { data: nsfwRated } = await supabase
+          .from("subreddit_ratings")
+          .select("subreddit, rating")
+          .eq("is_nsfw", true)
+          .neq("rating", "bad")
+          .order("updated_at", { ascending: false });
+        const { data: allPosts } = await supabase
+          .from("post_logs")
+          .select("subreddit, upvotes, comments")
+          .order("posted_at", { ascending: false })
+          .limit(2000);
+        const subEngMap = {};
+        const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
+        for (const p of allPosts || []) {
+          const sub = p.subreddit.toLowerCase();
+          if (!nsfwSubNames.has(sub)) continue;
+          if (!subEngMap[sub]) subEngMap[sub] = { total: 0, count: 0 };
+          subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
+          subEngMap[sub].count++;
+        }
+        suggestions = (nsfwRated || [])
+          .filter(
+            (r) =>
+              !alreadyPostedSubs.has(r.subreddit.toLowerCase()) &&
+              !badSubs.has(r.subreddit),
+          )
+          .map((r) => {
+            const eng = subEngMap[r.subreddit];
+            const avgEng = eng ? eng.total / eng.count : 0;
+            return {
+              name: r.subreddit,
+              subscribers: 0,
+              active_users: 0,
+              engagement_rate: parseFloat(avgEng.toFixed(1)),
+              over18: true,
+              description: `${r.rating} rated NSFW sub`,
+              quality_score: avgEng,
+            };
+          })
+          .sort((a, b) => b.engagement_rate - a.engagement_rate)
+          .slice(0, 40);
       }
-      suggestions = (nsfwRated || [])
-        .filter(
-          (r) =>
-            !alreadyPostedSubs.has(r.subreddit.toLowerCase()) &&
-            !badSubs.has(r.subreddit),
-        )
+    } else {
+      // ── SFW: SQLite trending/rising cache, cap at 150K subscribers ─────────
+      const cached = stmts.getTrending.all(300);
+      const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
+      const combined = [...cached, ...risingRows];
+      const seen = new Set();
+      suggestions = combined
+        .filter((r) => {
+          const name = (r.display_name || r.name || "").toLowerCase();
+          if (seen.has(name)) return false;
+          seen.add(name);
+          const isNsfw = r.over18 === 1 || r.over18 === true;
+          if (isNsfw) return false;
+          if (alreadyPostedSubs.has(name)) return false;
+          if (badSubs.has(name)) return false;
+          const subs = r.subscribers || 0;
+          if (subs < 5000 || subs > 150000) return false; // cap 150K
+          return true;
+        })
         .map((r) => {
-          const eng = subEngMap[r.subreddit];
-          const avgEng = eng ? eng.total / eng.count : 0;
+          const subs = r.subscribers || 0;
+          const active = r.active_users || 0;
+          const engRate =
+            subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
+          const qualityScore = subs * (1 + engRate * 2);
           return {
-            name: r.subreddit,
-            subscribers: 0,
-            active_users: 0,
-            engagement_rate: parseFloat(avgEng.toFixed(1)),
-            over18: true,
-            description: `${r.rating} rated NSFW sub`,
-            quality_score: avgEng,
+            name: r.display_name || r.name,
+            subscribers: subs,
+            active_users: active,
+            engagement_rate: engRate,
+            over18: false,
+            description: r.description || "",
+            quality_score: qualityScore,
           };
         })
         .sort((a, b) => b.quality_score - a.quality_score)
@@ -1625,7 +1656,7 @@ app.get("/api/intel/post-overview", async (req, res) => {
     const { data: posts } = await supabase
       .from("post_logs")
       .select(
-        "id, account_id, subreddit, upvotes, comments, posted_at, post_url, post_title",
+        "id, account_id, subreddit, upvotes, comments, posted_at, post_url, post_title, updated_at",
       )
       .in("account_id", accountIds)
       .gte("posted_at", since.toISOString())
