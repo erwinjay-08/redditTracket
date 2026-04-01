@@ -97,14 +97,35 @@ async function fetchNew(limit = 25) {
 }
 
 async function fetchUnmoderated(targetCount = 100) {
-  const results = [];
+  const buckets = {
+    "0-100": [],
+    "100-500": [],
+    "500-1000": [],
+    "1000-2500": [],
+  };
+
+  const bucketLimits = {
+    "0-100": 25,
+    "100-500": 25,
+    "500-1000": 25,
+    "1000-2500": 25,
+  };
+
+  function getBucket(subs) {
+    if (subs < 100) return "0-100";
+    if (subs < 500) return "100-500";
+    if (subs < 1000) return "500-1000";
+    return "1000-2500";
+  }
+
   const seen = new Set();
   let after = null;
   let attempts = 0;
   const maxAttempts = 10;
 
-  while (results.length < targetCount && attempts < maxAttempts) {
+  while (attempts < maxAttempts) {
     attempts++;
+
     const params = { limit: 100, sort: "new" };
     if (after) params.after = after;
 
@@ -119,19 +140,28 @@ async function fetchUnmoderated(targetCount = 100) {
       seen.add(name);
 
       const subs = sub.subscribers || 0;
+
+      // ✅ filters
+      if (subs < 20) continue; // remove trash 1-member subs
       if (subs > 2500) continue;
       if (sub.over18) continue;
       if (sub.subreddit_type !== "public") continue;
 
-      results.push(sub);
-      if (results.length >= targetCount) break;
+      const bucket = getBucket(subs);
+
+      if (buckets[bucket].length >= bucketLimits[bucket]) continue;
+
+      buckets[bucket].push(sub);
+
+      const total = Object.values(buckets).flat().length;
+      if (total >= targetCount) break;
     }
 
     after = data?.data?.after;
     if (!after) break;
   }
 
-  return results;
+  return Object.values(buckets).flat();
 }
 
 // ── NSFW ─────────────────────────────────────────────────────────────────────
@@ -195,14 +225,35 @@ async function fetchNsfwNew(limit = 25) {
 }
 
 async function fetchNsfwUnmoderated(targetCount = 100) {
-  const results = [];
+  const buckets = {
+    "0-100": [],
+    "100-500": [],
+    "500-1000": [],
+    "1000-2500": [],
+  };
+
+  const bucketLimits = {
+    "0-100": 25,
+    "100-500": 25,
+    "500-1000": 25,
+    "1000-2500": 25,
+  };
+
+  function getBucket(subs) {
+    if (subs < 100) return "0-100";
+    if (subs < 500) return "100-500";
+    if (subs < 1000) return "500-1000";
+    return "1000-2500";
+  }
+
   const seen = new Set();
   let after = null;
   let attempts = 0;
   const maxAttempts = 10;
 
-  while (results.length < targetCount && attempts < maxAttempts) {
+  while (attempts < maxAttempts) {
     attempts++;
+
     const params = { limit: 100, sort: "new", include_over_18: "1" };
     if (after) params.after = after;
 
@@ -217,20 +268,28 @@ async function fetchNsfwUnmoderated(targetCount = 100) {
       seen.add(name);
 
       const subs = sub.subscribers || 0;
-      // Filter: 0–2,500 members, NSFW only, public
+
+      // ✅ filters
+      if (subs < 20) continue;
       if (subs > 2500) continue;
       if (!sub.over18) continue;
       if (sub.subreddit_type !== "public") continue;
 
-      results.push(sub);
-      if (results.length >= targetCount) break;
+      const bucket = getBucket(subs);
+
+      if (buckets[bucket].length >= bucketLimits[bucket]) continue;
+
+      buckets[bucket].push(sub);
+
+      const total = Object.values(buckets).flat().length;
+      if (total >= targetCount) break;
     }
 
     after = data?.data?.after;
     if (!after) break;
   }
 
-  return results;
+  return Object.values(buckets).flat();
 }
 
 // ── Search & utils ───────────────────────────────────────────────────────────
