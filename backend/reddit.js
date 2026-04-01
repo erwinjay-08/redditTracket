@@ -170,7 +170,6 @@ async function fetchNsfwNew(limit = 100) {
   const results = [];
   const seen = new Set();
 
-  // Primary: /subreddits/new with over18
   try {
     let after = null;
     let attempts = 0;
@@ -199,7 +198,6 @@ async function fetchNsfwNew(limit = 100) {
     }
   } catch {}
 
-  // Fallback search queries
   if (results.length < limit) {
     const queries = ["nsfw", "adult", "xxx", "18plus", "onlyfans"];
     for (const q of queries) {
@@ -231,13 +229,9 @@ async function fetchNsfwNew(limit = 100) {
 }
 
 async function fetchNsfwUnmoderated(targetCount = 100) {
-  // Strategy: fetch new NSFW subs via /subreddits/new with include_over_18
-  // Reddit's public API often hides NSFW from /subreddits/new even with the flag,
-  // so we also try search-based discovery with nsfw keywords + sort=new
   const results = [];
   const seen = new Set();
 
-  // Attempt 1: /subreddits/new with over18 flag
   try {
     let after = null;
     let attempts = 0;
@@ -267,7 +261,6 @@ async function fetchNsfwUnmoderated(targetCount = 100) {
     console.warn("[fetchNsfwUnmoderated] /subreddits/new failed:", err.message);
   }
 
-  // Attempt 2: search-based fallback if we got fewer than 20
   if (results.length < 20) {
     const queries = [
       "nsfw new",

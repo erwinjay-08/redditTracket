@@ -1039,7 +1039,7 @@
 
       // ── Pagination state ─────────────────────────────────────────────────────────
       const PER_PAGE = 20;
-      let allResults = []; // full 100-item dataset for current tab
+      let allResults = [];
       let currentPage = 1;
 
       const ICONS = {
@@ -1136,8 +1136,8 @@
 
       function clearEngagement() {
         document.getElementById("engagementBody").innerHTML = `
-    <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
-    <div class="engagement-empty">No subreddit selected</div>`;
+          <div class="engagement-hint">Click any subreddit card to see engagement stats, hot section quality, and whether it's safe for new accounts.</div>
+          <div class="engagement-empty">No subreddit selected</div>`;
       }
 
       // ── Pagination helpers ────────────────────────────────────────────────────────
@@ -1159,18 +1159,18 @@
           .map((sub, i) => {
             const globalI = start + i; // global rank across all pages
             return `
-    <div class="sub-card" onclick="loadEngagement('${sub.name}')">
-      <span class="rank">${globalI + 1}</span>
-      <div class="sub-icon" style="background:${iconBg[globalI % 5]}">${getIcon(sub.name)}</div>
-      <div class="sub-body">
-        <div class="sub-name">r/${sub.name} ${getBadge(tab, globalI, sub.over18, sub.subscribers)}</div>
-        <div class="sub-desc">${sub.description || sub.title || "No description"}</div>
-      </div>
-      <div class="sub-right">
-        <div class="sub-members">${fmt(sub.subscribers)}</div>
-        ${growthEl(sub, tab)}
-      </div>
-    </div>`;
+          <div class="sub-card" onclick="loadEngagement('${sub.name}')">
+            <span class="rank">${globalI + 1}</span>
+            <div class="sub-icon" style="background:${iconBg[globalI % 5]}">${getIcon(sub.name)}</div>
+            <div class="sub-body">
+              <div class="sub-name">r/${sub.name} ${getBadge(tab, globalI, sub.over18, sub.subscribers)}</div>
+              <div class="sub-desc">${sub.description || sub.title || "No description"}</div>
+            </div>
+            <div class="sub-right">
+              <div class="sub-members">${fmt(sub.subscribers)}</div>
+              ${growthEl(sub, tab)}
+            </div>
+          </div>`;
           })
           .join("");
 
@@ -1324,19 +1324,11 @@
           .forEach((t) => t.classList.remove("active"));
         btn.classList.add("active");
         clearEngagement();
-        // When switching tabs, reload from backend for that tab — ignore search/filter
-        // unless it's a category filter (not free-text search)
-        const q = document.getElementById("searchInput").value.trim();
-        if (activeCategory !== null && q) {
-          // Re-run the category search on the new tab
-          runSearch(q);
-        } else {
-          // Clear search on tab switch to avoid confusion
-          document.getElementById("searchInput").value = "";
-          activeCategory = null;
-          buildCategoryBar();
-          load(tab);
-        }
+
+        document.getElementById("searchInput").value = "";
+        activeCategory = null;
+        buildCategoryBar();
+        load(tab);
       }
 
       let searchTimeout;
@@ -1357,12 +1349,20 @@
           `<div class="skeleton"></div>`;
         document.getElementById("feedPager").style.display = "none";
         try {
-          // q may contain ||| multi-queries from category pills
           const params = new URLSearchParams({
             q,
             nsfw: nsfwMode ? "1" : "0",
             tab: currentTab,
           });
+
+          // Pass subscriber constraints based on active tab
+          if (currentTab === "unmoderated") {
+            params.set("max_subscribers", "2500");
+            params.set("min_subscribers", "20");
+          } else if (currentTab === "new") {
+            params.set("min_subscribers", "500");
+          }
+
           const res = await fetch(`${API}/search?${params}`);
           const json = await res.json();
           allResults = json.data || [];
@@ -1448,32 +1448,32 @@
           const hotClass = hotColorMap[hot.quality_color] || "hot-verdict-avg";
           const hotBarPct = Math.min(100, (hot.engagement_ratio || 0) * 20);
           body.innerHTML = `
-      <div class="engagement-sub-name">r/${subName} · ${fmt(d.subscribers)} members</div>
-      <div class="safety-score-wrap">
-        <div class="safety-score-header">
-          <span class="safety-score-label">Newcomer Safety</span>
-          <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
-        </div>
-        <div class="safety-bar-track"><div class="safety-bar-fill" style="width:${d.newcomer_safety.score}%;background:${scoreColor}"></div></div>
-        <div class="safety-verdict" style="color:${scoreColor}">${d.newcomer_safety.label}</div>
-      </div>
-      <div class="eng-stats">
-        <div class="eng-stat"><div class="eng-stat-label">Avg Post Score</div><div class="eng-stat-value">${fmt(d.avg_score || 0)}</div></div>
-        <div class="eng-stat"><div class="eng-stat-label">Avg Comments</div><div class="eng-stat-value">${fmt(d.avg_comments || 0)}</div></div>
-      </div>
-      <div class="hot-analysis">
-        <div class="hot-analysis-title">Hot Section Analysis</div>
-        <div class="hot-stat-row"><span class="hot-stat-key">Engagement ratio</span><span class="hot-stat-val">${(hot.engagement_ratio || 0).toFixed(3)}</span></div>
-        <div class="hot-quality-bar"><div class="hot-quality-fill" style="width:${hotBarPct}%;background:${colorMap[hot.quality_color] || "#888899"}"></div></div>
-        <div class="hot-stat-row"><span class="hot-stat-key">Posts analyzed</span><span class="hot-stat-val">${hot.posts_analyzed || "—"}</span></div>
-        <div class="hot-stat-row"><span class="hot-stat-key">Recommended</span><span class="hot-stat-val" style="color:${hot.recommended ? "var(--green)" : "var(--red)"}">${hot.recommended ? "Yes" : "No"}</span></div>
-        <div class="hot-verdict ${hotClass}">${hot.quality || "—"}</div>
-      </div>
-      <div class="eng-tips">
-        <div class="eng-tips-title">Insights</div>
-        ${tips.map((t) => `<div class="eng-tip"><span class="eng-tip-icon">${t.icon}</span><span>${t.text}</span></div>`).join("")}
-      </div>
-      <div class="eng-cta"><a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">Open r/${subName}</a></div>`;
+            <div class="engagement-sub-name">r/${subName} · ${fmt(d.subscribers)} members</div>
+            <div class="safety-score-wrap">
+              <div class="safety-score-header">
+                <span class="safety-score-label">Newcomer Safety</span>
+                <span class="safety-score-num" style="color:${scoreColor}">${d.newcomer_safety.score}/100</span>
+              </div>
+              <div class="safety-bar-track"><div class="safety-bar-fill" style="width:${d.newcomer_safety.score}%;background:${scoreColor}"></div></div>
+              <div class="safety-verdict" style="color:${scoreColor}">${d.newcomer_safety.label}</div>
+            </div>
+            <div class="eng-stats">
+              <div class="eng-stat"><div class="eng-stat-label">Avg Post Score</div><div class="eng-stat-value">${fmt(d.avg_score || 0)}</div></div>
+              <div class="eng-stat"><div class="eng-stat-label">Avg Comments</div><div class="eng-stat-value">${fmt(d.avg_comments || 0)}</div></div>
+            </div>
+            <div class="hot-analysis">
+              <div class="hot-analysis-title">Hot Section Analysis</div>
+              <div class="hot-stat-row"><span class="hot-stat-key">Engagement ratio</span><span class="hot-stat-val">${(hot.engagement_ratio || 0).toFixed(3)}</span></div>
+              <div class="hot-quality-bar"><div class="hot-quality-fill" style="width:${hotBarPct}%;background:${colorMap[hot.quality_color] || "#888899"}"></div></div>
+              <div class="hot-stat-row"><span class="hot-stat-key">Posts analyzed</span><span class="hot-stat-val">${hot.posts_analyzed || "—"}</span></div>
+              <div class="hot-stat-row"><span class="hot-stat-key">Recommended</span><span class="hot-stat-val" style="color:${hot.recommended ? "var(--green)" : "var(--red)"}">${hot.recommended ? "Yes" : "No"}</span></div>
+              <div class="hot-verdict ${hotClass}">${hot.quality || "—"}</div>
+            </div>
+            <div class="eng-tips">
+              <div class="eng-tips-title">Insights</div>
+              ${tips.map((t) => `<div class="eng-tip"><span class="eng-tip-icon">${t.icon}</span><span>${t.text}</span></div>`).join("")}
+            </div>
+            <div class="eng-cta"><a href="https://www.reddit.com/r/${subName}" target="_blank" rel="noopener">Open r/${subName}</a></div>`;
         } catch (e) {
           body.innerHTML = `<div class="engagement-empty">Could not load data for r/${subName}</div>`;
         }
@@ -1544,14 +1544,14 @@
           q: "finance|||investing|||stocks|||personalfinance|||economics|||wallstreet|||trading",
         },
         {
-          label: "Crypto",
-          icon: "₿",
-          q: "cryptocurrency|||bitcoin|||ethereum|||defi|||crypto|||blockchain|||altcoin",
+          label: "Beauty",
+          icon: "🧴",
+          q: "beauty|||skincare|||skincareaddiction|||selfcare|||haircare|||glowup|||beauty tips",
         },
         {
           label: "Fitness",
           icon: "💪",
-          q: "fitness|||gym|||workout|||bodybuilding|||weightlifting|||running|||yoga|||health",
+          q: "fitness|||gym|||workout|||bodybuilding|||lifting|||cardio|||running|||fit",
         },
         {
           label: "Food",
@@ -1574,9 +1574,9 @@
           q: "memes|||funny|||humor|||dankmemes|||comedy|||jokes|||shitposting",
         },
         {
-          label: "News",
-          icon: "📰",
-          q: "news|||worldnews|||politics|||current events|||journalism|||media",
+          label: "Makeup",
+          icon: "💄",
+          q: "makeup|||makeupaddiction|||mua|||cosmetics|||makeuptutorial|||beautyguru|||makeuplooks",
         },
         {
           label: "Books",
@@ -1598,6 +1598,11 @@
           icon: "🧠",
           q: "mentalhealth|||anxiety|||depression|||therapy|||mindfulness|||selfcare|||wellness",
         },
+        {
+          label: "Cars",
+          icon: "🚗",
+          q: "cars|||automotive|||mechanic|||car enthusiasts|||motorsport",
+        },
       ];
       const NSFW_CATS = [
         { label: "All", icon: "🔞", q: null },
@@ -1605,7 +1610,7 @@
         {
           label: "Amateur",
           icon: "📸",
-          q: "amateur|||homemade|||realpeople|||gonewild",
+          q: "gonewild|||realgirls|||amateur|||homemade|||gw",
         },
         {
           label: "Cosplay",
@@ -1615,17 +1620,17 @@
         {
           label: "Latina",
           icon: "🌹",
-          q: "latina|||hispanic|||spanish nsfw|||colombiana",
+          q: "latina|||hispanic|||spanish nsfw|||colombiana|||latina sluts",
         },
         {
           label: "Asian",
           icon: "🌸",
-          q: "asian nsfw|||japanese adult|||korean nsfw|||asian amateur",
+          q: "asian nsfw|||japanese adult|||korean nsfw|||asian amateur|||asian girls|||asian sluts",
         },
         {
           label: "Ebony",
           icon: "✨",
-          q: "ebony|||black girls|||melanin nsfw|||bbc",
+          q: "ebony|||black girls|||melanin nsfw|||bbc|||eboni sluts",
         },
         {
           label: "Redhead",
@@ -1644,9 +1649,14 @@
           q: "mature milf|||milf|||cougar|||older women nsfw|||gilf",
         },
         {
-          label: "Art/Drawn",
-          icon: "🖌️",
-          q: "hentai|||drawn nsfw|||ecchi|||rule34|||anime nsfw",
+          label: "Chest",
+          icon: "🍒",
+          q: "boobs|||tits|||breasts|||cleavage|||bigboobs|||smallboobs|||naturalboobs",
+        },
+        {
+          label: "Feet",
+          icon: "🦶",
+          q: "feet|||footfetish|||toes|||soles|||barefoot|||foot",
         },
         {
           label: "Couples",
@@ -1690,15 +1700,38 @@
           .querySelectorAll(".cat-pill")
           .forEach((p) => p.classList.remove("active"));
         pill.classList.add("active");
+
         if (q === null) {
           document.getElementById("searchInput").value = "";
           load(currentTab);
-        } else {
-          // Show first query term as visible text in search bar
-          const displayQ = q.split("|||")[0];
-          document.getElementById("searchInput").value = displayQ;
-          runSearch(q); // full multi-query goes to server
+          return;
         }
+
+        // For Unmoderated tab: filter the already-loaded unmod results client-side
+        // by checking if the sub name or description contains any of the keywords.
+        // This prevents wiping the unmoderated list with generic search results.
+        if (currentTab === "unmoderated" && allResults.length > 0) {
+          const keywords = q.split("|||").map((k) => k.trim().toLowerCase());
+          const filtered = allResults.filter((sub) => {
+            const text =
+              `${sub.name} ${sub.description} ${sub.title}`.toLowerCase();
+            return keywords.some((k) => text.includes(k));
+          });
+          if (filtered.length > 0) {
+            // Show filtered subset; don't update allResults so "All" can restore it
+            currentPage = 1;
+            renderPage(filtered, currentTab, 1);
+            // Update search input to show active filter
+            document.getElementById("searchInput").value = q.split("|||")[0];
+            return;
+          }
+          // If no local matches, fall through to server search with constraints
+        }
+
+        // Show first query term as visible text in search bar
+        const displayQ = q.split("|||")[0];
+        document.getElementById("searchInput").value = displayQ;
+        runSearch(q); // full multi-query goes to server with tab constraints
       }
 
       // ── Init ──────────────────────────────────────────────────────────────────────

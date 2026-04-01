@@ -27,15 +27,11 @@ function bustCache() {
   Object.keys(cache).forEach((k) => delete cache[k]);
 }
 
-// ─── FIX #1 & #4: Manila midnight helper ─────────────────────────────────────
-// All "today" cutoffs must use Manila time (UTC+8) so posts from e.g.
-// 2026-03-30 22:39 UTC (= 2026-03-31 06:39 PHT) count as today, not yesterday.
 function getManilaMidnight() {
-  // Get today's date string in Manila timezone (YYYY-MM-DD)
   const manilaDateStr = new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Manila",
   });
-  // Return a Date object for Manila midnight expressed as UTC
+
   return new Date(manilaDateStr + "T00:00:00+08:00");
 }
 
@@ -225,17 +221,20 @@ app.get("/api/search", async (req, res) => {
   try {
     const q = req.query.q;
     if (!q) return res.status(400).json({ error: "q param required" });
+
     const nsfw = wantsNsfw(req);
     const tab = req.query.tab || "trending";
+    const maxSubs = parseInt(req.query.max_subscribers) || null;
+    const minSubs = parseInt(req.query.min_subscribers) || 0;
+
     const sortMap = {
       trending: "relevance",
       rising: "activity",
-      new: "new",
+      new: "relevance",
       unmoderated: "new",
     };
     const sort = sortMap[tab] || "relevance";
 
-    // Split multi-query (queries separated by ||| delimiter from frontend)
     const queries = q
       .split("|||")
       .map((s) => s.trim())
@@ -247,8 +246,6 @@ app.get("/api/search", async (req, res) => {
     for (const query of queries) {
       if (allResults.length >= 100) break;
       try {
-        const params = { q: query, limit: 100, sort };
-        if (nsfw) params.include_over_18 = "on";
         const results = await reddit.searchSubreddits(query, 100, nsfw, sort);
         for (const sub of results) {
           const name = (sub.display_name || "").toLowerCase();
@@ -260,9 +257,29 @@ app.get("/api/search", async (req, res) => {
       } catch {}
     }
 
-    let filtered = filterNsfw(allResults.map(formatSub), nsfw);
-    if (tab === "new") filtered = filtered.filter((d) => d.subscribers >= 500);
-    res.json({ data: sortByQuality(filtered).slice(0, 100) });
+    let filtered = allResults.map(formatSub);
+
+    if (!nsfw) {
+      filtered = filtered.filter((d) => d.over18 !== true);
+    }
+
+    // ── Subscriber range filter ──────────────────────────────────────────────
+    if (minSubs > 0) {
+      filtered = filtered.filter((d) => (d.subscribers || 0) >= minSubs);
+    }
+    if (maxSubs) {
+      filtered = filtered.filter((d) => (d.subscribers || 0) <= maxSubs);
+    }
+
+    if (tab === "new" && minSubs === 0) {
+      filtered = filtered.filter((d) => (d.subscribers || 0) >= 500);
+    }
+
+    if (tab === "unmoderated") {
+      filtered = sortByQuality(filtered);
+    }
+
+    res.json({ data: filtered.slice(0, 100) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -770,7 +787,6 @@ app.delete("/api/intel/posts/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// ─── FIX #4: check-overlap uses Manila midnight ───────────────────────────────
 app.get("/api/intel/check-overlap", async (req, res) => {
   const { subreddit, model_id } = req.query;
   if (!subreddit || !model_id)
@@ -863,8 +879,6 @@ app.post("/api/intel/sync-account", async (req, res) => {
     const posts = [];
     const seenIds = new Set();
 
-    // ── Source 1: Profile listing (respects curation — may be incomplete) ──
-    // Paginate up to 3 pages × 100 = 300 posts
     let profileFailed = false;
     try {
       let after = null;
@@ -904,10 +918,6 @@ app.post("/api/intel/sync-account", async (req, res) => {
       console.warn(`[sync] Profile fetch failed for ${username}:`, err.message);
     }
 
-    // ── Source 2: Search by author (catches curated/hidden posts) ──
-    // Paginate up to 5 pages × 100 = 500 posts searched
-    // Reddit search ignores profile curation — posts still appear here
-    // even when hidden from the user's profile page
     try {
       let after = null;
       for (let page = 0; page < 5; page++) {
@@ -937,12 +947,11 @@ app.post("/api/intel/sync-account", async (req, res) => {
           }
         }
         after = data?.data?.after;
-        // Stop if no new posts on this page or no more pages
+
         if (!after || newOnThisPage === 0) break;
       }
     } catch (err) {
       console.warn(`[sync] Search fetch failed for ${username}:`, err.message);
-      // Don't fail the whole sync if search fails — profile data is still useful
     }
 
     if (!posts.length && profileFailed) {
@@ -951,7 +960,6 @@ app.post("/api/intel/sync-account", async (req, res) => {
         .json({ error: `Could not fetch posts for u/${username}` });
     }
 
-    // ── Upsert all collected posts ──
     let synced = 0;
     for (const p of posts) {
       const sub = p.subreddit.toLowerCase();
@@ -966,7 +974,6 @@ app.post("/api/intel/sync-account", async (req, res) => {
         .maybeSingle();
 
       if (existing) {
-        // Update metrics on existing posts (upvotes/comments change over time)
         await supabase
           .from("post_logs")
           .update({
@@ -1054,7 +1061,6 @@ async function autoEvalSubreddits(posts) {
   }
 }
 
-// ─── FIX #1 & #4: Dashboard uses Manila midnight ──────────────────────────────
 app.get("/api/intel/dashboard", async (req, res) => {
   const { va_id, admin } = req.query;
   if (!va_id) return res.status(400).json({ error: "va_id required" });
@@ -1069,7 +1075,7 @@ app.get("/api/intel/dashboard", async (req, res) => {
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).map((a) => a.id),
     );
-    const today = getManilaMidnight(); // FIX: was new Date(); today.setHours(0,0,0,0)
+    const today = getManilaMidnight();
     const { data: posts } =
       accountIds.length > 0
         ? await supabase
@@ -1145,7 +1151,6 @@ app.get("/api/intel/dashboard", async (req, res) => {
   }
 });
 
-// ─── FIX #4: All-overview uses Manila midnight ────────────────────────────────
 app.get("/api/intel/all-overview", async (req, res) => {
   try {
     const { data: vas } = await supabase
@@ -1174,7 +1179,7 @@ app.get("/api/intel/all-overview", async (req, res) => {
         models: [],
       };
     const subUsageToday = {};
-    const today = getManilaMidnight(); // FIX
+    const today = getManilaMidnight();
     for (const p of posts || []) {
       const vaId = p.reddit_accounts?.models?.va_id;
       if (vaId && vaStats[vaId]) {
@@ -1329,9 +1334,6 @@ app.post("/api/intel/log-post", async (req, res) => {
   if (!url) return res.status(400).json({ error: "url required" });
 
   try {
-    // Parse post ID from any Reddit URL format:
-    //   https://reddit.com/r/cats/comments/abc123/title/
-    //   https://www.reddit.com/r/cats/comments/abc123/
     const match = url.match(/reddit\.com\/r\/[^/]+\/comments\/([a-z0-9]+)/i);
     if (!match)
       return res.status(400).json({
