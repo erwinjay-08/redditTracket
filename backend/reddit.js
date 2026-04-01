@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require("axios");
 
 let accessToken = null;
 let tokenExpiry = 0;
@@ -6,39 +6,41 @@ let tokenExpiry = 0;
 async function getToken() {
   if (accessToken && Date.now() < tokenExpiry) return accessToken;
 
-  if (!process.env.REDDIT_CLIENT_ID ||
-      process.env.REDDIT_CLIENT_ID === 'your_client_id_here') {
+  if (
+    !process.env.REDDIT_CLIENT_ID ||
+    process.env.REDDIT_CLIENT_ID === "your_client_id_here"
+  ) {
     return null;
   }
 
   const resp = await axios.post(
-    'https://www.reddit.com/api/v1/access_token',
-    'grant_type=client_credentials',
+    "https://www.reddit.com/api/v1/access_token",
+    "grant_type=client_credentials",
     {
       auth: {
         username: process.env.REDDIT_CLIENT_ID,
         password: process.env.REDDIT_CLIENT_SECRET,
       },
       headers: {
-        'User-Agent': process.env.REDDIT_USER_AGENT || 'SubTracker/1.0',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "User-Agent": process.env.REDDIT_USER_AGENT || "SubTracker/1.0",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-    }
+    },
   );
 
   accessToken = resp.data.access_token;
   tokenExpiry = Date.now() + (resp.data.expires_in - 60) * 1000;
-  console.log('[reddit] OAuth token acquired');
+  console.log("[reddit] OAuth token acquired");
   return accessToken;
 }
 
 async function redditGet(path, params = {}) {
   const token = await getToken();
-  const baseUrl = token ? 'https://oauth.reddit.com' : 'https://www.reddit.com';
+  const baseUrl = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
   const headers = {
-    'User-Agent': process.env.REDDIT_USER_AGENT || 'SubTracker/1.0',
+    "User-Agent": process.env.REDDIT_USER_AGENT || "SubTracker/1.0",
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const resp = await axios.get(`${baseUrl}${path}.json`, { params, headers });
   return resp.data;
@@ -47,16 +49,16 @@ async function redditGet(path, params = {}) {
 // ── SFW ──────────────────────────────────────────────────────────────────────
 
 async function fetchTrending(limit = 25) {
-  const data = await redditGet('/subreddits/popular', { limit: limit * 2 });
+  const data = await redditGet("/subreddits/popular", { limit: limit * 2 });
   return data.data.children
-    .map(c => c.data)
-    .filter(d => d.subscribers >= 300000)
+    .map((c) => c.data)
+    .filter((d) => d.subscribers >= 300000)
     .slice(0, limit);
 }
 
 async function fetchRising(limit = 25) {
-  const data = await redditGet('/r/all/rising', { limit: 100 });
-  const posts = data.data.children.map(c => c.data);
+  const data = await redditGet("/r/all/rising", { limit: 100 });
+  const posts = data.data.children.map((c) => c.data);
   const seen = new Set();
   const subs = [];
   for (const post of posts) {
@@ -67,7 +69,7 @@ async function fetchRising(limit = 25) {
         subs.push({
           display_name: post.subreddit,
           subscribers,
-          public_description: '',
+          public_description: "",
           active_user_count: 0,
           over18: post.over_18,
           created_utc: 0,
@@ -80,62 +82,107 @@ async function fetchRising(limit = 25) {
 }
 
 async function fetchNew(limit = 25) {
-  const data = await redditGet('/subreddits/search', {
-    q: 'community',
-    sort: 'new',
+  const data = await redditGet("/subreddits/search", {
+    q: "community",
+    sort: "new",
     limit: limit * 3,
   });
   return data.data.children
-    .map(c => c.data)
-    .filter(d => d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 100000)
+    .map((c) => c.data)
+    .filter(
+      (d) =>
+        d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 100000,
+    )
     .slice(0, limit);
+}
+
+async function fetchUnmoderated(targetCount = 100) {
+  const results = [];
+  const seen = new Set();
+  let after = null;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (results.length < targetCount && attempts < maxAttempts) {
+    attempts++;
+    const params = { limit: 100, sort: "new" };
+    if (after) params.after = after;
+
+    const data = await redditGet("/subreddits/new", params);
+    const children = data?.data?.children || [];
+    if (!children.length) break;
+
+    for (const child of children) {
+      const sub = child.data;
+      const name = sub.display_name?.toLowerCase();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+
+      const subs = sub.subscribers || 0;
+      if (subs > 2500) continue;
+      if (sub.over18) continue;
+      if (sub.subreddit_type !== "public") continue;
+
+      results.push(sub);
+      if (results.length >= targetCount) break;
+    }
+
+    after = data?.data?.after;
+    if (!after) break;
+  }
+
+  return results;
 }
 
 // ── NSFW ─────────────────────────────────────────────────────────────────────
 
 async function fetchNsfwTrending(limit = 25) {
-  const data = await redditGet('/subreddits/search', {
-    q: 'nsfw',
-    sort: 'relevance',
+  const data = await redditGet("/subreddits/search", {
+    q: "nsfw",
+    sort: "relevance",
     limit: limit * 2,
-    include_over_18: 'on',
+    include_over_18: "on",
   });
   return data.data.children
-    .map(c => c.data)
-    .filter(d => d.subscribers >= 300000)
+    .map((c) => c.data)
+    .filter((d) => d.subscribers >= 300000)
     .slice(0, limit);
 }
 
 async function fetchNsfwRising(limit = 25) {
-  const data = await redditGet('/subreddits/search', {
-    q: 'nsfw',
-    sort: 'activity',
+  const data = await redditGet("/subreddits/search", {
+    q: "nsfw",
+    sort: "activity",
     limit: limit * 3,
-    include_over_18: 'on',
+    include_over_18: "on",
   });
   return data.data.children
-    .map(c => c.data)
-    .filter(d => d.subscribers >= 10000 && d.subscribers <= 500000)
+    .map((c) => c.data)
+    .filter((d) => d.subscribers >= 10000 && d.subscribers <= 500000)
     .slice(0, limit);
 }
 
 async function fetchNsfwNew(limit = 25) {
-  const queries = ['nsfw', 'adult', 'xxx', '18plus', 'onlyfans'];
+  const queries = ["nsfw", "adult", "xxx", "18plus", "onlyfans"];
   const seen = new Set();
   const results = [];
 
   for (const q of queries) {
     if (results.length >= limit) break;
     try {
-      const data = await redditGet('/subreddits/search', {
+      const data = await redditGet("/subreddits/search", {
         q,
-        sort: 'new',
+        sort: "new",
         limit: 50,
-        include_over_18: 'on',
+        include_over_18: "on",
       });
       for (const c of data.data.children) {
         const d = c.data;
-        if (!seen.has(d.display_name) && d.subscribers >= 500 && d.subscribers <= 100000) {
+        if (
+          !seen.has(d.display_name) &&
+          d.subscribers >= 500 &&
+          d.subscribers <= 100000
+        ) {
           seen.add(d.display_name);
           results.push(d);
         }
@@ -147,13 +194,57 @@ async function fetchNsfwNew(limit = 25) {
   return results.slice(0, limit);
 }
 
+async function fetchNsfwUnmoderated(targetCount = 100) {
+  const results = [];
+  const seen = new Set();
+  let after = null;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (results.length < targetCount && attempts < maxAttempts) {
+    attempts++;
+    const params = { limit: 100, sort: "new", include_over_18: "1" };
+    if (after) params.after = after;
+
+    const data = await redditGet("/subreddits/new", params);
+    const children = data?.data?.children || [];
+    if (!children.length) break;
+
+    for (const child of children) {
+      const sub = child.data;
+      const name = sub.display_name?.toLowerCase();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+
+      const subs = sub.subscribers || 0;
+      // Filter: 0–2,500 members, NSFW only, public
+      if (subs > 2500) continue;
+      if (!sub.over18) continue;
+      if (sub.subreddit_type !== "public") continue;
+
+      results.push(sub);
+      if (results.length >= targetCount) break;
+    }
+
+    after = data?.data?.after;
+    if (!after) break;
+  }
+
+  return results;
+}
+
 // ── Search & utils ───────────────────────────────────────────────────────────
 
-async function searchSubreddits(query, limit = 10, includeNsfw = false, sort = 'relevance') {
+async function searchSubreddits(
+  query,
+  limit = 10,
+  includeNsfw = false,
+  sort = "relevance",
+) {
   const params = { q: query, limit, sort };
-  if (includeNsfw) params.include_over_18 = 'on';
-  const data = await redditGet('/subreddits/search', params);
-  return data.data.children.map(c => c.data);
+  if (includeNsfw) params.include_over_18 = "on";
+  const data = await redditGet("/subreddits/search", params);
+  return data.data.children.map((c) => c.data);
 }
 
 async function getSubreddit(name) {
@@ -165,16 +256,21 @@ async function getSubreddit(name) {
 async function getSubEngagement(name, postLimit = 25) {
   try {
     const data = await redditGet(`/r/${name}/hot`, { limit: postLimit });
-    const posts = data.data.children.map(c => c.data);
+    const posts = data.data.children.map((c) => c.data);
     if (!posts.length) return null;
 
-    const totalScore    = posts.reduce((s, p) => s + p.score, 0);
+    const totalScore = posts.reduce((s, p) => s + p.score, 0);
     const totalComments = posts.reduce((s, p) => s + p.num_comments, 0);
-    const avgScore      = Math.round(totalScore / posts.length);
-    const avgComments   = Math.round(totalComments / posts.length);
+    const avgScore = Math.round(totalScore / posts.length);
+    const avgComments = Math.round(totalComments / posts.length);
     const avgEngagement = avgScore + avgComments;
 
-    return { avgScore, avgComments, avgEngagement, postsAnalyzed: posts.length };
+    return {
+      avgScore,
+      avgComments,
+      avgEngagement,
+      postsAnalyzed: posts.length,
+    };
   } catch {
     return null;
   }
@@ -187,6 +283,8 @@ module.exports = {
   fetchNsfwRising,
   fetchNsfwNew,
   fetchRising,
+  fetchUnmoderated,
+  fetchNsfwUnmoderated,
   searchSubreddits,
   getSubreddit,
   getSubEngagement,
