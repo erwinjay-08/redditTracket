@@ -1345,28 +1345,14 @@
         document.getElementById("feed").innerHTML =
           `<div class="skeleton"></div>`;
         document.getElementById("feedPager").style.display = "none";
-
         try {
-          if (currentTab === "unmoderated") {
-            const filtered = allResults.filter((sub) =>
-              sub.name.toLowerCase().includes(q.toLowerCase()),
-            );
-
-            currentPage = 1;
-            renderPage(filtered, currentTab, 1);
-            return;
-          }
-
-          // default behavior
           const params = new URLSearchParams({
             q,
             nsfw: nsfwMode ? "1" : "0",
             tab: currentTab,
           });
-
           const res = await fetch(`${API}/search?${params}`);
           const json = await res.json();
-
           allResults = json.data || [];
           currentPage = 1;
           renderPage(allResults, currentTab, 1);
@@ -1560,28 +1546,16 @@
 
       function selectCategory(q, pill) {
         activeCategory = q;
-
         document
           .querySelectorAll(".cat-pill")
           .forEach((p) => p.classList.remove("active"));
-
         pill.classList.add("active");
-
         if (q === null) {
           document.getElementById("searchInput").value = "";
           load(currentTab);
         } else {
           document.getElementById("searchInput").value = q;
-
-          // ✅ FIX: handle unmoderated locally
-          if (currentTab === "unmoderated") {
-            const filtered = allResults.filter((sub) =>
-              sub.name.toLowerCase().includes(q.toLowerCase()),
-            );
-            renderPage(filtered, currentTab, 1);
-          } else {
-            runSearch(q);
-          }
+          runSearch(q);
         }
       }
 
