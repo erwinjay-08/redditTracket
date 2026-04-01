@@ -90,8 +90,7 @@ async function fetchNew(limit = 25) {
   return data.data.children
     .map((c) => c.data)
     .filter(
-      (d) =>
-        d.over18 !== true && d.subscribers >= 500 && d.subscribers <= 100000,
+      (d) => d.over18 !== true && d.subscribers >= 100 && d.subscribers <= 2500,
     )
     .slice(0, limit);
 }
@@ -163,7 +162,6 @@ async function fetchUnmoderated(targetCount = 100) {
 
   return Object.values(buckets).flat();
 }
-
 // ── NSFW ─────────────────────────────────────────────────────────────────────
 
 async function fetchNsfwTrending(limit = 25) {

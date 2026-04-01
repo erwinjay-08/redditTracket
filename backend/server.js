@@ -27,7 +27,11 @@ function bustCache() {
   Object.keys(cache).forEach((k) => delete cache[k]);
 }
 
+// ─── FIX #1 & #4: Manila midnight helper ─────────────────────────────────────
+// All "today" cutoffs must use Manila time (UTC+8) so posts from e.g.
+// 2026-03-30 22:39 UTC (= 2026-03-31 06:39 PHT) count as today, not yesterday.
 function getManilaMidnight() {
+  // Get today's date string in Manila timezone (YYYY-MM-DD)
   const manilaDateStr = new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Manila",
   });
