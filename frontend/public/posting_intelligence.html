@@ -1360,6 +1360,15 @@
           <div class="va-chip" id="vaChip">
             <span id="vaNameDisplay">—</span>
           </div>
+          <span
+            id="lastSyncedLabel"
+            style="
+              font-size: 10px;
+              color: var(--muted);
+              font-family: var(--mono);
+              white-space: nowrap;
+            "
+          ></span>
           <button
             class="sync-btn"
             id="syncBtn"
@@ -1990,8 +1999,17 @@
       let postOverviewPage = 1,
         subsToTryPage = 1;
 
+      let acctSort = { col: null, dir: 1 };
+      let postSort = { col: null, dir: 1 };
+      let allSubsSort = { col: null, dir: 1 };
+      let structSort = { col: null, dir: 1 };
+      let acctRowsFullCache = [];
+
+      let lastSyncedAt = null;
+      let autoSyncTimerId = null;
+
       // Caches
-      ((acctCache = {}), (reuseCache = []));
+      let modelsCache = {}((acctCache = {}), (reuseCache = []));
       let allSubsCache = [],
         structureCache = [];
       let schedCache = [],
@@ -2087,6 +2105,8 @@
           : "SFW";
         await loadBaseData();
         loadDashboard();
+        startAutoSync();
+        setInterval(updateLastSyncedDisplay, 60000);
       }
 
       // ── Tab ────────────────────────────────────────────────────────────────────
@@ -2153,6 +2173,8 @@
         alertEl.innerHTML = `<div class="alert al-g">Sync done — ${synced} new posts, ${banned} accounts detected as banned, ${errors} errors.</div>`;
         btn.disabled = false;
         btn.textContent = "⟳ Sync";
+        lastSyncedAt = Date.now();
+        updateLastSyncedDisplay();
         setTimeout(() => (alertEl.innerHTML = ""), 6000);
         await loadBaseData();
         loadDashboard();
@@ -2240,7 +2262,10 @@
 
       function setAcctPage(p) {
         acctPage = p;
-        renderAcctTable(acctCache.models, acctCache.dash, p);
+        const sorted = acctSort.col
+          ? sortData(acctRowsFullCache, acctSort.col, acctSort.dir)
+          : acctRowsFullCache;
+        renderAcctTablePage(sorted, p);
       }
       function setReusePage(p) {
         reusePage = p;
@@ -2248,11 +2273,17 @@
       }
       function setAllSubsPage(p) {
         allSubsPage = p;
-        renderAllSubsTable(allSubsCache, p);
+        const sorted = allSubsSort.col
+          ? sortData(allSubsCache, allSubsSort.col, allSubsSort.dir)
+          : allSubsCache;
+        renderAllSubsTable(sorted, p);
       }
       function setStructurePage(p) {
         structurePage = p;
-        renderStructureRows(structureCache, p);
+        const sorted = structSort.col
+          ? sortData(structureCache, structSort.col, structSort.dir)
+          : structureCache;
+        renderStructureRows(sorted, p);
       }
       function setSchedPage(p) {
         schedPage = p;
@@ -2264,11 +2295,103 @@
       }
       function setPostOverviewPage(p) {
         postOverviewPage = p;
-        renderPostOverviewPage(postOverviewCache, p);
+        const sorted = postSort.col
+          ? sortData(postOverviewCache, postSort.col, postSort.dir)
+          : postOverviewCache;
+        renderPostOverviewPage(sorted, p);
       }
       function setSubsToTryPage(p) {
         subsToTryPage = p;
         renderSubsToTryPage(subsToTryCache, p);
+      }
+      // ── Sort helper ───────────────────────────────────────────────────────
+      function sortData(arr, col, dir) {
+        return [...arr].sort((a, b) => {
+          let va = a[col],
+            vb = b[col];
+          if (va == null) va = "";
+          if (vb == null) vb = "";
+          if (typeof va === "string") va = va.toLowerCase();
+          if (typeof vb === "string") vb = vb.toLowerCase();
+          if (va < vb) return -dir;
+          if (va > vb) return dir;
+          return 0;
+        });
+      }
+
+      function thSort(label, sortObj, col, fn, extraStyle) {
+        const active = sortObj.col === col;
+        const ind = active
+          ? sortObj.dir === 1
+            ? "▲"
+            : "▼"
+          : '<span style="opacity:0.3">⬍</span>';
+        const st = `cursor:pointer;user-select:none${extraStyle ? ";" + extraStyle : ""}`;
+        return `<th onclick="${fn}('${col}')" style="${st}">${label} ${ind}</th>`;
+      }
+
+      // ── Auto-sync ─────────────────────────────────────────────────────────
+      function startAutoSync() {
+        if (autoSyncTimerId) clearInterval(autoSyncTimerId);
+        autoSyncTimerId = setInterval(syncAllAccounts, 15 * 60 * 1000); // 15 min
+      }
+
+      function updateLastSyncedDisplay() {
+        const el = document.getElementById("lastSyncedLabel");
+        if (!el) return;
+        if (!lastSyncedAt) {
+          el.textContent = "";
+          return;
+        }
+        const mins = Math.floor((Date.now() - lastSyncedAt) / 60000);
+        el.textContent = mins < 1 ? "synced just now" : `synced ${mins}m ago`;
+      }
+
+      // ── Sort — Account Overview ───────────────────────────────────────────
+      function sortAcct(col) {
+        if (acctSort.col === col) acctSort.dir *= -1;
+        else {
+          acctSort.col = col;
+          acctSort.dir = 1;
+        }
+        acctPage = 1;
+        renderAcctTablePage(sortData(acctRowsFullCache, col, acctSort.dir), 1);
+      }
+
+      // ── Sort — Post Overview ──────────────────────────────────────────────
+      function sortPost(col) {
+        if (postSort.col === col) postSort.dir *= -1;
+        else {
+          postSort.col = col;
+          postSort.dir = 1;
+        }
+        postOverviewPage = 1;
+        renderPostOverviewPage(
+          sortData(postOverviewCache, col, postSort.dir),
+          1,
+        );
+      }
+
+      // ── Sort — All Tracked Subs ───────────────────────────────────────────
+      function sortAllSubs(col) {
+        if (allSubsSort.col === col) allSubsSort.dir *= -1;
+        else {
+          allSubsSort.col = col;
+          allSubsSort.dir = 1;
+        }
+        allSubsPage = 1;
+        renderAllSubsTable(sortData(allSubsCache, col, allSubsSort.dir), 1);
+      }
+
+      // ── Sort — Current Structure ──────────────────────────────────────────
+      function sortStruct(col) {
+        if (structSort.col === col) structSort.dir *= -1;
+        else {
+          structSort.col = col;
+          structSort.dir = 1;
+        }
+        structurePage = 1;
+        renderStructureRows(sortData(structureCache, col, structSort.dir), 1);
       }
 
       // ── Trend chart ────────────────────────────────────────────────────────────
@@ -2379,6 +2502,7 @@
       function renderAcctTable(models, dash, page) {
         acctCache = { models, dash };
         acctPage = page;
+        acctSort = { col: null, dir: 1 }; // reset sort on fresh data load
         const el = document.getElementById("accountOverviewTable");
         const allP = dash.all_posts || [],
           stats = dash.account_stats || {};
@@ -2400,31 +2524,66 @@
             const sc = isBanned ? "chip-r" : isActive ? "chip-g" : "chip-m";
             const sl = isBanned ? "Banned" : isActive ? "Active" : "Idle";
             const vaName = m.vas?.name || "—";
-            rows.push({ a, m, s, eng, lastSub, sc, sl, vaName });
+            rows.push({
+              a,
+              m,
+              s,
+              eng,
+              lastSub,
+              sc,
+              sl,
+              vaName,
+              // flat keys for sorting
+              username: a.username,
+              model: m.model_name,
+              posts: s.posts || 0,
+              totalUpvotes: s.totalUpvotes || 0,
+              totalComments: s.totalComments || 0,
+              engNum: parseFloat(eng) || 0,
+              status: sl,
+            });
           }
         }
+        acctRowsFullCache = rows;
         if (!rows.length) {
           el.innerHTML = `<div class="empty">No data. Sync first.</div>`;
           return;
         }
+        renderAcctTablePage(rows, page);
+      }
+
+      function renderAcctTablePage(rows, page) {
+        acctPage = page;
+        const el = document.getElementById("accountOverviewTable");
         const start = (page - 1) * PER,
           slice = rows.slice(start, start + PER);
-        const vaCol = isAdmin ? "<th>VA</th>" : "";
-        el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Model</th><th>Last Sub</th><th>Upvotes</th><th>Comments</th><th>Avg Eng</th><th>Status</th></tr></thead>
-              <tbody>${slice
-                .map(
-                  (r) => `<tr>
-                ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName}</td>` : ""}
-                <td><b>@${r.a.username}</b></td>
-                <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
-                <td style="font-family:var(--mono)">${r.lastSub}</td>
-                <td style="font-family:var(--mono)">${r.s.totalUpvotes || 0}</td>
-                <td style="font-family:var(--mono)">${r.s.totalComments || 0}</td>
-                <td style="font-family:var(--mono)">${r.eng}</td>
-                <td><span class="chip ${r.sc}">${r.sl}</span></td>
-              </tr>`,
-                )
-                .join("")}</tbody></table>`;
+        const vaH = isAdmin ? thSort("VA", acctSort, "vaName", "sortAcct") : "";
+        el.innerHTML = `<table><thead><tr>
+          ${vaH}
+          ${thSort("Account", acctSort, "username", "sortAcct")}
+          ${thSort("Model", acctSort, "model", "sortAcct")}
+          ${thSort("Last Sub", acctSort, "lastSub", "sortAcct")}
+          ${thSort("Posts", acctSort, "posts", "sortAcct")}
+          ${thSort("Upvotes", acctSort, "totalUpvotes", "sortAcct")}
+          ${thSort("Comments", acctSort, "totalComments", "sortAcct")}
+          ${thSort("Avg Eng", acctSort, "engNum", "sortAcct")}
+          <th>Status</th>
+        </tr></thead>
+        <tbody>${slice
+          .map(
+            (r) => `<tr>
+          ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${r.vaName}</td>` : ""}
+          <td><b>@${r.a.username}</b></td>
+          <td style="color:var(--muted);font-family:var(--mono)">${r.m.model_name}</td>
+          <td style="font-family:var(--mono)">${r.lastSub}</td>
+          <td style="font-family:var(--mono)">${r.posts}</td>
+          <td style="font-family:var(--mono)">${r.totalUpvotes}</td>
+          <td style="font-family:var(--mono)">${r.totalComments}</td>
+          <td style="font-family:var(--mono)">${r.eng}</td>
+          <td><span class="chip ${r.sc}">${r.sl}</span></td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
         makePager("acctPager", rows.length, page, "setAcctPage");
       }
 
@@ -2432,6 +2591,7 @@
       function renderPostOverview(data, page) {
         postOverviewCache = data;
         postOverviewPage = page;
+        postSort = { col: null, dir: 1 }; // reset sort on fresh load
         renderPostOverviewPage(data, page);
       }
       function renderPostOverviewPage(data, page) {
@@ -2443,30 +2603,45 @@
         }
         const start = (page - 1) * PER,
           slice = data.slice(start, start + PER);
-        const vaCol = isAdmin ? "<th>VA</th>" : "";
-        el.innerHTML = `<table><thead><tr>${vaCol}<th>Account</th><th>Subreddit</th><th>Upvotes</th><th>Comments</th><th>Posted At</th><th>Link</th></tr></thead>
-              <tbody>${slice
-                .map((p) => {
-                  const time = new Date(p.posted_at).toLocaleTimeString(
-                    "en-US",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      timeZone: "Asia/Manila",
-                    },
-                  );
-                  return `<tr>
-                  ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${p.va || "—"}</td>` : ""}
-                  <td style="font-family:var(--mono);font-weight:600">@${p.username || "—"}</td>
-                  <td style="font-family:var(--mono)">r/${p.subreddit}</td>
-                  <td style="font-family:var(--mono)">${p.upvotes || 0}</td>
-                  <td style="font-family:var(--mono)">${p.comments || 0}</td>
-                  <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${time}</td>
-                  <td>${p.post_url ? `<a href="${p.post_url}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue)">View</a>` : "—"}</td>
-                </tr>`;
+        const vaH = isAdmin ? thSort("VA", postSort, "va", "sortPost") : "";
+        el.innerHTML = `<table><thead><tr>
+          ${vaH}
+          ${thSort("Account", postSort, "username", "sortPost")}
+          ${thSort("Subreddit", postSort, "subreddit", "sortPost")}
+          ${thSort("Upvotes", postSort, "upvotes", "sortPost")}
+          ${thSort("Comments", postSort, "comments", "sortPost")}
+          ${thSort("Posted At", postSort, "posted_at", "sortPost")}
+          ${thSort("Updated At", postSort, "updated_at", "sortPost")}
+          <th>Link</th>
+        </tr></thead>
+        <tbody>${slice
+          .map((p) => {
+            const time = new Date(p.posted_at).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Manila",
+            });
+            const updTime = p.updated_at
+              ? new Date(p.updated_at).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                  timeZone: "Asia/Manila",
                 })
-                .join("")}</tbody></table>`;
+              : "—";
+            return `<tr>
+            ${isAdmin ? `<td style="color:var(--muted);font-family:var(--mono)">${p.va || "—"}</td>` : ""}
+            <td style="font-family:var(--mono);font-weight:600">@${p.username || "—"}</td>
+            <td style="font-family:var(--mono)">r/${p.subreddit}</td>
+            <td style="font-family:var(--mono)">${p.upvotes || 0}</td>
+            <td style="font-family:var(--mono)">${p.comments || 0}</td>
+            <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${time}</td>
+            <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${updTime}</td>
+            <td>${p.post_url ? `<a href="${p.post_url}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue)">View</a>` : "—"}</td>
+          </tr>`;
+          })
+          .join("")}</tbody></table>`;
         makePager(
           "postOverviewPager",
           data.length,
@@ -2821,21 +2996,30 @@
         }
         const start = (page - 1) * PER,
           slice = subs.slice(start, start + PER);
-        el.innerHTML = `<table><thead><tr><th>#</th><th>Subreddit</th><th>Avg Eng</th><th>Avg Cmts</th><th>Peak</th><th>Posts</th><th>Used By</th><th>Score</th></tr></thead>
-              <tbody>${slice
-                .map(
-                  (s, i) => `<tr>
-                <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
-                <td><b>r/${s.sub}</b></td>
-                <td style="font-family:var(--mono)">${s.avg_engagement}</td>
-                <td style="font-family:var(--mono)">${s.avg_comments || "—"}</td>
-                <td style="font-family:var(--mono)">${s.peak_engagement}</td>
-                <td style="font-family:var(--mono)">${s.post_count}</td>
-                <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
-                <td><span class="chip chip-b">${s.score}</span></td>
-              </tr>`,
-                )
-                .join("")}</tbody></table>`;
+        el.innerHTML = `<table><thead><tr>
+          <th>#</th>
+          ${thSort("Subreddit", allSubsSort, "sub", "sortAllSubs")}
+          ${thSort("Avg Eng", allSubsSort, "avg_engagement", "sortAllSubs")}
+          ${thSort("Avg Cmts", allSubsSort, "avg_comments", "sortAllSubs")}
+          ${thSort("Peak", allSubsSort, "peak_engagement", "sortAllSubs")}
+          ${thSort("Posts", allSubsSort, "post_count", "sortAllSubs")}
+          <th>Used By</th>
+          ${thSort("Score", allSubsSort, "score", "sortAllSubs")}
+        </tr></thead>
+        <tbody>${slice
+          .map(
+            (s, i) => `<tr>
+          <td style="color:var(--muted);font-family:var(--mono)">${start + i + 1}</td>
+          <td><b>r/${s.sub}</b></td>
+          <td style="font-family:var(--mono)">${s.avg_engagement}</td>
+          <td style="font-family:var(--mono)">${s.avg_comments || "—"}</td>
+          <td style="font-family:var(--mono)">${s.peak_engagement}</td>
+          <td style="font-family:var(--mono)">${s.post_count}</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${s.used_by_vas?.join(", ") || "—"}</td>
+          <td><span class="chip chip-b">${s.score}</span></td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
         makePager("allSubsPager", subs.length, page, "setAllSubsPage");
       }
 
@@ -3003,6 +3187,7 @@
               sc: "chip-m",
               sl: "—",
               id: null,
+              status: "—",
             });
             continue;
           }
@@ -3021,11 +3206,45 @@
               sc,
               sl,
               id: a.id,
+              status: sl,
             });
           }
         }
         structureCache = rows;
+        structSort = { col: null, dir: 1 }; // reset sort on refresh
         renderStructureRows(rows, 1);
+      }
+
+      // FIND the entire renderStructureRows function and REPLACE WITH:
+
+      function renderStructureRows(rows, page) {
+        structurePage = page;
+        const el = document.getElementById("structureTable");
+        if (!rows.length) {
+          el.innerHTML = `<div class="empty">No models yet.</div>`;
+          return;
+        }
+        const start = (page - 1) * PER,
+          slice = rows.slice(start, start + PER);
+        el.innerHTML = `<table><thead><tr>
+          ${thSort("VA", structSort, "va", "sortStruct")}
+          ${thSort("Model", structSort, "model", "sortStruct")}
+          ${thSort("Username", structSort, "username", "sortStruct")}
+          ${thSort("Status", structSort, "status", "sortStruct")}
+          <th>Action</th>
+        </tr></thead>
+        <tbody>${slice
+          .map(
+            (r) => `<tr>
+          <td style="color:var(--muted);font-family:var(--mono)">${r.va}</td>
+          <td style="font-family:var(--mono);font-weight:600">${r.model}</td>
+          <td style="font-family:var(--mono)">${r.id ? "@" + r.username : r.username}</td>
+          <td>${r.id ? `<span class="chip ${r.sc}">${r.sl}</span>` : ""}</td>
+          <td>${r.id ? `<button class="btn btn-sm btn-ro" onclick="removeAccount('${r.id}')">Remove</button>` : ""}</td>
+        </tr>`,
+          )
+          .join("")}</tbody></table>`;
+        makePager("structurePager", rows.length, page, "setStructurePage");
       }
 
       function renderStructureRows(rows, page) {
@@ -3281,7 +3500,10 @@
           const res = await fetch(`${API}/intel/log-post`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({
+              url,
+              va_id: isAdmin ? null : currentVA?.id,
+            }),
           });
           const j = await res.json();
 
