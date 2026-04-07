@@ -123,8 +123,6 @@ async function fetchUnmoderated(targetCount = 100) {
         if (subs < 20 || subs > 2500) continue;
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
-        if (sub.restrict_posting === true) continue;
-        if (sub.submission_type === "restricted") continue;
 
         results.push(sub);
         if (results.length >= targetCount) break;
@@ -291,8 +289,6 @@ async function fetchNsfwUnmoderated(targetCount = 100) {
           if (subs < 20 || subs > 2500) continue;
           if (!sub.over18) continue;
           if (sub.subreddit_type !== "public") continue;
-          if (sub.restrict_posting === true) continue;
-          if (sub.submission_type === "restricted") continue;
           results.push(sub);
           if (results.length >= targetCount) break;
         }
