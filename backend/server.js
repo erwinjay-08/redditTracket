@@ -240,36 +240,44 @@ app.get("/api/search", async (req, res) => {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // ── PARALLEL fetch — was sequential, now all queries run at once ──────────
-    const resultArrays = await Promise.allSettled(
-      queries.map((query) => reddit.searchSubreddits(query, 100, nsfw, sort)),
-    );
-
     const seen = new Set();
     const allResults = [];
 
-    for (const result of resultArrays) {
-      if (result.status !== "fulfilled") continue;
-      for (const sub of result.value) {
-        const name = (sub.display_name || "").toLowerCase();
-        if (seen.has(name)) continue;
-        seen.add(name);
-        allResults.push(sub);
-        if (allResults.length >= 100) break;
-      }
+    for (const query of queries) {
       if (allResults.length >= 100) break;
+      try {
+        const results = await reddit.searchSubreddits(query, 100, nsfw, sort);
+        for (const sub of results) {
+          const name = (sub.display_name || "").toLowerCase();
+          if (seen.has(name)) continue;
+          seen.add(name);
+          allResults.push(sub);
+          if (allResults.length >= 100) break;
+        }
+      } catch {}
     }
 
     let filtered = allResults.map(formatSub);
 
-    if (!nsfw) filtered = filtered.filter((d) => d.over18 !== true);
-    if (minSubs > 0)
+    if (!nsfw) {
+      filtered = filtered.filter((d) => d.over18 !== true);
+    }
+
+    // ── Subscriber range filter ──────────────────────────────────────────────
+    if (minSubs > 0) {
       filtered = filtered.filter((d) => (d.subscribers || 0) >= minSubs);
-    if (maxSubs)
+    }
+    if (maxSubs) {
       filtered = filtered.filter((d) => (d.subscribers || 0) <= maxSubs);
-    if (tab === "new" && minSubs === 0)
+    }
+
+    if (tab === "new" && minSubs === 0) {
       filtered = filtered.filter((d) => (d.subscribers || 0) >= 500);
-    if (tab === "unmoderated") filtered = sortByQuality(filtered);
+    }
+
+    if (tab === "unmoderated") {
+      filtered = sortByQuality(filtered);
+    }
 
     res.json({ data: filtered.slice(0, 100) });
   } catch (err) {
