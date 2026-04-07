@@ -240,44 +240,36 @@ app.get("/api/search", async (req, res) => {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    // ── PARALLEL fetch — was sequential, now all queries run at once ──────────
+    const resultArrays = await Promise.allSettled(
+      queries.map((query) => reddit.searchSubreddits(query, 100, nsfw, sort)),
+    );
+
     const seen = new Set();
     const allResults = [];
 
-    for (const query of queries) {
+    for (const result of resultArrays) {
+      if (result.status !== "fulfilled") continue;
+      for (const sub of result.value) {
+        const name = (sub.display_name || "").toLowerCase();
+        if (seen.has(name)) continue;
+        seen.add(name);
+        allResults.push(sub);
+        if (allResults.length >= 100) break;
+      }
       if (allResults.length >= 100) break;
-      try {
-        const results = await reddit.searchSubreddits(query, 100, nsfw, sort);
-        for (const sub of results) {
-          const name = (sub.display_name || "").toLowerCase();
-          if (seen.has(name)) continue;
-          seen.add(name);
-          allResults.push(sub);
-          if (allResults.length >= 100) break;
-        }
-      } catch {}
     }
 
     let filtered = allResults.map(formatSub);
 
-    if (!nsfw) {
-      filtered = filtered.filter((d) => d.over18 !== true);
-    }
-
-    // ── Subscriber range filter ──────────────────────────────────────────────
-    if (minSubs > 0) {
+    if (!nsfw) filtered = filtered.filter((d) => d.over18 !== true);
+    if (minSubs > 0)
       filtered = filtered.filter((d) => (d.subscribers || 0) >= minSubs);
-    }
-    if (maxSubs) {
+    if (maxSubs)
       filtered = filtered.filter((d) => (d.subscribers || 0) <= maxSubs);
-    }
-
-    if (tab === "new" && minSubs === 0) {
+    if (tab === "new" && minSubs === 0)
       filtered = filtered.filter((d) => (d.subscribers || 0) >= 500);
-    }
-
-    if (tab === "unmoderated") {
-      filtered = sortByQuality(filtered);
-    }
+    if (tab === "unmoderated") filtered = sortByQuality(filtered);
 
     res.json({ data: filtered.slice(0, 100) });
   } catch (err) {
@@ -1537,139 +1529,113 @@ app.get("/api/intel/subs-to-try", async (req, res) => {
       .from("models")
       .select("id, reddit_accounts(id)")
       .eq("va_id", va_id);
+
     const accountIds = (models || []).flatMap((m) =>
       (m.reddit_accounts || []).map((a) => a.id),
     );
     const alreadyPostedSubs = new Set();
+    let seedSubs = [];
+
     if (accountIds.length > 0) {
       const { data: postedPosts } = await supabase
         .from("post_logs")
-        .select("subreddit")
-        .in("account_id", accountIds);
-      (postedPosts || []).forEach((p) =>
-        alreadyPostedSubs.add(p.subreddit.toLowerCase()),
-      );
+        .select("subreddit, upvotes, comments")
+        .in("account_id", accountIds)
+        .order("posted_at", { ascending: false })
+        .limit(500);
+
+      // Build engagement map to find the VA's best-performing subs
+      const subEngMap = {};
+      for (const p of postedPosts || []) {
+        const sub = p.subreddit.toLowerCase();
+        alreadyPostedSubs.add(sub);
+        if (!subEngMap[sub]) subEngMap[sub] = { total: 0, count: 0 };
+        subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
+        subEngMap[sub].count++;
+      }
+
+      // Top 8 subs by avg engagement become search seeds
+      seedSubs = Object.entries(subEngMap)
+        .map(([sub, d]) => ({ sub, avg: d.total / d.count, count: d.count }))
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 8)
+        .map((s) => s.sub);
     }
+
     const { data: badRatings } = await supabase
       .from("subreddit_ratings")
       .select("subreddit")
       .eq("rating", "bad");
     const badSubs = new Set((badRatings || []).map((r) => r.subreddit));
-    const wantNsfw = nsfw === "1";
-    let suggestions = [];
 
-    if (wantNsfw) {
-      // ── NSFW primary: live Reddit rising + new (same as main tracker) ──────
-      // Prefer small-to-mid subs (5K–150K) with high engagement rate.
-      // Filter out subs the VA has already posted in and bad-rated ones.
-      try {
-        const [risingRaw, newRaw] = await Promise.all([
-          reddit.fetchNsfwRising(50),
-          reddit.fetchNsfwNew(50),
-        ]);
-        const combined = [...risingRaw, ...newRaw].map(formatSub);
-        const seen = new Set();
-        suggestions = combined
-          .filter((r) => {
-            const name = (r.name || "").toLowerCase();
-            if (seen.has(name)) return false;
-            seen.add(name);
-            const subs = r.subscribers || 0;
-            if (subs < 5000 || subs > 150000) return false;
-            if (alreadyPostedSubs.has(name)) return false;
-            if (badSubs.has(name)) return false;
-            return true;
-          })
-          .sort((a, b) => b.engagement_rate - a.engagement_rate)
-          .slice(0, 40);
-      } catch (err) {
-        console.warn(
-          "[subs-to-try] NSFW Reddit API failed, using ratings fallback:",
-          err.message,
-        );
-        // ── Fallback: subreddit_ratings table ranked by post engagement ──────
-        const { data: nsfwRated } = await supabase
-          .from("subreddit_ratings")
-          .select("subreddit, rating")
-          .eq("is_nsfw", true)
-          .neq("rating", "bad")
-          .order("updated_at", { ascending: false });
-        const { data: allPosts } = await supabase
-          .from("post_logs")
-          .select("subreddit, upvotes, comments")
-          .order("posted_at", { ascending: false })
-          .limit(2000);
-        const subEngMap = {};
-        const nsfwSubNames = new Set((nsfwRated || []).map((r) => r.subreddit));
-        for (const p of allPosts || []) {
-          const sub = p.subreddit.toLowerCase();
-          if (!nsfwSubNames.has(sub)) continue;
-          if (!subEngMap[sub]) subEngMap[sub] = { total: 0, count: 0 };
-          subEngMap[sub].total += (p.upvotes || 0) + (p.comments || 0);
-          subEngMap[sub].count++;
-        }
-        suggestions = (nsfwRated || [])
-          .filter(
-            (r) =>
-              !alreadyPostedSubs.has(r.subreddit.toLowerCase()) &&
-              !badSubs.has(r.subreddit),
-          )
-          .map((r) => {
-            const eng = subEngMap[r.subreddit];
-            const avgEng = eng ? eng.total / eng.count : 0;
-            return {
-              name: r.subreddit,
-              subscribers: 0,
-              active_users: 0,
-              engagement_rate: parseFloat(avgEng.toFixed(1)),
-              over18: true,
-              description: `${r.rating} rated NSFW sub`,
-              quality_score: avgEng,
-            };
-          })
-          .sort((a, b) => b.engagement_rate - a.engagement_rate)
-          .slice(0, 40);
-      }
-    } else {
-      // ── SFW: SQLite trending/rising cache, cap at 150K subscribers ─────────
-      const cached = stmts.getTrending.all(300);
-      const risingRows = stmts.getRising ? stmts.getRising.all(150) : [];
-      const combined = [...cached, ...risingRows];
-      const seen = new Set();
-      suggestions = combined
-        .filter((r) => {
-          const name = (r.display_name || r.name || "").toLowerCase();
-          if (seen.has(name)) return false;
+    const wantNsfw = nsfw === "1";
+    const seen = new Set(alreadyPostedSubs);
+    const suggestions = [];
+
+    if (seedSubs.length > 0) {
+      // ── Primary: search Reddit using VA's own top subs as queries ──────────
+      // This finds RELATED subs in the same niche, capped at 100–5K members
+      const searchResults = await Promise.allSettled(
+        seedSubs
+          .slice(0, 6)
+          .map((seed) =>
+            reddit.searchSubreddits(seed, 25, wantNsfw, "relevance"),
+          ),
+      );
+
+      for (const result of searchResults) {
+        if (result.status !== "fulfilled") continue;
+        for (const raw of result.value) {
+          const r = formatSub(raw);
+          const name = (r.name || "").toLowerCase();
+          if (seen.has(name)) continue;
+          if (badSubs.has(name)) continue;
+          const subs = r.subscribers || 0;
+          if (subs < 100 || subs > 5000) continue; // sweet spot: small, low mod risk
+          if (!wantNsfw && r.over18) continue;
+          if (wantNsfw && !r.over18) continue;
           seen.add(name);
-          const isNsfw = r.over18 === 1 || r.over18 === true;
-          if (isNsfw) return false;
-          if (alreadyPostedSubs.has(name)) return false;
-          if (badSubs.has(name)) return false;
-          const subs = r.subscribers || 0;
-          if (subs < 5000 || subs > 150000) return false; // cap 150K
-          return true;
-        })
-        .map((r) => {
-          const subs = r.subscribers || 0;
-          const active = r.active_users || 0;
-          const engRate =
-            subs > 0 ? parseFloat(((active / subs) * 100).toFixed(3)) : 0;
-          const qualityScore = subs * (1 + engRate * 2);
-          return {
-            name: r.display_name || r.name,
-            subscribers: subs,
-            active_users: active,
-            engagement_rate: engRate,
-            over18: false,
-            description: r.description || "",
-            quality_score: qualityScore,
-          };
-        })
-        .sort((a, b) => b.quality_score - a.quality_score)
-        .slice(0, 40);
+          suggestions.push(r);
+          if (suggestions.length >= 40) break;
+        }
+        if (suggestions.length >= 40) break;
+      }
     }
 
-    res.json({ data: suggestions, excluded_count: alreadyPostedSubs.size });
+    // ── Fallback: if no history or not enough seeds, use Reddit API ──────────
+    if (suggestions.length < 10) {
+      try {
+        const [risingRaw, newRaw] = await Promise.all([
+          wantNsfw ? reddit.fetchNsfwRising(50) : reddit.fetchRising(50),
+          wantNsfw ? reddit.fetchNsfwNew(50) : reddit.fetchNew(50),
+        ]);
+        const combined = [...risingRaw, ...newRaw].map(formatSub);
+        for (const r of combined) {
+          const name = (r.name || "").toLowerCase();
+          if (seen.has(name)) continue;
+          if (badSubs.has(name)) continue;
+          const subs = r.subscribers || 0;
+          if (subs < 100 || subs > 5000) continue;
+          if (!wantNsfw && r.over18) continue;
+          if (wantNsfw && !r.over18) continue;
+          seen.add(name);
+          suggestions.push(r);
+          if (suggestions.length >= 40) break;
+        }
+      } catch (err) {
+        console.warn("[subs-to-try] fallback fetch failed:", err.message);
+      }
+    }
+
+    // Sort by engagement rate — most active small subs first
+    suggestions.sort(
+      (a, b) => (b.engagement_rate || 0) - (a.engagement_rate || 0),
+    );
+
+    res.json({
+      data: suggestions.slice(0, 40),
+      excluded_count: alreadyPostedSubs.size,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

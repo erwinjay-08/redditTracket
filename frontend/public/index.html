@@ -1680,6 +1680,36 @@
         },
       ];
 
+      function trackCategoryClick(label) {
+        if (!label || label === "All") return;
+        const history = JSON.parse(
+          localStorage.getItem("st-cat-history") || "{}",
+        );
+        history[label] = (history[label] || 0) + 1;
+        localStorage.setItem("st-cat-history", JSON.stringify(history));
+      }
+
+      function getPersonalizedQuery() {
+        const history = JSON.parse(
+          localStorage.getItem("st-cat-history") || "{}",
+        );
+        if (Object.keys(history).length === 0) return null;
+
+        // Get top 3 most-clicked categories
+        const top3 = Object.entries(history)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([label]) => label);
+
+        // Look up their query strings from the category definitions
+        const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
+        const queries = top3
+          .map((label) => cats.find((c) => c.label === label)?.q)
+          .filter(Boolean);
+
+        return queries.length > 0 ? queries.join("|||") : null;
+      }
+
       function buildCategoryBar() {
         const bar = document.getElementById("categoryBar");
         const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
@@ -1702,14 +1732,24 @@
         pill.classList.add("active");
 
         if (q === null) {
+          // "All" — use personalized feed if we have history
           document.getElementById("searchInput").value = "";
-          load(currentTab);
+          const personalizedQ = getPersonalizedQuery();
+          if (personalizedQ && currentTab !== "unmoderated") {
+            // Load personalized mix without updating search bar
+            runSearchSilent(personalizedQ);
+          } else {
+            load(currentTab);
+          }
           return;
         }
 
-        // For Unmoderated tab: filter the already-loaded unmod results client-side
-        // by checking if the sub name or description contains any of the keywords.
-        // This prevents wiping the unmoderated list with generic search results.
+        // Track this click for future personalization
+        // Find label from cats list
+        const cats = nsfwMode ? NSFW_CATS : SFW_CATS;
+        const cat = cats.find((c) => c.q === q);
+        if (cat) trackCategoryClick(cat.label);
+
         if (currentTab === "unmoderated" && allResults.length > 0) {
           const keywords = q.split("|||").map((k) => k.trim().toLowerCase());
           const filtered = allResults.filter((sub) => {
@@ -1718,20 +1758,40 @@
             return keywords.some((k) => text.includes(k));
           });
           if (filtered.length > 0) {
-            // Show filtered subset; don't update allResults so "All" can restore it
             currentPage = 1;
             renderPage(filtered, currentTab, 1);
-            // Update search input to show active filter
             document.getElementById("searchInput").value = q.split("|||")[0];
             return;
           }
-          // If no local matches, fall through to server search with constraints
         }
 
-        // Show first query term as visible text in search bar
         const displayQ = q.split("|||")[0];
         document.getElementById("searchInput").value = displayQ;
-        runSearch(q); // full multi-query goes to server with tab constraints
+        runSearch(q);
+      }
+
+      async function runSearchSilent(q) {
+        document.getElementById("feed").innerHTML =
+          `<div class="skeleton"></div>`;
+        document.getElementById("feedPager").style.display = "none";
+        try {
+          const params = new URLSearchParams({
+            q,
+            nsfw: nsfwMode ? "1" : "0",
+            tab: currentTab,
+          });
+          if (currentTab === "unmoderated") {
+            params.set("max_subscribers", "2500");
+            params.set("min_subscribers", "20");
+          }
+          const res = await fetch(`${API}/search?${params}`);
+          const json = await res.json();
+          allResults = json.data || [];
+          currentPage = 1;
+          renderPage(allResults, currentTab, 1);
+        } catch {
+          load(currentTab);
+        }
       }
 
       // ── Init ──────────────────────────────────────────────────────────────────────

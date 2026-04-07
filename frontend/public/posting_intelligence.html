@@ -2535,6 +2535,7 @@
         const rows = [];
         for (const m of models) {
           for (const a of m.reddit_accounts || []) {
+            if (a.banned === true) continue;
             const s = stats[a.id] || {
               posts: 0,
               totalUpvotes: 0,
