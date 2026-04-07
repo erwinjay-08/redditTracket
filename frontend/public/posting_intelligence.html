@@ -2231,13 +2231,23 @@
       }
 
       // ── Load subs to try (called on toggle) ────────────────────────────────────
+      let subsToTryAbort = null;
       async function loadSubsToTry() {
-        const res = await fetch(
-          `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
-        );
-        const j = await res.json();
-        subsToTryCache = j.data || [];
-        renderSubsToTry(subsToTryCache, 1);
+        if (subsToTryAbort) subsToTryAbort.abort();
+        subsToTryAbort = new AbortController();
+        document.getElementById("subsToTryArea").innerHTML =
+          '<div class="skeleton" style="height:30px"></div><div class="skeleton" style="height:30px;opacity:.6;margin-top:4px"></div>';
+        try {
+          const res = await fetch(
+            `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
+            { signal: subsToTryAbort.signal },
+          );
+          const j = await res.json();
+          subsToTryCache = j.data || [];
+          renderSubsToTry(subsToTryCache, 1);
+        } catch (e) {
+          if (e.name !== "AbortError") console.error(e);
+        }
       }
 
       // ── Pager helper ───────────────────────────────────────────────────────────
@@ -2497,7 +2507,7 @@
 
       // ── Metrics ────────────────────────────────────────────────────────────────
       function renderMetrics(dash) {
-        const posts = dash.all_posts || [],
+        const posts = dash.today_posts || [],
           tp = dash.today_posts || [];
         const avgUp = posts.length
           ? Math.round(
