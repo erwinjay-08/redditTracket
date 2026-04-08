@@ -9,7 +9,7 @@ const { saveSubredditData, stmts } = require("./db");
 const reddit = require("./reddit");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());

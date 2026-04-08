@@ -169,15 +169,10 @@ async function fetchNew(limit = 25) {
     .slice(0, limit);
 }
 
-// ── Unmoderated: search-based, no age limit, low subscriber count ─────────────
-// Uses parallel search queries to find small public subs where models can post.
-// /subreddits/new was removed because it only returns brand-new subs (days old)
-// which don't have enough history to be useful.
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
 
-  // Run all queries in parallel for speed
   const fetches = await Promise.allSettled(
     SFW_UNMOD_QUERIES.map((q) =>
       redditGet("/subreddits/search", { q, sort: "relevance", limit: 100 }),
