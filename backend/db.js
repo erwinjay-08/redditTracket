@@ -1,10 +1,10 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const Database = require("better-sqlite3");
+const path = require("path");
 
-const db = new Database(path.join(__dirname, 'tracker.db'));
+const db = new Database(process.env.DB_PATH || "/tmp/tracker.db");
 
 // Enable WAL mode for better performance
-db.pragma('journal_mode = WAL');
+db.pragma("journal_mode = WAL");
 
 // Create tables
 db.exec(`
@@ -115,7 +115,7 @@ function saveSubredditData(data) {
       stmts.upsertSub.run({
         name: item.display_name.toLowerCase(),
         display_name: item.display_name,
-        description: item.public_description || item.title || '',
+        description: item.public_description || item.title || "",
         created_utc: item.created_utc || 0,
         over18: item.over18 ? 1 : 0,
       });
