@@ -89,7 +89,7 @@ async function fetchTrending(limit = 100) {
       results.push(d);
     }
   }
-  // Also pull popular subs with big subscriber counts for general context
+
   try {
     const pop = await redditGet("/subreddits/popular", { limit: 100 });
     for (const c of pop.data.children) {
@@ -117,7 +117,7 @@ async function fetchRising(limit = 100) {
       const d = c.data;
       if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
       seen.add(d.display_name.toLowerCase());
-      if (d.over18 || d.subscribers < 1000 || d.subscribers > 2000000) continue;
+      if (d.over18 || d.subscribers < 1000 || d.subscribers > 300000) continue;
       results.push(d);
     }
   }
@@ -160,17 +160,13 @@ async function fetchNew(limit = 100) {
       const d = c.data;
       if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
       seen.add(d.display_name.toLowerCase());
-      if (d.over18 || d.subscribers < 500 || d.subscribers > 500000) continue;
+      if (d.over18 || d.subscribers < 500 || d.subscribers > 50000) continue;
       results.push(d);
     }
   }
   return results.slice(0, limit);
 }
 
-// ── Unmoderated: age-filtered, no restrict_posting ────────────────────────────
-// Subs created between Jan 2015 and 9 months ago — established but low-mod
-// SFW unmod: search-based. /subreddits/new only returns brand-new subs (days old)
-// which all fail the 9-month minimum age filter. Search returns mixed-age subs.
 const SFW_UNMOD_QUERIES = [
   "girls",
   "women",
@@ -193,37 +189,51 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
   const maxUtc = getUnmodMaxUtc();
+  const minAge = Math.floor(Date.now() / 1000) - 30 * 24 * 3600; // 30 days minimum
 
-  // Run all queries in parallel — search returns subs of mixed ages
-  const fetches = await Promise.allSettled(
-    SFW_UNMOD_QUERIES.map((q) =>
-      redditGet("/subreddits/search", { q, sort: "relevance", limit: 100 }),
-    ),
-  );
+  let after = null;
+  let attempts = 0;
+  const maxAttempts = 20;
 
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const child of f.value.data.children) {
-      const sub = child.data;
-      const name = sub.display_name?.toLowerCase();
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
+  while (results.length < targetCount && attempts < maxAttempts) {
+    attempts++;
+    const params = { limit: 100, sort: "new" };
+    if (after) params.after = after;
 
-      const subs = sub.subscribers || 0;
-      if (subs < 20 || subs > 2500) continue;
-      if (sub.over18) continue;
-      if (sub.subreddit_type !== "public") continue;
-      if (sub.restrict_posting === true) continue;
-      if (sub.submission_type === "restricted") continue;
+    try {
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
 
-      // Age: created between Jan 2015 and 9 months ago
-      const created = sub.created_utc || 0;
-      if (created < UNMOD_MIN_UTC || created > maxUtc) continue;
+      for (const child of children) {
+        const sub = child.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
 
-      results.push(sub);
-      if (results.length >= targetCount) break;
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
+        if (sub.restrict_posting === true) continue;
+        if (sub.submission_type === "restricted") continue;
+
+        // Age: at least 30 days old (so mods have had time to abandon it)
+        // and no older than the UNMOD_MIN_UTC ceiling (Jan 2015)
+        const created = sub.created_utc || 0;
+        if (created > minAge) continue; // too new (< 30 days)
+        if (created > 0 && created < UNMOD_MIN_UTC) continue; // too old (pre-2015)
+
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
+
+      after = data?.data?.after;
+      if (!after) break;
+    } catch (err) {
+      console.warn("[fetchUnmoderated] page error:", err.message);
+      break;
     }
-    if (results.length >= targetCount) break;
   }
 
   return results;
@@ -292,7 +302,7 @@ async function fetchNsfwRising(limit = 100) {
       const d = c.data;
       if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
       seen.add(d.display_name.toLowerCase());
-      if (d.subscribers < 1000 || d.subscribers > 2000000) continue;
+      if (d.subscribers < 1000 || d.subscribers > 200000) continue;
       results.push(d);
     }
   }
@@ -319,7 +329,7 @@ async function fetchNsfwNew(limit = 100) {
       const d = c.data;
       if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
       seen.add(d.display_name.toLowerCase());
-      if (d.subscribers < 500 || d.subscribers > 1000000) continue;
+      if (d.subscribers < 500 || d.subscribers > 100000) continue;
       results.push(d);
     }
   }
@@ -372,40 +382,79 @@ async function fetchNsfwUnmoderated(
   const results = [];
   const seen = new Set(excludeSubs);
   const maxUtc = getUnmodMaxUtc();
+  const minAge = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
 
-  const fetches = await Promise.allSettled(
-    NSFW_UNMOD_QUERIES.map((q) =>
-      redditGet("/subreddits/search", {
-        q,
-        sort: "relevance",
-        limit: 100,
-        include_over_18: "on",
-      }),
-    ),
-  );
+  let after = null;
+  let attempts = 0;
+  const maxAttempts = 20;
 
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const child of f.value.data.children) {
-      const sub = child.data;
-      const name = sub.display_name?.toLowerCase();
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
+  while (results.length < targetCount && attempts < maxAttempts) {
+    attempts++;
+    const params = { limit: 100, sort: "new", include_over_18: "1" };
+    if (after) params.after = after;
 
-      const subs = sub.subscribers || 0;
-      if (subs < 20 || subs > 2500) continue;
-      if (!sub.over18) continue;
-      if (sub.subreddit_type !== "public") continue;
-      if (sub.restrict_posting === true) continue;
-      if (sub.submission_type === "restricted") continue;
+    try {
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
 
-      const created = sub.created_utc || 0;
-      if (created < UNMOD_MIN_UTC || created > maxUtc) continue;
+      for (const child of children) {
+        const sub = child.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
 
-      results.push(sub);
-      if (results.length >= targetCount) break;
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (!sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
+        if (sub.restrict_posting === true) continue;
+        if (sub.submission_type === "restricted") continue;
+
+        const created = sub.created_utc || 0;
+        if (created > minAge) continue;
+        if (created > 0 && created < UNMOD_MIN_UTC) continue;
+
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
+
+      after = data?.data?.after;
+      if (!after) break;
+    } catch (err) {
+      console.warn("[fetchNsfwUnmoderated] page error:", err.message);
+      break;
     }
-    if (results.length >= targetCount) break;
+  }
+
+  // Search fallback if /subreddits/new didn't return enough NSFW small subs
+  if (results.length < 20) {
+    const queries = ["nsfw amateur", "adult content", "18plus", "xxx"];
+    for (const q of queries) {
+      if (results.length >= targetCount) break;
+      try {
+        const data = await redditGet("/subreddits/search", {
+          q,
+          sort: "new",
+          limit: 100,
+          include_over_18: "on",
+        });
+        for (const c of data.data.children) {
+          const sub = c.data;
+          const name = sub.display_name?.toLowerCase();
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          const subs = sub.subscribers || 0;
+          if (subs < 20 || subs > 2500) continue;
+          if (!sub.over18 || sub.subreddit_type !== "public") continue;
+          if (sub.restrict_posting === true) continue;
+          const created = sub.created_utc || 0;
+          if (created > minAge) continue;
+          if (created > 0 && created < UNMOD_MIN_UTC) continue;
+          results.push(sub);
+        }
+      } catch {}
+    }
   }
 
   return results;
