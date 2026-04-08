@@ -9,7 +9,7 @@ const { saveSubredditData, stmts } = require("./db");
 const reddit = require("./reddit");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
@@ -2027,7 +2027,7 @@ app.get("/{*path}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Reddit Tracker running at http://localhost:${PORT}`);
-  console.log(`   API: http://localhost:${PORT}/api/trending\n`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Reddit Tracker is live on port ${PORT}`);
+  // Using 0.0.0.0 makes the server accessible to Render's network
 });
