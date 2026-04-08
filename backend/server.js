@@ -2027,7 +2027,7 @@ app.get("/{*path}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Reddit Tracker running at http://localhost:${PORT}`);
-  console.log(`   API: http://localhost:${PORT}/api/trending\n`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n🚀 Reddit Tracker running on port ${PORT}`);
+  console.log(`   API: /api/trending\n`);
 });
