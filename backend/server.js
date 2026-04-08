@@ -203,7 +203,6 @@ app.get("/api/unmoderated", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 100);
     const nsfw = wantsNsfw(req);
-    // Accept comma-separated already-posted subs to exclude
     const excludeSubs = new Set(
       (req.query.exclude || "")
         .split(",")
