@@ -118,7 +118,7 @@ async function refreshData() {
 }
 
 cron.schedule("*/30 * * * *", refreshData);
-refreshData();
+setTimeout(refreshData, 3000);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUBREDDIT TRACKING ROUTES
@@ -2025,9 +2025,6 @@ app.patch("/api/intel/model-subs/:id/sync", async (req, res) => {
 // ─── Catch-all ────────────────────────────────────────────────────────────────
 app.get("/{*path}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/index.html"));
-});
-app.get("/", (req, res) => {
-  res.send("Server is working ✅");
 });
 
 app.listen(PORT, "0.0.0.0", () => {
