@@ -1872,6 +1872,157 @@ app.patch("/api/intel/accounts/:id/status", async (req, res) => {
   res.json({ account: data });
 });
 
+// GET all model subs for a VA (or all if admin)
+app.get("/api/intel/model-subs", async (req, res) => {
+  const { va_id, admin } = req.query;
+  if (!va_id) return res.status(400).json({ error: "va_id required" });
+  try {
+    let query = supabase
+      .from("model_subreddits")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (admin !== "true") query = query.eq("va_id", va_id);
+
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Enrich with post_logs stats (no live Reddit call — use cached subscribers)
+    const subs = data || [];
+    const enriched = await Promise.all(
+      subs.map(async (row) => {
+        const sub = row.subreddit.toLowerCase();
+        const { data: posts } = await supabase
+          .from("post_logs")
+          .select("upvotes, comments")
+          .eq("subreddit", sub);
+
+        const avgUp = posts?.length
+          ? Math.round(
+              posts.reduce((s, p) => s + (p.upvotes || 0), 0) / posts.length,
+            )
+          : 0;
+        const avgCmt = posts?.length
+          ? Math.round(
+              posts.reduce((s, p) => s + (p.comments || 0), 0) / posts.length,
+            )
+          : 0;
+
+        return {
+          ...row,
+          avg_upvotes: avgUp,
+          avg_comments: avgCmt,
+          avg_engagement: avgUp + avgCmt,
+          post_count: posts?.length || 0,
+          url: `https://reddit.com/r/${sub}`,
+        };
+      }),
+    );
+
+    res.json({ data: enriched });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST — add a model sub by URL
+app.post("/api/intel/model-subs", async (req, res) => {
+  const { url, va_id, model_id } = req.body;
+  if (!url || !va_id)
+    return res.status(400).json({ error: "url and va_id required" });
+
+  // Parse sub name from URL: reddit.com/r/subname or just "subname"
+  const match = url.match(/(?:reddit\.com\/r\/)?([A-Za-z0-9_]+)/);
+  if (!match)
+    return res
+      .status(400)
+      .json({ error: "Could not parse subreddit name from URL." });
+  const sub = match[1].toLowerCase();
+
+  // Verify it exists on Reddit + fetch live stats
+  let redditData = {
+    subscribers: 0,
+    active_users: 0,
+    title: sub,
+    description: "",
+  };
+  try {
+    const about = await reddit.getSubreddit(sub);
+    redditData = {
+      subscribers: about.subscribers || 0,
+      active_users: about.active_user_count || 0,
+      title: about.title || sub,
+      description: about.public_description || "",
+    };
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 404)
+      return res
+        .status(404)
+        .json({ error: `r/${sub} does not exist on Reddit.` });
+    if (status === 403)
+      return res
+        .status(403)
+        .json({ error: `r/${sub} is private or quarantined.` });
+  }
+
+  const { data, error } = await supabase
+    .from("model_subreddits")
+    .upsert(
+      {
+        va_id,
+        model_id: model_id || null,
+        subreddit: sub,
+        subscribers: redditData.subscribers,
+        active_users: redditData.active_users,
+        synced_at: new Date().toISOString(),
+      },
+      { onConflict: "va_id,subreddit" },
+    )
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    sub: data,
+    reddit: redditData,
+  });
+});
+
+// DELETE a model sub
+app.delete("/api/intel/model-subs/:id", async (req, res) => {
+  const { va_id } = req.query;
+  const { error } = await supabase
+    .from("model_subreddits")
+    .delete()
+    .eq("id", req.params.id)
+    .eq("va_id", va_id); // ensure VA can only delete their own
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// PATCH — sync a model sub's Reddit stats (members/visitors)
+app.patch("/api/intel/model-subs/:id/sync", async (req, res) => {
+  const { subreddit } = req.body;
+  if (!subreddit) return res.status(400).json({ error: "subreddit required" });
+  try {
+    const about = await reddit.getSubreddit(subreddit);
+    const { data, error } = await supabase
+      .from("model_subreddits")
+      .update({
+        subscribers: about.subscribers || 0,
+        active_users: about.active_user_count || 0,
+        synced_at: new Date().toISOString(),
+      })
+      .eq("id", req.params.id)
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ sub: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Catch-all ────────────────────────────────────────────────────────────────
 app.get("/{*path}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/index.html"));

@@ -1282,6 +1282,100 @@
       </div>
     </div>
 
+    <div class="modal-overlay" id="addSubModal" style="display: none">
+      <div class="modal-box" style="width: 420px; text-align: left">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+          "
+        >
+          <div>
+            <div style="font-size: 16px; font-weight: 700; margin-bottom: 2px">
+              Track a Subreddit
+            </div>
+            <div
+              style="
+                font-size: 11px;
+                color: var(--muted);
+                font-family: var(--mono);
+              "
+            >
+              Paste the subreddit URL or name to start tracking it
+            </div>
+          </div>
+          <button
+            onclick="closeAddSub()"
+            style="
+              background: none;
+              border: none;
+              cursor: pointer;
+              color: var(--muted);
+              font-size: 18px;
+              padding: 4px;
+              line-height: 1;
+            "
+          >
+            ✕
+          </button>
+        </div>
+
+        <div id="addSubAlert" style="min-height: 0"></div>
+
+        <div class="form-field" style="margin-bottom: 14px">
+          <label class="flabel">Subreddit URL or Name</label>
+          <input
+            class="finput"
+            id="addSubInput"
+            placeholder="https://reddit.com/r/fitness  or  fitness"
+          />
+        </div>
+
+        <div
+          id="addSubPreview"
+          style="
+            display: none;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 14px;
+          "
+        >
+          <div style="font-size: 13px; font-weight: 600" id="addSubPreviewName">
+            —
+          </div>
+          <div
+            style="
+              font-size: 11px;
+              color: var(--muted);
+              font-family: var(--mono);
+              margin-top: 4px;
+            "
+            id="addSubPreviewMeta"
+          >
+            —
+          </div>
+        </div>
+
+        <div
+          style="
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 4px;
+          "
+        >
+          <button class="btn-ghost" onclick="closeAddSub()">Cancel</button>
+          <button class="btn" id="addSubSaveBtn" onclick="submitAddSub()">
+            Add Sub
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="pinModal">
       <div class="modal-box">
         <div class="modal-icon">🔐</div>
@@ -1459,6 +1553,7 @@
                 style="
                   display: flex;
                   align-items: center;
+                  gap: 8px;
                   padding-top: 4px;
                   flex-shrink: 0;
                 "
@@ -1473,6 +1568,20 @@
                   "
                 >
                   + Log Post
+                </button>
+                <button
+                  class="btn"
+                  onclick="openAddSub()"
+                  style="
+                    white-space: nowrap;
+                    font-size: 12px;
+                    padding: 8px 18px;
+                    background: var(--surface2);
+                    color: var(--text);
+                    border: 1px solid var(--border2);
+                  "
+                >
+                  + Add Sub
                 </button>
               </div>
             </div>
@@ -1494,6 +1603,26 @@
                 <div class="skeleton"></div>
               </div>
               <div id="acctPager"></div>
+            </div>
+            <!-- Subreddit Overview -->
+            <div class="card" style="margin-top: 16px">
+              <div class="card-title">
+                <span>Subreddit Overview</span>
+                <span
+                  style="
+                    font-size: 10px;
+                    color: var(--muted);
+                    font-family: var(--mono);
+                  "
+                >
+                  model-owned subs
+                </span>
+              </div>
+              <div class="table-wrap" id="subOverviewTable">
+                <div class="empty" style="padding: 20px 0">
+                  No subs tracked yet. Click + Add Sub to start.
+                </div>
+              </div>
             </div>
 
             <!-- Post Overview -->
@@ -2143,19 +2272,24 @@
         const btn = document.getElementById("syncBtn");
         btn.disabled = true;
         btn.textContent = "⟳ Syncing...";
+
         const alertEl = document.getElementById("syncAlert");
         alertEl.innerHTML = `<div class="alert al-b">Fetching Reddit data for all accounts...</div>`;
+
         const myModels = isAdmin
           ? allModels
           : allModels.filter((m) => m.va_id === currentVA.id);
+
         const accounts = myModels.flatMap((m) =>
           (m.reddit_accounts || [])
             .filter((a) => !a.banned)
             .map((a) => ({ ...a })),
         );
+
         let synced = 0,
           banned = 0,
           errors = 0;
+
         for (const acct of accounts) {
           try {
             const res = await fetch(`${API}/intel/sync-account`, {
@@ -2166,20 +2300,44 @@
                 username: acct.username,
               }),
             });
+
             const j = await res.json();
+
             if (j.banned) banned++;
             else synced += j.synced || 0;
           } catch {
             errors++;
           }
         }
+
         alertEl.innerHTML = `<div class="alert al-g">Sync done — ${synced} new posts, ${banned} accounts detected as banned, ${errors} errors.</div>`;
+
         btn.disabled = false;
         btn.textContent = "⟳ Sync";
+
         lastSyncedAt = Date.now();
         updateLastSyncedDisplay();
+
         setTimeout(() => (alertEl.innerHTML = ""), 6000);
+
         await loadBaseData();
+
+        try {
+          const subRes = await fetch(
+            `${API}/intel/model-subs?va_id=${currentVA.id}${isAdmin ? "&admin=true" : ""}`,
+          );
+          const subData = await subRes.json();
+
+          for (const sub of subData.data || []) {
+            await fetch(`${API}/intel/model-subs/${sub.id}/sync`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ subreddit: sub.subreddit }),
+            }).catch(() => {});
+          }
+
+          loadSubredditOverview();
+        } catch {}
         loadDashboard();
       }
 
@@ -2228,6 +2386,7 @@
         renderScheduler(schedData, 1);
         subsToTryCache = subsData.data || [];
         renderSubsToTry(subsToTryCache, 1);
+        loadSubredditOverview();
 
         // ── Store posted subs in localStorage so index.html Unmoderated can exclude them ──
         const allPostedSubs = [
@@ -2238,19 +2397,166 @@
         }
       }
 
+      // ── Add Sub modal ──────────────────────────────────────────────────────────
+      function openAddSub() {
+        document.getElementById("addSubModal").style.display = "flex";
+        document.getElementById("addSubInput").value = "";
+        document.getElementById("addSubAlert").innerHTML = "";
+        document.getElementById("addSubPreview").style.display = "none";
+        document.getElementById("addSubSaveBtn").textContent = "Add Sub";
+        document.getElementById("addSubSaveBtn").disabled = false;
+        setTimeout(() => document.getElementById("addSubInput").focus(), 100);
+      }
+
+      function closeAddSub() {
+        document.getElementById("addSubModal").style.display = "none";
+      }
+
+      // Close modal on backdrop click
+      document.getElementById("addSubModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("addSubModal")) closeAddSub();
+      });
+
+      async function submitAddSub() {
+        const input = document.getElementById("addSubInput").value.trim();
+        if (!input) return;
+        const alertEl = document.getElementById("addSubAlert");
+        const saveBtn = document.getElementById("addSubSaveBtn");
+        const previewEl = document.getElementById("addSubPreview");
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Adding...";
+        alertEl.innerHTML = "";
+        previewEl.style.display = "none";
+
+        try {
+          const res = await fetch(`${API}/intel/model-subs`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: input, va_id: currentVA.id }),
+          });
+          const j = await res.json();
+
+          if (!res.ok) {
+            alertEl.innerHTML = `<div class="alert al-r" style="margin-bottom:10px">${j.error}</div>`;
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Add Sub";
+            return;
+          }
+
+          // Show preview
+          previewEl.style.display = "block";
+          document.getElementById("addSubPreviewName").textContent =
+            `r/${j.sub.subreddit}`;
+          document.getElementById("addSubPreviewMeta").textContent =
+            `${(j.reddit?.subscribers || 0).toLocaleString()} members · ${(j.reddit?.active_users || 0).toLocaleString()} online`;
+
+          alertEl.innerHTML = `<div class="alert al-g" style="margin-bottom:10px">r/${j.sub.subreddit} added successfully!</div>`;
+          saveBtn.textContent = "Added ✓";
+
+          // Refresh subreddit overview
+          loadSubredditOverview();
+          setTimeout(() => closeAddSub(), 1500);
+        } catch (err) {
+          alertEl.innerHTML = `<div class="alert al-r" style="margin-bottom:10px">Error: ${err.message}</div>`;
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Add Sub";
+        }
+      }
+
+      // ── Subreddit Overview ─────────────────────────────────────────────────────
+      async function loadSubredditOverview() {
+        const adminParam = isAdmin ? "&admin=true" : "";
+        const el = document.getElementById("subOverviewTable");
+        el.innerHTML = '<div class="skeleton"></div>';
+        try {
+          const res = await fetch(
+            `${API}/intel/model-subs?va_id=${currentVA.id}${adminParam}`,
+          );
+          const j = await res.json();
+          renderSubredditOverview(j.data || []);
+        } catch {
+          el.innerHTML =
+            '<div class="empty">Failed to load subreddit overview.</div>';
+        }
+      }
+
+      function renderSubredditOverview(subs) {
+        const el = document.getElementById("subOverviewTable");
+        if (!subs.length) {
+          el.innerHTML =
+            '<div class="empty" style="padding:20px 0;">No subs tracked yet. Click + Add Sub to start.</div>';
+          return;
+        }
+        el.innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Sub</th>
+                <th>Members</th>
+                <th>Avg Upvotes</th>
+                <th>Avg Comments</th>
+                <th>Avg Eng</th>
+                <th>Online</th>
+                <th>Posts</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${subs
+                .map(
+                  (s) => `
+                <tr>
+                  <td style="font-weight:600;">r/${s.subreddit}</td>
+                  <td>${fmtNum(s.subscribers)}</td>
+                  <td>${s.avg_upvotes}</td>
+                  <td>${s.avg_comments}</td>
+                  <td>${s.avg_engagement}</td>
+                  <td>${fmtNum(s.active_users)}</td>
+                  <td>${s.post_count}</td>
+                  <td>
+                    <a href="https://reddit.com/r/${s.subreddit}" target="_blank" rel="noopener"
+                       style="font-size:10px;font-family:var(--mono);color:var(--accent);text-decoration:none;">
+                      open ↗
+                    </a>
+                    <button onclick="deleteModelSub('${s.id}')"
+                      style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;margin-left:8px;">
+                      ✕
+                    </button>
+                  </td>
+                </tr>`,
+                )
+                .join("")}
+            </tbody>
+          </table>`;
+      }
+
+      async function deleteModelSub(id) {
+        if (!confirm("Remove this subreddit from tracking?")) return;
+        await fetch(`${API}/intel/model-subs/${id}?va_id=${currentVA.id}`, {
+          method: "DELETE",
+        });
+        loadSubredditOverview();
+      }
+
+      function fmtNum(n) {
+        if (!n) return "0";
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+        return String(n);
+      }
+
       // ── Load subs to try (called on toggle) ────────────────────────────────────
       let _subsToTryAbort = null;
       async function loadSubsToTry() {
-        // Cancel any in-flight request immediately
+        // Cancel any in-flight request
         if (_subsToTryAbort) _subsToTryAbort.abort();
         _subsToTryAbort = new AbortController();
-        // Show skeleton right away so there's no apparent lag
+        // Show skeleton immediately so user sees feedback on toggle
         document.getElementById("subsToTryArea").innerHTML =
-          '<div class="skeleton" style="height:30px"></div><div class="skeleton" style="height:30px;opacity:.6;margin-top:4px"></div>';
+          '<div class="skeleton" style="height:30px"></div>' +
+          '<div class="skeleton" style="height:30px;opacity:.6;margin-top:4px"></div>';
         document.getElementById("subsToTryPager").innerHTML = "";
-        document.getElementById("subsToTryMode").textContent = nsfwMode
-          ? "NSFW"
-          : "SFW";
         try {
           const res = await fetch(
             `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
@@ -2262,11 +2568,10 @@
         } catch (e) {
           if (e.name !== "AbortError") {
             document.getElementById("subsToTryArea").innerHTML =
-              '<div class="empty" style="padding:8px 0;font-size:11px">Could not load suggestions.</div>';
+              '<div class="empty">Failed to load. Try again.</div>';
           }
         }
       }
-
       // ── Pager helper ───────────────────────────────────────────────────────────
       function makePager(elId, total, page, setFn) {
         const el = document.getElementById(elId);
@@ -2525,7 +2830,7 @@
       // ── Metrics ────────────────────────────────────────────────────────────────
       function renderMetrics(dash) {
         const tp = dash.today_posts || [];
-        // Avg upvotes + comments reflect TODAY's posts only
+        // Avg Upvotes and Avg Comments now reflect TODAY's posts only
         const avgUp = tp.length
           ? Math.round(tp.reduce((s, p) => s + (p.upvotes || 0), 0) / tp.length)
           : 0;
