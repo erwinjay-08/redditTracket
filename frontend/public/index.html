@@ -1207,9 +1207,13 @@
         currentPage = 1;
         try {
           const endpoint = tab === "unmoderated" ? "unmoderated" : tab;
-          const res = await fetch(
-            `${API}/${endpoint}?limit=100&nsfw=${nsfwMode ? 1 : 0}`,
-          );
+          let url = `${API}/${endpoint}?limit=100&nsfw=${nsfwMode ? 1 : 0}`;
+          // For unmoderated: pass VA already-posted subs to exclude from results
+          if (tab === "unmoderated") {
+            const postedSubs = localStorage.getItem("st-posted-subs") || "";
+            if (postedSubs) url += `&exclude=${encodeURIComponent(postedSubs)}`;
+          }
+          const res = await fetch(url);
           const json = await res.json();
           allResults = json.data || [];
           renderPage(allResults, tab, 1);
@@ -1501,182 +1505,166 @@
       }
 
       // ── Category bar ──────────────────────────────────────────────────────────────
+      // Model-posting focused categories
       const SFW_CATS = [
         { label: "All", icon: "🌐", q: null },
         {
-          label: "Gaming",
-          icon: "🎮",
-          q: "gaming|||games|||esports|||rpg|||gaming community",
-        },
-        {
-          label: "Tech",
-          icon: "💻",
-          q: "programming|||technology|||software|||coding|||developer|||computer science",
-        },
-        {
-          label: "Science",
-          icon: "🔬",
-          q: "science|||physics|||biology|||chemistry|||astronomy|||neuroscience",
-        },
-        {
-          label: "Sports",
-          icon: "⚽",
-          q: "sports|||football|||basketball|||soccer|||baseball|||nba|||nfl",
-        },
-        {
-          label: "Movies & TV",
-          icon: "🎬",
-          q: "movies|||television|||tv shows|||film|||cinema|||streaming|||anime series",
-        },
-        {
-          label: "Music",
-          icon: "🎵",
-          q: "music|||hiphop|||rock|||metal|||jazz|||electronic music|||pop",
-        },
-        {
-          label: "Art",
-          icon: "🎨",
-          q: "art|||digital art|||illustration|||painting|||drawing|||design|||photography|||creative",
-        },
-        {
-          label: "Finance",
-          icon: "💰",
-          q: "finance|||investing|||stocks|||personalfinance|||economics|||wallstreet|||trading",
-        },
-        {
-          label: "Beauty",
-          icon: "🧴",
-          q: "beauty|||skincare|||skincareaddiction|||selfcare|||haircare|||glowup|||beauty tips",
-        },
-        {
           label: "Fitness",
           icon: "💪",
-          q: "fitness|||gym|||workout|||bodybuilding|||lifting|||cardio|||running|||fit",
+          q: "fitnessgirls|||gymgirls|||workout women|||fitness model|||gym selfie",
         },
         {
-          label: "Food",
-          icon: "🍔",
-          q: "food|||cooking|||recipes|||baking|||nutrition|||mealprep|||foodporn",
-        },
-        {
-          label: "Travel",
-          icon: "✈️",
-          q: "travel|||backpacking|||adventure|||worldtravel|||camping|||hiking|||tourism",
-        },
-        {
-          label: "Anime",
-          icon: "⛩️",
-          q: "anime|||manga|||otaku|||weeb|||jrpg|||japanese culture|||light novel",
-        },
-        {
-          label: "Memes",
-          icon: "😂",
-          q: "memes|||funny|||humor|||dankmemes|||comedy|||jokes|||shitposting",
-        },
-        {
-          label: "Makeup",
-          icon: "💄",
-          q: "makeup|||makeupaddiction|||mua|||cosmetics|||makeuptutorial|||beautyguru|||makeuplooks",
-        },
-        {
-          label: "Books",
-          icon: "📚",
-          q: "books|||reading|||literature|||fantasy|||scifi|||horror|||fiction|||library",
-        },
-        {
-          label: "Pets",
-          icon: "🐾",
-          q: "pets|||dogs|||cats|||animals|||wildlife|||aquarium|||reptiles|||birds",
-        },
-        {
-          label: "DIY",
-          icon: "🔧",
-          q: "diy|||crafts|||hobbies|||woodworking|||maker|||3dprinting|||electronics",
-        },
-        {
-          label: "Mental Health",
-          icon: "🧠",
-          q: "mentalhealth|||anxiety|||depression|||therapy|||mindfulness|||selfcare|||wellness",
-        },
-        {
-          label: "Cars",
-          icon: "🚗",
-          q: "cars|||automotive|||mechanic|||car enthusiasts|||motorsport",
-        },
-      ];
-      const NSFW_CATS = [
-        { label: "All", icon: "🔞", q: null },
-        { label: "General", icon: "🔥", q: "nsfw|||adult|||explicit|||18plus" },
-        {
-          label: "Amateur",
+          label: "Photography",
           icon: "📸",
-          q: "gonewild|||realgirls|||amateur|||homemade|||gw",
+          q: "portrait photography|||modeling|||photoshoot|||model photography|||fashion photography",
+        },
+        {
+          label: "Candid",
+          icon: "🎞️",
+          q: "candid photography|||street photography|||candid women|||natural beauty|||candid shots",
+        },
+        {
+          label: "Fashion",
+          icon: "👗",
+          q: "fashion style|||streetwear women|||ootd|||lookbook|||fashion model",
         },
         {
           label: "Cosplay",
           icon: "🎭",
-          q: "cosplay nsfw|||cosplay sexy|||costume adult",
+          q: "cosplay|||cosplay women|||costume|||cosplaygirls|||cosplayer",
+        },
+        {
+          label: "Yoga",
+          icon: "🧘",
+          q: "yoga girls|||yoga women|||flexibility|||yogapose|||stretching women",
+        },
+        {
+          label: "Beach",
+          icon: "🏖️",
+          q: "beach girls|||bikini|||beach photography|||summer girls|||swimsuit",
+        },
+        {
+          label: "Makeup",
+          icon: "💄",
+          q: "makeupaddiction|||makeuplooks|||mua|||beauty makeup|||cosmetics",
+        },
+        {
+          label: "Dance",
+          icon: "💃",
+          q: "dance women|||dancer|||cheerleading|||pole dance|||twerk",
+        },
+        {
+          label: "Body Positive",
+          icon: "🌸",
+          q: "body positive|||bodypositivity|||natural body|||curvygirls|||plus size model",
+        },
+        {
+          label: "Lingerie",
+          icon: "🩱",
+          q: "lingerie sfw|||underwear model|||boudoir|||intimates fashion",
+        },
+        {
+          label: "Sporty",
+          icon: "⚽",
+          q: "sporty girls|||athletic women|||sports model|||running women|||tennis women",
+        },
+        {
+          label: "Art Nude",
+          icon: "🎨",
+          q: "art photography|||artistic nude|||figure photography|||fine art nude",
+        },
+        {
+          label: "Selfies",
+          icon: "🤳",
+          q: "selfie women|||mirror selfie|||bathroom selfie|||girls selfie",
+        },
+        {
+          label: "Cute",
+          icon: "🥰",
+          q: "cute girls|||adorable women|||kawaii girls|||wholesome women",
+        },
+      ];
+      const NSFW_CATS = [
+        { label: "All", icon: "🔞", q: null },
+        {
+          label: "Amateur",
+          icon: "📸",
+          q: "gonewild|||realgirls|||amateur nsfw|||homemade|||gw",
         },
         {
           label: "Latina",
           icon: "🌹",
-          q: "latina|||hispanic|||spanish nsfw|||colombiana|||latina sluts",
+          q: "latina|||latina nsfw|||hispanic nsfw|||colombiana|||latina amateur",
         },
         {
           label: "Asian",
           icon: "🌸",
-          q: "asian nsfw|||japanese adult|||korean nsfw|||asian amateur|||asian girls|||asian sluts",
+          q: "asian nsfw|||japanese adult|||korean nsfw|||asian amateur|||asian girls nsfw",
         },
         {
           label: "Ebony",
           icon: "✨",
-          q: "ebony|||black girls|||melanin nsfw|||bbc|||eboni sluts",
+          q: "ebony|||ebony nsfw|||black girls nsfw|||melanin nsfw|||ebony amateur",
         },
-        {
-          label: "Redhead",
-          icon: "🦊",
-          q: "redhead|||ginger nsfw|||redheadgirls",
-        },
-        { label: "Petite", icon: "🌟", q: "petite|||slim nsfw|||small nsfw" },
         {
           label: "Curvy",
           icon: "💫",
-          q: "curvy|||thick|||bbw|||chubby|||plus size nsfw",
+          q: "curvy nsfw|||thick nsfw|||bbw|||chubby nsfw|||plus size nsfw",
         },
         {
-          label: "Mature",
-          icon: "🍷",
-          q: "mature milf|||milf|||cougar|||older women nsfw|||gilf",
-        },
-        {
-          label: "Chest",
-          icon: "🍒",
-          q: "boobs|||tits|||breasts|||cleavage|||bigboobs|||smallboobs|||naturalboobs",
-        },
-        {
-          label: "Feet",
-          icon: "🦶",
-          q: "feet|||footfetish|||toes|||soles|||barefoot|||foot",
-        },
-        {
-          label: "Couples",
-          icon: "💑",
-          q: "couples nsfw|||girlfriend|||sharing nsfw|||partner",
+          label: "Petite",
+          icon: "🌟",
+          q: "petite nsfw|||slim nsfw|||small girls nsfw|||petite amateur",
         },
         {
           label: "Fitness",
           icon: "💪",
-          q: "fitnessgirls nsfw|||fit girls|||gym nsfw|||athletic women",
+          q: "fitnessgirls nsfw|||fit girls nsfw|||gym nsfw|||athletic women nsfw|||sporty nsfw",
         },
         {
-          label: "Stories",
-          icon: "📖",
-          q: "erotic stories|||sex stories|||adult fiction|||erotica",
+          label: "Mature",
+          icon: "🍷",
+          q: "milf|||mature nsfw|||cougar|||older women nsfw|||gilf",
         },
         {
-          label: "Discussion",
-          icon: "💬",
-          q: "sex discussion|||sex advice|||relationship nsfw|||sexual health",
+          label: "Redhead",
+          icon: "🦊",
+          q: "redhead nsfw|||ginger nsfw|||redheadgirls",
+        },
+        {
+          label: "Cosplay",
+          icon: "🎭",
+          q: "cosplay nsfw|||sexy cosplay|||lewd cosplay|||cosplay adult",
+        },
+        {
+          label: "Chest",
+          icon: "🍒",
+          q: "boobs|||tits|||breasts|||bigboobs|||naturalboobs",
+        },
+        {
+          label: "Body Parts",
+          icon: "🫦",
+          q: "ass|||butt nsfw|||feet nsfw|||thighs|||body parts nsfw",
+        },
+        {
+          label: "OnlyFans",
+          icon: "💰",
+          q: "onlyfans|||onlyfans girls|||of content|||onlyfans leaks",
+        },
+        {
+          label: "Couples",
+          icon: "💑",
+          q: "couples nsfw|||girlfriend nsfw|||sharing partner|||amateur couples",
+        },
+        {
+          label: "Selfies",
+          icon: "🤳",
+          q: "gonewild selfies|||nsfw selfie|||mirror nsfw|||bathroom nsfw",
+        },
+        {
+          label: "Lingerie",
+          icon: "🩱",
+          q: "lingerie nsfw|||underwear nsfw|||boudoir nsfw|||sexy lingerie",
         },
       ];
 

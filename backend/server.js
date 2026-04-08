@@ -203,11 +203,19 @@ app.get("/api/unmoderated", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 100);
     const nsfw = wantsNsfw(req);
-    // Accept comma-separated list of already-posted subs to exclude
-    const excludeSubs = new Set((req.query.exclude || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean));
+    // Accept comma-separated already-posted subs to exclude
+    const excludeSubs = new Set(
+      (req.query.exclude || "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+    );
     if (nsfw) {
       const live = await reddit.fetchNsfwUnmoderated(limit, excludeSubs);
-      return res.json({ source: "live", data: sortByQuality(live.map(formatSub)) });
+      return res.json({
+        source: "live",
+        data: sortByQuality(live.map(formatSub)),
+      });
     }
     const live = await reddit.fetchUnmoderated(limit, excludeSubs);
     res.json({ source: "live", data: sortByQuality(live.map(formatSub)) });

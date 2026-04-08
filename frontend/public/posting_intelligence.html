@@ -2228,25 +2228,42 @@
         renderScheduler(schedData, 1);
         subsToTryCache = subsData.data || [];
         renderSubsToTry(subsToTryCache, 1);
+
+        // ── Store posted subs in localStorage so index.html Unmoderated can exclude them ──
+        const allPostedSubs = [
+          ...new Set((dashData.all_posts || []).map((p) => p.subreddit)),
+        ];
+        if (allPostedSubs.length) {
+          localStorage.setItem("st-posted-subs", allPostedSubs.join(","));
+        }
       }
 
       // ── Load subs to try (called on toggle) ────────────────────────────────────
-      let subsToTryAbort = null;
+      let _subsToTryAbort = null;
       async function loadSubsToTry() {
-        if (subsToTryAbort) subsToTryAbort.abort();
-        subsToTryAbort = new AbortController();
+        // Cancel any in-flight request immediately
+        if (_subsToTryAbort) _subsToTryAbort.abort();
+        _subsToTryAbort = new AbortController();
+        // Show skeleton right away so there's no apparent lag
         document.getElementById("subsToTryArea").innerHTML =
           '<div class="skeleton" style="height:30px"></div><div class="skeleton" style="height:30px;opacity:.6;margin-top:4px"></div>';
+        document.getElementById("subsToTryPager").innerHTML = "";
+        document.getElementById("subsToTryMode").textContent = nsfwMode
+          ? "NSFW"
+          : "SFW";
         try {
           const res = await fetch(
             `${API}/intel/subs-to-try?va_id=${currentVA.id}&nsfw=${nsfwMode ? "1" : "0"}`,
-            { signal: subsToTryAbort.signal },
+            { signal: _subsToTryAbort.signal },
           );
           const j = await res.json();
           subsToTryCache = j.data || [];
           renderSubsToTry(subsToTryCache, 1);
         } catch (e) {
-          if (e.name !== "AbortError") console.error(e);
+          if (e.name !== "AbortError") {
+            document.getElementById("subsToTryArea").innerHTML =
+              '<div class="empty" style="padding:8px 0;font-size:11px">Could not load suggestions.</div>';
+          }
         }
       }
 
@@ -2507,16 +2524,14 @@
 
       // ── Metrics ────────────────────────────────────────────────────────────────
       function renderMetrics(dash) {
-        const posts = dash.today_posts || [],
-          tp = dash.today_posts || [];
-        const avgUp = posts.length
-          ? Math.round(
-              posts.reduce((s, p) => s + (p.upvotes || 0), 0) / posts.length,
-            )
+        const tp = dash.today_posts || [];
+        // Avg upvotes + comments reflect TODAY's posts only
+        const avgUp = tp.length
+          ? Math.round(tp.reduce((s, p) => s + (p.upvotes || 0), 0) / tp.length)
           : 0;
-        const avgCmt = posts.length
+        const avgCmt = tp.length
           ? Math.round(
-              posts.reduce((s, p) => s + (p.comments || 0), 0) / posts.length,
+              tp.reduce((s, p) => s + (p.comments || 0), 0) / tp.length,
             )
           : 0;
         const sub = {};
