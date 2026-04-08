@@ -83,13 +83,21 @@ const NSFW_RISING_QUERIES = [
 
 const NSFW_NEW_QUERIES = [
   "gonewild new",
-  "amateur nsfw",
+  "amateur",
   "18plus",
   "onlyfans girls",
   "nsfw selfie",
   "realgirls",
-  "latina amateur",
-  "asian amateur",
+  "nudes",
+  "nsfw selfie",
+  "latina",
+  "asian",
+  "ebony",
+  "curvy",
+  "chest",
+  "tits",
+  "boobs",
+  "thighs",
 ];
 
 // Unmoderated NSFW: search-based ONLY — include_over_18 is ignored on
@@ -103,10 +111,10 @@ const NSFW_UNMOD_QUERIES = [
   "sexy nsfw",
   "nudes",
   "nsfw selfie",
-  "latina nsfw",
-  "asian nsfw",
-  "ebony nsfw",
-  "curvy nsfw",
+  "latina",
+  "asian",
+  "ebony",
+  "curvy",
 ];
 
 // ── SFW ──────────────────────────────────────────────────────────────────────
@@ -178,29 +186,17 @@ async function fetchNew(limit = 100) {
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
-
   let after = null;
-  const BATCH = 3; // fetch 3 pages in parallel per round
-  let rounds = 0;
-  const MAX_ROUNDS = 8; // 8 rounds × 3 pages = 24 pages total (vs 25 sequential)
+  let attempts = 0;
 
-  while (results.length < targetCount && rounds < MAX_ROUNDS) {
-    rounds++;
+  while (results.length < targetCount && attempts < 30) {
+    attempts++;
+    const params = { limit: 100, sort: "new" };
+    if (after) params.after = after;
 
-    // Build 3 page params — all use the same `after` token (each page starts from same point,
-    // giving us overlapping but quick coverage; Reddit deduplicates by name in seen set)
-    const pageRequests = Array.from({ length: BATCH }, () => {
-      const p = { limit: 100, sort: "new" };
-      if (after) p.after = after;
-      return redditGet("/subreddits/new", p);
-    });
-
-    const pages = await Promise.allSettled(pageRequests);
-    let advancedAfter = false;
-
-    for (const page of pages) {
-      if (page.status !== "fulfilled") continue;
-      const children = page.value?.data?.children || [];
+    try {
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
       if (!children.length) break;
 
       for (const child of children) {
@@ -208,30 +204,22 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
         const name = sub.display_name?.toLowerCase();
         if (!name || seen.has(name)) continue;
         seen.add(name);
-
         const subs = sub.subscribers || 0;
         if (subs < 20 || subs > 2500) continue;
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
         if (sub.restrict_posting === true) continue;
         if (sub.submission_type === "restricted") continue;
-
         results.push(sub);
         if (results.length >= targetCount) break;
       }
 
-      // Advance `after` once from first successful page
-      if (!advancedAfter) {
-        const nextAfter = page.value?.data?.after;
-        if (nextAfter) {
-          after = nextAfter;
-          advancedAfter = true;
-        }
-      }
-      if (results.length >= targetCount) break;
+      after = data?.data?.after;
+      if (!after) break;
+    } catch (err) {
+      console.warn("[fetchUnmoderated] error:", err.message);
+      break;
     }
-
-    if (!advancedAfter) break; // no more pages
   }
 
   return results;
@@ -338,9 +326,25 @@ async function fetchNsfwUnmoderated(
   const results = [];
   const seen = new Set(excludeSubs);
 
-  // Run all NSFW queries in parallel
+  // These are specific enough to return small NSFW communities
+  const queries = [
+    "nsfw",
+    "amateur",
+    "realgirls",
+    "nudes",
+    "nsfw selfie",
+    "latina",
+    "asian",
+    "ebony",
+    "curvy",
+    "chest",
+    "tits",
+    "boobs",
+    "thighs",
+  ];
+
   const fetches = await Promise.allSettled(
-    NSFW_UNMOD_QUERIES.map((q) =>
+    queries.map((q) =>
       redditGet("/subreddits/search", {
         q,
         sort: "new",
@@ -357,14 +361,12 @@ async function fetchNsfwUnmoderated(
       const name = sub.display_name?.toLowerCase();
       if (!name || seen.has(name)) continue;
       seen.add(name);
-
       const subs = sub.subscribers || 0;
       if (subs < 20 || subs > 2500) continue;
       if (!sub.over18) continue;
       if (sub.subreddit_type !== "public") continue;
       if (sub.restrict_posting === true) continue;
       if (sub.submission_type === "restricted") continue;
-
       results.push(sub);
       if (results.length >= targetCount) break;
     }
