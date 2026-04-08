@@ -2026,6 +2026,9 @@ app.patch("/api/intel/model-subs/:id/sync", async (req, res) => {
 app.get("/{*path}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/index.html"));
 });
+app.get("/", (req, res) => {
+  res.send("Server is working ✅");
+});
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`\n🚀 Reddit Tracker running on port ${PORT}`);
