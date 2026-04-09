@@ -214,7 +214,7 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   let after = null;
   let emptyRounds = 0;
 
-  while (results.length < targetCount && emptyRounds < 3) {
+  while (results.length < targetCount && emptyRounds < 15) {
     // Fetch 4 pages in parallel using sequential after tokens
     // We can't know the next after ahead of time, so fetch page 1,
     // then use its after for page 2, etc. — but we can pipeline:
