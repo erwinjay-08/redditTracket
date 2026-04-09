@@ -175,7 +175,9 @@ app.get("/api/rising", async (req, res) => {
     }
     res.json({
       source: "db",
-      data: filterNsfw(rows.map(formatDbRow), false).slice(0, limit),
+      data: filterNsfw(rows.map(formatDbRow), false)
+        .filter((d) => (d.subscribers || 0) <= 300000)
+        .slice(0, limit),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
