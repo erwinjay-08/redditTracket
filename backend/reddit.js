@@ -211,46 +211,32 @@ async function fetchNew(limit = 100) {
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
-  let after = null;
-  let emptyRounds = 0;
 
-  while (results.length < targetCount && emptyRounds < 15) {
-    // Fetch 4 pages in parallel using sequential after tokens
-    // We can't know the next after ahead of time, so fetch page 1,
-    // then use its after for page 2, etc. — but we can pipeline:
-    // fetch page N while processing page N-1
-    const params = { limit: 100, sort: "new" };
-    if (after) params.after = after;
+  const fetches = await Promise.allSettled(
+    SFW_QUERIES.map((q) =>
+      redditGet("/subreddits/search", {
+        q,
+        sort: "new",
+        limit: 100,
+      }),
+    ),
+  );
 
-    try {
-      const data = await redditGet("/subreddits/new", params);
-      const children = data?.data?.children || [];
-      if (!children.length) break;
-
-      let foundAny = false;
-      for (const child of children) {
-        const sub = child.data;
-        const name = sub.display_name?.toLowerCase();
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-        const subs = sub.subscribers || 0;
-        if (subs < 20 || subs > 2500) continue;
-        if (sub.over18) continue;
-        if (sub.subreddit_type !== "public") continue;
-        results.push(sub);
-        foundAny = true;
-        if (results.length >= targetCount) break;
-      }
-
-      if (!foundAny) emptyRounds++;
-      else emptyRounds = 0;
-
-      after = data?.data?.after;
-      if (!after) break;
-    } catch (err) {
-      console.warn("[fetchUnmoderated] error:", err.message);
-      break;
+  for (const f of fetches) {
+    if (f.status !== "fulfilled") continue;
+    for (const child of f.value.data.children) {
+      const sub = child.data;
+      const name = sub.display_name?.toLowerCase();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      const subs = sub.subscribers || 0;
+      if (subs < 20 || subs > 2500) continue;
+      if (sub.over18) continue;
+      if (sub.subreddit_type !== "public") continue;
+      results.push(sub);
+      if (results.length >= targetCount) break;
     }
+    if (results.length >= targetCount) break;
   }
 
   return results;
