@@ -162,22 +162,14 @@ app.get("/api/rising", async (req, res) => {
         data: sortByQuality(live.map(formatSub)),
       });
     }
-    const rows = stmts.getRising.all(limit * 3);
-    if (rows.length === 0) {
-      const live = await reddit.fetchRising(limit * 2);
-      return res.json({
-        source: "live",
-        data: sortByQuality(filterNsfw(live.map(formatSub), false)).slice(
-          0,
-          limit,
-        ),
-      });
-    }
-    res.json({
-      source: "db",
-      data: filterNsfw(rows.map(formatDbRow), false)
-        .filter((d) => (d.subscribers || 0) <= 300000)
-        .slice(0, limit),
+    // Always fetch live — DB rows were saved with old uncapped data
+    const live = await reddit.fetchRising(limit);
+    return res.json({
+      source: "live",
+      data: sortByQuality(filterNsfw(live.map(formatSub), false)).slice(
+        0,
+        limit,
+      ),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

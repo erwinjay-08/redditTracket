@@ -200,55 +200,35 @@ async function fetchNew(limit = 100) {
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
-
   let after = null;
-  const BATCH = 3;
-  let rounds = 0;
-  const MAX_ROUNDS = 8;
+  let attempts = 0;
 
-  while (results.length < targetCount && rounds < MAX_ROUNDS) {
-    rounds++;
-
-    const pages = await Promise.allSettled(
-      Array.from({ length: BATCH }, () => {
-        const p = { limit: 100, sort: "new" };
-        if (after) p.after = after;
-        return redditGet("/subreddits/new", p);
-      }),
-    );
-
-    let advancedAfter = false;
-    for (const page of pages) {
-      if (page.status !== "fulfilled") continue;
-      const children = page.value?.data?.children || [];
-      if (!children.length) continue;
-
+  while (results.length < targetCount && attempts < 50) {
+    attempts++;
+    const params = { limit: 100, sort: "new" };
+    if (after) params.after = after;
+    try {
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
       for (const child of children) {
         const sub = child.data;
         const name = sub.display_name?.toLowerCase();
         if (!name || seen.has(name)) continue;
         seen.add(name);
-
         const subs = sub.subscribers || 0;
         if (subs < 20 || subs > 2500) continue;
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
-
         results.push(sub);
         if (results.length >= targetCount) break;
       }
-
-      if (!advancedAfter) {
-        const next = page.value?.data?.after;
-        if (next) {
-          after = next;
-          advancedAfter = true;
-        }
-      }
-      if (results.length >= targetCount) break;
+      after = data?.data?.after;
+      if (!after) break;
+    } catch (err) {
+      console.warn("[fetchUnmoderated] error:", err.message);
+      break;
     }
-
-    if (!advancedAfter) break;
   }
 
   return results;
@@ -278,34 +258,89 @@ async function fetchNsfwUnmoderated(
   const results = [];
   const seen = new Set(excludeSubs);
 
-  const fetches = await Promise.allSettled(
-    NSFW_QUERIES.map((q) =>
-      redditGet("/subreddits/search", {
-        q,
-        sort: "new",
-        limit: 100,
-        include_over_18: "on",
-      }),
-    ),
-  );
+  // Primary: /subreddits/new — try first, may return NSFW on some OAuth configs
+  try {
+    let after = null;
+    let attempts = 0;
+    while (results.length < targetCount && attempts < 20) {
+      attempts++;
+      const params = { limit: 100, sort: "new", include_over_18: "1" };
+      if (after) params.after = after;
+      const data = await redditGet("/subreddits/new", params);
+      const children = data?.data?.children || [];
+      if (!children.length) break;
+      for (const child of children) {
+        const sub = child.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (!sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
+      after = data?.data?.after;
+      if (!after) break;
+    }
+  } catch (err) {
+    console.warn("[fetchNsfwUnmoderated] /subreddits/new failed:", err.message);
+  }
 
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const child of f.value.data.children) {
-      const sub = child.data;
-      const name = sub.display_name?.toLowerCase();
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-
-      const subs = sub.subscribers || 0;
-      if (subs < 20 || subs > 2500) continue;
-      if (!sub.over18) continue;
-      if (sub.subreddit_type !== "public") continue;
-
-      results.push(sub);
+  if (results.length < targetCount) {
+    const queries = [
+      "nsfw new",
+      "adult new",
+      "xxx",
+      "18plus",
+      "onlyfans new",
+      "naughty",
+      "sexy",
+      "nude",
+      "naked",
+      "erotic",
+      "lewd",
+      "risque",
+      "explicit",
+      "adult content",
+      "mature",
+      "nsfw selfie",
+      "amateur girls",
+      "gonewild new",
+      "realgirls new",
+      "latina nsfw",
+      "asian nsfw",
+      "ebony nsfw",
+      "curvy nsfw",
+      "petite nsfw",
+    ];
+    const fetches = await Promise.allSettled(
+      queries.map((q) =>
+        redditGet("/subreddits/search", {
+          q,
+          sort: "new",
+          limit: 100,
+          include_over_18: "on",
+        }),
+      ),
+    );
+    for (const f of fetches) {
+      if (f.status !== "fulfilled") continue;
+      for (const c of f.value.data.children) {
+        const sub = c.data;
+        const name = sub.display_name?.toLowerCase();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        const subs = sub.subscribers || 0;
+        if (subs < 20 || subs > 2500) continue;
+        if (!sub.over18) continue;
+        if (sub.subreddit_type !== "public") continue;
+        results.push(sub);
+        if (results.length >= targetCount) break;
+      }
       if (results.length >= targetCount) break;
     }
-    if (results.length >= targetCount) break;
   }
 
   return results;
