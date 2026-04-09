@@ -82,6 +82,7 @@ const SFW_QUERIES = [
   "coquette",
   "whimsigoth",
   "aesthetic",
+  "gym fit",
 ];
 
 const NSFW_QUERIES = [
