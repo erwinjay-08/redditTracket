@@ -41,86 +41,108 @@ async function redditGet(path, params = {}) {
   return resp.data;
 }
 
-// ── Query banks ───────────────────────────────────────────────────────────────
-// Trending uses /subreddits/popular — most reliable, cached in DB
-// Rising uses /r/all/rising — genuinely trending activity signal
-// New uses search(sort:new) — fast parallel, returns recent communities
-// Unmoderated SFW uses /subreddits/new with parallel batches
-// Unmoderated NSFW uses search(include_over_18) — only way to get NSFW small subs
-
-const SFW_NEW_QUERIES = [
+const SFW_QUERIES = [
   "fitness girls",
-  "modeling photography",
-  "candid women",
-  "yoga fashion",
+  "pilates",
+  "modeling",
+  "photography",
+  "candid",
+  "yoga",
+  "fashion",
   "dance beauty",
-  "cosplay selfie",
+  "cosplay",
+  "selfie",
   "gym body",
-  "beach bikini",
+  "bikini",
+  "lingerie",
+  "body positive",
+  "fashion style",
+  "makeup",
+  "beauty",
+  "portrait",
+  "athletic women",
+  "cheerleading",
+  "swimsuit",
+  "street style",
+  "summer fashion",
+  "morning routine",
+  "grwm",
+  "vanilla girls",
+  "coquette",
+  "whimsigoth",
+  "aesthetic",
 ];
 
-const NSFW_TRENDING_QUERIES = [
+const NSFW_QUERIES = [
   "gonewild",
+  "nsfw",
   "realgirls",
   "amateur",
   "onlyfans",
-  "latina nsfw",
-  "asian nsfw",
-  "curvy nsfw",
-  "fitnessgirls nsfw",
-];
-
-const NSFW_RISING_QUERIES = [
-  "ebony nsfw",
-  "petite nsfw",
-  "milf nsfw",
-  "lingerie nsfw",
-  "boobs nsfw",
-  "amateur selfie nsfw",
-  "fitness nsfw",
-  "cosplay lewd",
-];
-
-const NSFW_NEW_QUERIES = [
-  "gonewild new",
-  "amateur",
-  "18plus",
-  "onlyfans girls",
-  "nsfw selfie",
-  "realgirls",
-  "nudes",
-  "nsfw selfie",
   "latina",
   "asian",
   "ebony",
   "curvy",
+  "fitnessgirls",
+  "petite",
+  "milf",
+  "lingerie",
+  "boobs",
+  "curvy",
+  "thick",
+  "thighs",
+  "stockings",
   "chest",
   "tits",
-  "boobs",
-  "thighs",
+  "ass",
+  "pussy",
+  "streetwear nsfw",
+  "amateur selfie",
+  "cosplay lewd",
+  "homegrown",
+  "feet",
 ];
 
-// Unmoderated NSFW: search-based ONLY — include_over_18 is ignored on
-// /subreddits/new with client_credentials, so we must use search API
-const NSFW_UNMOD_QUERIES = [
-  "gonewild",
-  "realgirls",
-  "amateur nsfw",
-  "nsfw girls",
-  "18plus girls",
-  "sexy nsfw",
-  "nudes",
-  "nsfw selfie",
-  "latina",
-  "asian",
-  "ebony",
-  "curvy",
-];
+async function searchMulti(
+  queries,
+  sort,
+  includeNsfw,
+  minSubs,
+  maxSubs,
+  limit = 100,
+) {
+  const seen = new Set();
+  const results = [];
+
+  const fetches = await Promise.allSettled(
+    queries.map((q) => {
+      const params = { q, sort, limit: 100 };
+      if (includeNsfw) params.include_over_18 = "on";
+      return redditGet("/subreddits/search", params);
+    }),
+  );
+
+  for (const f of fetches) {
+    if (f.status !== "fulfilled") continue;
+    for (const c of f.value.data.children) {
+      const d = c.data;
+      if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
+      seen.add(d.display_name.toLowerCase());
+      const subs = d.subscribers || 0;
+      if (subs < minSubs || subs > maxSubs) continue;
+      if (!includeNsfw && d.over18) continue;
+      results.push(d);
+    }
+    // Collect from ALL queries before slicing — this is the key fix for low counts
+  }
+
+  return results.slice(0, limit);
+}
 
 // ── SFW ──────────────────────────────────────────────────────────────────────
 
-// FIX 2: Trending uses /subreddits/popular — completely different source from rising
 async function fetchTrending(limit = 25) {
+  // Trending: /subreddits/popular for SFW — reliable, cached in DB
   const data = await redditGet("/subreddits/popular", { limit: limit * 2 });
   return data.data.children
     .map((c) => c.data)
@@ -128,162 +150,148 @@ async function fetchTrending(limit = 25) {
     .slice(0, limit);
 }
 
-// FIX 2: Rising uses /r/all/rising — genuinely different from trending
-async function fetchRising(limit = 25) {
-  const data = await redditGet("/r/all/rising", { limit: 100 });
-  const posts = data.data.children.map((c) => c.data);
+async function fetchRising(limit = 100) {
+  // Rising: /r/all/rising gives genuine trending signal + model queries by activity
   const seen = new Set();
-  const subs = [];
-  for (const post of posts) {
-    if (!seen.has(post.subreddit)) {
-      seen.add(post.subreddit);
-      const subscribers = post.subreddit_subscribers || 0;
-      if (subscribers >= 10000 && subscribers <= 300000) {
-        subs.push({
-          display_name: post.subreddit,
-          subscribers,
+  const results = [];
+
+  // Start with actual rising posts for genuine activity signal
+  try {
+    const rising = await redditGet("/r/all/rising", { limit: 100 });
+    for (const c of rising.data.children) {
+      const p = c.data;
+      if (!p.subreddit || seen.has(p.subreddit.toLowerCase())) continue;
+      seen.add(p.subreddit.toLowerCase());
+      const subs = p.subreddit_subscribers || 0;
+      if (!p.over_18 && subs >= 5000 && subs <= 500000) {
+        results.push({
+          display_name: p.subreddit,
+          subscribers: subs,
           public_description: "",
           active_user_count: 0,
-          over18: post.over_18,
+          over18: false,
           created_utc: 0,
-          title: post.subreddit,
+          title: p.subreddit,
         });
       }
     }
-  }
-  return subs.slice(0, limit);
-}
+  } catch {}
 
-// FIX 1: New uses parallel search queries — fast, no age filter, model-focused
-async function fetchNew(limit = 100) {
-  const results = [];
-  const seen = new Set();
-
-  const fetches = await Promise.allSettled(
-    SFW_NEW_QUERIES.map((q) =>
-      redditGet("/subreddits/search", { q, sort: "new", limit: 100 }),
-    ),
-  );
-
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const c of f.value.data.children) {
-      const d = c.data;
-      if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
+  // Supplement with model queries sorted by activity to fill up to limit
+  if (results.length < limit) {
+    const more = await searchMulti(
+      SFW_QUERIES,
+      "activity",
+      false,
+      1000,
+      500000,
+      limit * 2,
+    );
+    for (const d of more) {
+      if (seen.has(d.display_name.toLowerCase())) continue;
       seen.add(d.display_name.toLowerCase());
-      if (d.over18 || d.subscribers < 500 || d.subscribers > 50000) continue;
       results.push(d);
       if (results.length >= limit) break;
     }
-    if (results.length >= limit) break;
   }
 
   return results.slice(0, limit);
 }
 
-// FIX 3 & 4: Unmoderated SFW — parallel batches of /subreddits/new, 3x faster
-// No age limit (removed per request), filters 20-2500 subscribers
+async function fetchNew(limit = 100) {
+  // New: same queries, sort by new, subscriber range 500-500K
+  return searchMulti(SFW_QUERIES, "new", false, 500, 500000, limit);
+}
+
+// Unmoderated SFW: /subreddits/new pagination — most reliable for 20-2500 sub range
+// Parallel batches for speed
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
+
   let after = null;
-  let attempts = 0;
-  const maxAttempts = 20;
-  while (results.length < targetCount && attempts < maxAttempts) {
-    attempts++;
-    const params = { limit: 100, sort: "new" };
-    if (after) params.after = after;
-    try {
-      const data = await redditGet("/subreddits/new", params);
-      const children = data?.data?.children || [];
-      if (!children.length) break;
+  const BATCH = 3;
+  let rounds = 0;
+  const MAX_ROUNDS = 8;
+
+  while (results.length < targetCount && rounds < MAX_ROUNDS) {
+    rounds++;
+
+    const pages = await Promise.allSettled(
+      Array.from({ length: BATCH }, () => {
+        const p = { limit: 100, sort: "new" };
+        if (after) p.after = after;
+        return redditGet("/subreddits/new", p);
+      }),
+    );
+
+    let advancedAfter = false;
+    for (const page of pages) {
+      if (page.status !== "fulfilled") continue;
+      const children = page.value?.data?.children || [];
+      if (!children.length) continue;
+
       for (const child of children) {
         const sub = child.data;
         const name = sub.display_name?.toLowerCase();
         if (!name || seen.has(name)) continue;
         seen.add(name);
+
         const subs = sub.subscribers || 0;
         if (subs < 20 || subs > 2500) continue;
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
+        if (sub.restrict_posting === true) continue;
+        if (sub.submission_type === "restricted") continue;
+
         results.push(sub);
         if (results.length >= targetCount) break;
       }
-      after = data?.data?.after;
-      if (!after) break;
-    } catch (err) {
-      console.warn("[fetchUnmoderated] page error:", err.message);
-      break;
+
+      if (!advancedAfter) {
+        const next = page.value?.data?.after;
+        if (next) {
+          after = next;
+          advancedAfter = true;
+        }
+      }
+      if (results.length >= targetCount) break;
     }
+
+    if (!advancedAfter) break;
   }
+
   return results;
 }
 
 // ── NSFW ─────────────────────────────────────────────────────────────────────
 
-// FIX 2: NSFW Trending uses different queries from NSFW Rising
 async function fetchNsfwTrending(limit = 100) {
-  const seen = new Set();
-  const results = [];
-
-  const fetches = await Promise.allSettled(
-    NSFW_TRENDING_QUERIES.map((q) =>
-      redditGet("/subreddits/search", {
-        q,
-        sort: "relevance",
-        limit: 100,
-        include_over_18: "on",
-      }),
-    ),
-  );
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const c of f.value.data.children) {
-      const d = c.data;
-      if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
-      seen.add(d.display_name.toLowerCase());
-      if (d.subscribers < 10000) continue;
-      results.push(d);
-    }
-  }
-  return results.slice(0, limit);
+  // Same queries, sort by relevance = biggest/most-known NSFW subs
+  return searchMulti(NSFW_QUERIES, "relevance", true, 10000, 10000000, limit);
 }
 
-// FIX 2: NSFW Rising uses completely different queries
 async function fetchNsfwRising(limit = 100) {
-  const seen = new Set();
-  const results = [];
-
-  const fetches = await Promise.allSettled(
-    NSFW_RISING_QUERIES.map((q) =>
-      redditGet("/subreddits/search", {
-        q,
-        sort: "activity",
-        limit: 100,
-        include_over_18: "on",
-      }),
-    ),
-  );
-  for (const f of fetches) {
-    if (f.status !== "fulfilled") continue;
-    for (const c of f.value.data.children) {
-      const d = c.data;
-      if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
-      seen.add(d.display_name.toLowerCase());
-      if (d.subscribers < 1000 || d.subscribers > 300000) continue;
-      results.push(d);
-    }
-  }
-  return results.slice(0, limit);
+  // Same queries, sort by activity = actively posting NSFW communities
+  return searchMulti(NSFW_QUERIES, "activity", true, 1000, 2000000, limit);
 }
 
-// FIX 1: NSFW New — parallel search queries, fast, no sequential pagination
 async function fetchNsfwNew(limit = 100) {
+  // Same queries, sort by new = recently created NSFW subs
+  return searchMulti(NSFW_QUERIES, "new", true, 500, 1000000, limit);
+}
+
+// NSFW Unmoderated: MUST use search — include_over_18 is ignored on
+// /subreddits/new with client_credentials OAuth
+async function fetchNsfwUnmoderated(
+  targetCount = 100,
+  excludeSubs = new Set(),
+) {
   const results = [];
-  const seen = new Set();
+  const seen = new Set(excludeSubs);
 
   const fetches = await Promise.allSettled(
-    NSFW_NEW_QUERIES.map((q) =>
+    NSFW_QUERIES.map((q) =>
       redditGet("/subreddits/search", {
         q,
         sort: "new",
@@ -295,92 +303,25 @@ async function fetchNsfwNew(limit = 100) {
 
   for (const f of fetches) {
     if (f.status !== "fulfilled") continue;
-    for (const c of f.value.data.children) {
-      const d = c.data;
-      if (!d.display_name || seen.has(d.display_name.toLowerCase())) continue;
-      seen.add(d.display_name.toLowerCase());
-      if (d.subscribers < 500 || d.subscribers > 50000) continue;
-      results.push(d);
-      if (results.length >= limit) break;
-    }
-    if (results.length >= limit) break;
-  }
+    for (const child of f.value.data.children) {
+      const sub = child.data;
+      const name = sub.display_name?.toLowerCase();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
 
-  results.sort((a, b) => (b.created_utc || 0) - (a.created_utc || 0));
-  return results.slice(0, limit);
-}
+      const subs = sub.subscribers || 0;
+      if (subs < 20 || subs > 2500) continue;
+      if (!sub.over18) continue;
+      if (sub.subreddit_type !== "public") continue;
+      if (sub.restrict_posting === true) continue;
+      if (sub.submission_type === "restricted") continue;
 
-// FIX 3: NSFW Unmoderated — MUST use search with include_over_18
-// /subreddits/new with include_over_18 is IGNORED for client_credentials OAuth
-// Search with include_over_18:"on" is the only way to find NSFW small subs
-async function fetchNsfwUnmoderated(
-  targetCount = 100,
-  excludeSubs = new Set(),
-) {
-  const results = [];
-  const seen = new Set(excludeSubs);
-  try {
-    let after = null;
-    let attempts = 0;
-    while (results.length < targetCount && attempts < 20) {
-      attempts++;
-      const params = { limit: 100, sort: "new", include_over_18: "1" };
-      if (after) params.after = after;
-      const data = await redditGet("/subreddits/new", params);
-      const children = data?.data?.children || [];
-      if (!children.length) break;
-      for (const child of children) {
-        const sub = child.data;
-        const name = sub.display_name?.toLowerCase();
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-        const subs = sub.subscribers || 0;
-        if (subs < 20 || subs > 2500) continue;
-        if (!sub.over18) continue;
-        if (sub.subreddit_type !== "public") continue;
-        results.push(sub);
-        if (results.length >= targetCount) break;
-      }
-      after = data?.data?.after;
-      if (!after) break;
-    }
-  } catch (err) {
-    console.warn("[fetchNsfwUnmoderated] /subreddits/new failed:", err.message);
-  }
-  if (results.length < 20) {
-    const queries = [
-      "nsfw new",
-      "adult new",
-      "xxx",
-      "18plus",
-      "onlyfans new",
-      "naughty",
-      "sexy",
-    ];
-    for (const q of queries) {
+      results.push(sub);
       if (results.length >= targetCount) break;
-      try {
-        const data = await redditGet("/subreddits/search", {
-          q,
-          sort: "new",
-          limit: 100,
-          include_over_18: "on",
-        });
-        for (const c of data.data.children) {
-          const sub = c.data;
-          const name = sub.display_name?.toLowerCase();
-          if (!name || seen.has(name)) continue;
-          seen.add(name);
-          const subs = sub.subscribers || 0;
-          if (subs < 20 || subs > 2500) continue;
-          if (!sub.over18) continue;
-          if (sub.subreddit_type !== "public") continue;
-          results.push(sub);
-          if (results.length >= targetCount) break;
-        }
-      } catch {}
     }
+    if (results.length >= targetCount) break;
   }
+
   return results;
 }
 
