@@ -133,7 +133,6 @@ async function searchMulti(
       if (!includeNsfw && d.over18) continue;
       results.push(d);
     }
-    // Collect from ALL queries before slicing — this is the key fix for low counts
   }
 
   return results.slice(0, limit);
@@ -142,7 +141,6 @@ async function searchMulti(
 // ── SFW ──────────────────────────────────────────────────────────────────────
 
 async function fetchTrending(limit = 25) {
-  // Trending: /subreddits/popular for SFW — reliable, cached in DB
   const data = await redditGet("/subreddits/popular", { limit: limit * 2 });
   return data.data.children
     .map((c) => c.data)
@@ -151,11 +149,9 @@ async function fetchTrending(limit = 25) {
 }
 
 async function fetchRising(limit = 100) {
-  // Rising: /r/all/rising gives genuine trending signal + model queries by activity
   const seen = new Set();
   const results = [];
 
-  // Start with actual rising posts for genuine activity signal
   try {
     const rising = await redditGet("/r/all/rising", { limit: 100 });
     for (const c of rising.data.children) {
@@ -163,7 +159,7 @@ async function fetchRising(limit = 100) {
       if (!p.subreddit || seen.has(p.subreddit.toLowerCase())) continue;
       seen.add(p.subreddit.toLowerCase());
       const subs = p.subreddit_subscribers || 0;
-      if (!p.over_18 && subs >= 5000 && subs <= 500000) {
+      if (!p.over_18 && subs >= 5000 && subs <= 300000) {
         results.push({
           display_name: p.subreddit,
           subscribers: subs,
@@ -177,14 +173,13 @@ async function fetchRising(limit = 100) {
     }
   } catch {}
 
-  // Supplement with model queries sorted by activity to fill up to limit
   if (results.length < limit) {
     const more = await searchMulti(
       SFW_QUERIES,
       "activity",
       false,
       1000,
-      500000,
+      300000,
       limit * 2,
     );
     for (const d of more) {
@@ -199,12 +194,9 @@ async function fetchRising(limit = 100) {
 }
 
 async function fetchNew(limit = 100) {
-  // New: same queries, sort by new, subscriber range 500-500K
-  return searchMulti(SFW_QUERIES, "new", false, 500, 500000, limit);
+  return searchMulti(SFW_QUERIES, "new", false, 500, 50000, limit);
 }
 
-// Unmoderated SFW: /subreddits/new pagination — most reliable for 20-2500 sub range
-// Parallel batches for speed
 async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
@@ -241,8 +233,6 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
         if (subs < 20 || subs > 2500) continue;
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
-        if (sub.restrict_posting === true) continue;
-        if (sub.submission_type === "restricted") continue;
 
         results.push(sub);
         if (results.length >= targetCount) break;
@@ -272,13 +262,11 @@ async function fetchNsfwTrending(limit = 100) {
 }
 
 async function fetchNsfwRising(limit = 100) {
-  // Same queries, sort by activity = actively posting NSFW communities
-  return searchMulti(NSFW_QUERIES, "activity", true, 1000, 2000000, limit);
+  return searchMulti(NSFW_QUERIES, "activity", true, 1000, 300000, limit);
 }
 
 async function fetchNsfwNew(limit = 100) {
-  // Same queries, sort by new = recently created NSFW subs
-  return searchMulti(NSFW_QUERIES, "new", true, 500, 1000000, limit);
+  return searchMulti(NSFW_QUERIES, "new", true, 500, 50000, limit);
 }
 
 // NSFW Unmoderated: MUST use search — include_over_18 is ignored on
@@ -313,8 +301,6 @@ async function fetchNsfwUnmoderated(
       if (subs < 20 || subs > 2500) continue;
       if (!sub.over18) continue;
       if (sub.subreddit_type !== "public") continue;
-      if (sub.restrict_posting === true) continue;
-      if (sub.submission_type === "restricted") continue;
 
       results.push(sub);
       if (results.length >= targetCount) break;
