@@ -2,6 +2,7 @@ const axios = require("axios");
 
 let accessToken = null;
 let tokenExpiry = 0;
+let tokenPromise = null; // lock
 
 async function getToken() {
   if (accessToken && Date.now() < tokenExpiry) return accessToken;
@@ -10,24 +11,34 @@ async function getToken() {
     process.env.REDDIT_CLIENT_ID === "your_client_id_here"
   )
     return null;
-  const resp = await axios.post(
-    "https://www.reddit.com/api/v1/access_token",
-    "grant_type=client_credentials",
-    {
-      auth: {
-        username: process.env.REDDIT_CLIENT_ID,
-        password: process.env.REDDIT_CLIENT_SECRET,
+  if (tokenPromise) return tokenPromise; // wait for in-flight fetch
+  tokenPromise = axios
+    .post(
+      "https://www.reddit.com/api/v1/access_token",
+      "grant_type=client_credentials",
+      {
+        auth: {
+          username: process.env.REDDIT_CLIENT_ID,
+          password: process.env.REDDIT_CLIENT_SECRET,
+        },
+        headers: {
+          "User-Agent": process.env.REDDIT_USER_AGENT || "SubTracker/1.0",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       },
-      headers: {
-        "User-Agent": process.env.REDDIT_USER_AGENT || "SubTracker/1.0",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    },
-  );
-  accessToken = resp.data.access_token;
-  tokenExpiry = Date.now() + (resp.data.expires_in - 60) * 1000;
-  console.log("[reddit] OAuth token acquired");
-  return accessToken;
+    )
+    .then((resp) => {
+      accessToken = resp.data.access_token;
+      tokenExpiry = Date.now() + (resp.data.expires_in - 60) * 1000;
+      tokenPromise = null;
+      console.log("[reddit] OAuth token acquired");
+      return accessToken;
+    })
+    .catch((err) => {
+      tokenPromise = null;
+      throw err;
+    });
+  return tokenPromise;
 }
 
 async function redditGet(path, params = {}) {
@@ -201,16 +212,22 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
   const results = [];
   const seen = new Set(excludeSubs);
   let after = null;
-  let attempts = 0;
+  let emptyRounds = 0;
 
-  while (results.length < targetCount && attempts < 50) {
-    attempts++;
+  while (results.length < targetCount && emptyRounds < 3) {
+    // Fetch 4 pages in parallel using sequential after tokens
+    // We can't know the next after ahead of time, so fetch page 1,
+    // then use its after for page 2, etc. — but we can pipeline:
+    // fetch page N while processing page N-1
     const params = { limit: 100, sort: "new" };
     if (after) params.after = after;
+
     try {
       const data = await redditGet("/subreddits/new", params);
       const children = data?.data?.children || [];
       if (!children.length) break;
+
+      let foundAny = false;
       for (const child of children) {
         const sub = child.data;
         const name = sub.display_name?.toLowerCase();
@@ -221,8 +238,13 @@ async function fetchUnmoderated(targetCount = 100, excludeSubs = new Set()) {
         if (sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
         results.push(sub);
+        foundAny = true;
         if (results.length >= targetCount) break;
       }
+
+      if (!foundAny) emptyRounds++;
+      else emptyRounds = 0;
+
       after = data?.data?.after;
       if (!after) break;
     } catch (err) {
@@ -249,26 +271,25 @@ async function fetchNsfwNew(limit = 100) {
   return searchMulti(NSFW_QUERIES, "new", true, 500, 50000, limit);
 }
 
-// NSFW Unmoderated: MUST use search — include_over_18 is ignored on
-// /subreddits/new with client_credentials OAuth
 async function fetchNsfwUnmoderated(
   targetCount = 100,
   excludeSubs = new Set(),
 ) {
   const results = [];
   const seen = new Set(excludeSubs);
+  let after = null;
+  let emptyRounds = 0;
 
-  // Primary: /subreddits/new — try first, may return NSFW on some OAuth configs
-  try {
-    let after = null;
-    let attempts = 0;
-    while (results.length < targetCount && attempts < 20) {
-      attempts++;
-      const params = { limit: 100, sort: "new", include_over_18: "1" };
-      if (after) params.after = after;
+  while (results.length < targetCount && emptyRounds < 3) {
+    const params = { limit: 100, sort: "new", include_over_18: "1" };
+    if (after) params.after = after;
+
+    try {
       const data = await redditGet("/subreddits/new", params);
       const children = data?.data?.children || [];
       if (!children.length) break;
+
+      let foundAny = false;
       for (const child of children) {
         const sub = child.data;
         const name = sub.display_name?.toLowerCase();
@@ -279,13 +300,19 @@ async function fetchNsfwUnmoderated(
         if (!sub.over18) continue;
         if (sub.subreddit_type !== "public") continue;
         results.push(sub);
+        foundAny = true;
         if (results.length >= targetCount) break;
       }
+
+      if (!foundAny) emptyRounds++;
+      else emptyRounds = 0;
+
       after = data?.data?.after;
       if (!after) break;
+    } catch (err) {
+      console.warn("[fetchNsfwUnmoderated] error:", err.message);
+      break;
     }
-  } catch (err) {
-    console.warn("[fetchNsfwUnmoderated] /subreddits/new failed:", err.message);
   }
 
   if (results.length < targetCount) {
